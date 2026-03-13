@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+server/node_modules/
+web/node_modules/
+
+# Build output
+dist/
+server/dist/
+web/dist/
+coverage/
+
+# Local env files (secrets)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+server/.env
+web/.env
+
+# Keep env templates in git
+!.env.example
+!.env.production.example
+!server/.env.example
+!web/.env.example
+
+# Database and local runtime artifacts
+server/prisma/dev.db
+*.log
+
+# OS files
+.DS_Store
+
+# Optional: uncomment if you want all Cursor metadata ignored.
+# Keep this commented if you plan to version .cursor/rules.
+.cursor/

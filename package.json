@@ -1,0 +1,18 @@
+{
+  "name": "mekteb-app",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w server & npm run dev -w web",
+    "build": "npm run build -w server && npm run build -w web",
+    "lint": "npm run lint -w server && npm run lint -w web",
+    "start:local": "bash scripts/start-local.sh",
+    "db:bootstrap": "npm run db:bootstrap -w server",
+    "compose:prod:up": "docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build",
+    "compose:prod:down": "docker compose -f docker-compose.prod.yml --env-file .env.production down"
+  }
+}

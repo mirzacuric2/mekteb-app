@@ -1,0 +1,5 @@
+ALTER TABLE "User"
+ADD COLUMN "phoneNumber" TEXT;
+
+ALTER TABLE "User"
+ALTER COLUMN "isActive" SET DEFAULT false;

@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+enum NotificationType {
+  POST_PUBLISHED
+  COMMENT_ADDED
+  MESSAGE_RECEIVED
+  ATTENDANCE_UPDATED
+}
+
+model Community {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  description String?
+  contactEmail String?
+  contactPhone String?
+  addressId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  address  Address? @relation(fields: [addressId], references: [id])
+  users    User[]
+  children Child[]
+  lectures Lecture[]
+  posts    Post[]
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  streetLine1 String
+  streetLine2 String?
+  postalCode  String
+  city        String
+  state       String?
+  country     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  communities Community[]
+  users       User[]
+
+  @@unique([streetLine1, postalCode, city, country])
+}
+
+model User {
+  id             String   @id @default(uuid())
+  firstName      String
+  lastName       String
+  ssn            String?  @unique
+  phoneNumber    String?
+  addressId      String?
+  email          String   @unique
+  passwordHash   String?
+  role           Role
+  isVerified     Boolean  @default(false)
+  isActive       Boolean  @default(false)
+  invitedById    String?
+  communityId    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  invitedBy      User?    @relation("InvitedBy", fields: [invitedById], references: [id])
+  invites        User[]   @relation("InvitedBy")
+  community      Community? @relation(fields: [communityId], references: [id])
+  address        Address? @relation(fields: [addressId], references: [id])
+  parentChildren ParentChild[]
+  posts          Post[]
+  comments       Comment[]
+  reactions      Reaction[]
+  lectures       Lecture[]
+  sentMessages   Message[] @relation("Sender")
+  receivedMessages Message[] @relation("Receiver")
+  notifications  Notification[]
+}
+
+model Child {
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  ssn          String?  @unique
+  birthDate    DateTime
+  level        String
+  communityId  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  community    Community @relation(fields: [communityId], references: [id])
+  parents      ParentChild[]
+  attendance   Attendance[]
+}
+
+model ParentChild {
+  parentId String
+  childId  String
+  createdAt DateTime @default(now())
+
+  parent User @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  child  Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@id([parentId, childId])
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  email     String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id         String   @id @default(uuid())
+  title      String
+  content    String
+  authorId   String
+  communityId String
+  publishedAt DateTime @default(now())
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  reactions Reaction[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  postId    String
+  authorId  String
+  createdAt DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Reaction {
+  id       String @id @default(uuid())
+  kind     String
+  postId   String
+  userId   String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  senderId   String
+  receiverId String
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model Lecture {
+  id        String   @id @default(uuid())
+  topic     String
+  heldAt    DateTime
+  note      String?
+  adminId   String
+  communityId String
+  createdAt DateTime @default(now())
+
+  admin     User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+}
+
+model Attendance {
+  lectureId String
+  childId   String
+  present   Boolean
+  comment   String?
+  markedAt  DateTime @default(now())
+
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  child   Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@id([lectureId, childId])
+}
+
+model Notification {
+  id        String @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
