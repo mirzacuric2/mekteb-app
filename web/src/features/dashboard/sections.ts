@@ -1,13 +1,14 @@
-export type SectionKey = "posts" | "users" | "children" | "lessons" | "messages" | "notifications";
+export type SectionKey = "posts" | "users" | "children" | "lessons" | "messages" | "notifications" | "help";
 
 export type DashboardSection = {
   key: SectionKey;
-  labelKey: "posts" | "users" | "children" | "lessons" | "messages" | "notifications";
-  group: "general" | "management";
+  labelKey: "posts" | "users" | "children" | "lessons" | "messages" | "notifications" | "help";
+  group: "general" | "management" | "support";
 };
 
 export const dashboardSections: DashboardSection[] = [
   { key: "posts", labelKey: "posts", group: "general" },
+  { key: "help", labelKey: "help", group: "support" },
   { key: "messages", labelKey: "messages", group: "general" },
   { key: "notifications", labelKey: "notifications", group: "general" },
   { key: "users", labelKey: "users", group: "management" },

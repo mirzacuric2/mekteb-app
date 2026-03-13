@@ -19,6 +19,15 @@ Mekteb App is a monorepo for an Islamic school/community platform with role-base
 - Attendance tracking for lessons
 - Multilingual UI support (EN, SV, BS)
 
+## Documentation
+
+- User docs index: `docs/README.md`
+- General user guide: `docs/user-guide.md`
+- Role handbooks:
+  - `docs/handbooks/super-admin.md`
+  - `docs/handbooks/admin.md`
+  - `docs/handbooks/user.md`
+
 ## Repository Structure
 
 ```text

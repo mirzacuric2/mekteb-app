@@ -5,6 +5,7 @@ import { ChildrenPanel } from "../children/children-panel";
 import { LessonsPanel } from "../lessons/lessons-panel";
 import { MessagesPanel } from "../messages/messages-panel";
 import { NotificationsPanel } from "../notifications/notifications-panel";
+import { HelpPanel } from "../help/help-panel";
 import { PrivateLayoutContext } from "../../layouts/private-layout-context";
 
 export function PostsRoute() {
@@ -33,4 +34,8 @@ export function MessagesRoute() {
 
 export function NotificationsRoute() {
   return <NotificationsPanel />;
+}
+
+export function HelpRoute() {
+  return <HelpPanel />;
 }

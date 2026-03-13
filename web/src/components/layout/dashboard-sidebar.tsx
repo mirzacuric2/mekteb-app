@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Bell,
   BookOpen,
+  CircleHelp,
   ChevronLeft,
   ChevronRight,
   MessageSquare,
@@ -61,6 +62,7 @@ export function DashboardSidebar({
   const roleLabel = useMemo(() => role.replace("_", " "), [role]);
   const sectionIcons: Record<SectionKey, ReactNode> = {
     posts: <Newspaper className="h-4 w-4 shrink-0" />,
+    help: <CircleHelp className="h-4 w-4 shrink-0" />,
     messages: <MessageSquare className="h-4 w-4 shrink-0" />,
     notifications: <Bell className="h-4 w-4 shrink-0" />,
     users: <Users className="h-4 w-4 shrink-0" />,
@@ -160,7 +162,7 @@ export function DashboardSidebar({
           </Select>
         </div>
 
-        <div className={cn("relative", isCollapsedDesktop ? "flex justify-center" : "flex justify-start")}>
+        <div className={cn("relative flex items-center gap-2", isCollapsedDesktop ? "justify-center" : "w-full")}>
           <button
             type="button"
             aria-label="Open user options"
@@ -169,6 +171,22 @@ export function DashboardSidebar({
           >
             {initials}
           </button>
+          <div className={cn("group relative", !isCollapsedDesktop ? "ml-auto" : "")}>
+            <button
+              type="button"
+              aria-label="Open help"
+              className={cn(
+                "inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700",
+                activeKey === "help" ? "bg-primary/10 text-primary" : ""
+              )}
+              onClick={() => onNavigate("help")}
+            >
+              <CircleHelp className="h-4 w-4" />
+            </button>
+            <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              {t("help")}
+            </span>
+          </div>
 
           {isUserMenuOpen ? (
             <div

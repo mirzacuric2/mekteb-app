@@ -5,6 +5,7 @@ import {
   Bell,
   BookOpen,
   ChevronRight,
+  CircleHelp,
   House,
   MessageCircle,
   MessageSquare,
@@ -47,6 +48,7 @@ function PrivateLayoutShell() {
   const selectedSection = dashboardSections.find((section) => section.key === activeKey) ?? dashboardSections[0];
   const breadcrumbIcon = {
     posts: <Newspaper className="h-4 w-4 text-slate-500" />,
+    help: <CircleHelp className="h-4 w-4 text-slate-500" />,
     messages: <MessageSquare className="h-4 w-4 text-slate-500" />,
     notifications: <Bell className="h-4 w-4 text-slate-500" />,
     users: <Users className="h-4 w-4 text-slate-500" />,
