@@ -1,5 +1,6 @@
-import { Role } from "@prisma/client";
 import { Request } from "express";
+
+type Role = "SUPER_ADMIN" | "ADMIN" | "USER";
 
 export type AuthUser = {
   id: string;
@@ -8,6 +9,6 @@ export type AuthUser = {
   communityId: string | null;
 };
 
-export type AppRequest = Request & {
+export type AppRequest = Request<Record<string, string>> & {
   user?: AuthUser;
 };
