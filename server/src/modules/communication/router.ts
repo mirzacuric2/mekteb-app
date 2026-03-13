@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Nivo, NotificationType, Role } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
@@ -8,6 +8,14 @@ import { AppRequest } from "../../types.js";
 
 export function communicationRouter() {
   const router = Router();
+  const lessonPayloadSchema = z.object({
+    title: z.string().min(2),
+    nivo: z.nativeEnum(Nivo),
+  });
+  const lessonUpdatePayloadSchema = z.object({
+    title: z.string().min(2).optional(),
+    nivo: z.nativeEnum(Nivo).optional(),
+  });
 
   router.get("/posts", requireAuth, async (req: AppRequest, res) => {
     const where = req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId || undefined };
@@ -39,7 +47,7 @@ export function communicationRouter() {
     await prisma.notification.createMany({
       data: users.map((u) => ({
         userId: u.id,
-        type: "POST_PUBLISHED",
+        type: NotificationType.POST_PUBLISHED,
         title: "New post",
         body: payload.data.title,
       })),
@@ -132,7 +140,7 @@ export function communicationRouter() {
     await prisma.notification.create({
       data: {
         userId: payload.data.receiverId,
-        type: "MESSAGE_RECEIVED",
+        type: NotificationType.MESSAGE_RECEIVED,
         title: "New message",
         body: payload.data.content.slice(0, 80),
       },
@@ -202,7 +210,7 @@ export function communicationRouter() {
     await prisma.notification.createMany({
       data: parents.map((p) => ({
         userId: p.parentId,
-        type: "ATTENDANCE_UPDATED",
+        type: NotificationType.ATTENDANCE_UPDATED,
         title: "Attendance updated",
         body: `Lecture: ${payload.data.topic}`,
       })),
@@ -231,6 +239,53 @@ export function communicationRouter() {
     if (!existing) return res.status(404).json({ message: "Lecture not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
     await prisma.lecture.delete({ where: { id: req.params.id } });
+    return res.status(204).send();
+  });
+
+  router.get("/lessons", requireAuth, async (_req: AppRequest, res) => {
+    const lessons = await prisma.lesson.findMany({
+      orderBy: [{ nivo: "asc" }, { title: "asc" }],
+    });
+    return res.json(lessons);
+  });
+
+  router.post("/lessons", requireAuth, requireRole(Role.SUPER_ADMIN), async (req: AppRequest, res) => {
+    const payload = lessonPayloadSchema.safeParse(req.body);
+    if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+
+    const lesson = await prisma.lesson.create({
+      data: {
+        title: payload.data.title.trim(),
+        nivo: payload.data.nivo,
+      },
+    });
+
+    return res.status(201).json(lesson);
+  });
+
+  router.patch("/lessons/:id", requireAuth, requireRole(Role.SUPER_ADMIN), async (req: AppRequest, res) => {
+    const payload = lessonUpdatePayloadSchema.safeParse(req.body);
+    if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+
+    const existing = await prisma.lesson.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Lesson not found" });
+
+    const updated = await prisma.lesson.update({
+      where: { id: req.params.id },
+      data: {
+        title: payload.data.title?.trim(),
+        nivo: payload.data.nivo,
+      },
+    });
+
+    return res.json(updated);
+  });
+
+  router.delete("/lessons/:id", requireAuth, requireRole(Role.SUPER_ADMIN), async (req: AppRequest, res) => {
+    const existing = await prisma.lesson.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Lesson not found" });
+
+    await prisma.lesson.delete({ where: { id: req.params.id } });
     return res.status(204).send();
   });
 

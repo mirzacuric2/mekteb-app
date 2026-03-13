@@ -23,8 +23,8 @@ export function ChildrenRoute() {
 }
 
 export function LessonsRoute() {
-  const { canManage } = useOutletContext<PrivateLayoutContext>();
-  return <LessonsPanel canManage={canManage} />;
+  const { canManageLessons } = useOutletContext<PrivateLayoutContext>();
+  return <LessonsPanel canManage={canManageLessons} />;
 }
 
 export function MessagesRoute() {

@@ -2,7 +2,7 @@ export type SectionKey = "posts" | "users" | "children" | "lessons" | "messages"
 
 export type DashboardSection = {
   key: SectionKey;
-  labelKey: "posts" | "users" | "children" | "attendance" | "messages" | "notifications";
+  labelKey: "posts" | "users" | "children" | "lessons" | "messages" | "notifications";
   group: "general" | "management";
 };
 
@@ -12,7 +12,7 @@ export const dashboardSections: DashboardSection[] = [
   { key: "notifications", labelKey: "notifications", group: "general" },
   { key: "users", labelKey: "users", group: "management" },
   { key: "children", labelKey: "children", group: "management" },
-  { key: "lessons", labelKey: "attendance", group: "management" },
+  { key: "lessons", labelKey: "lessons", group: "management" },
 ];
 
 export function isSectionKey(value: string): value is SectionKey {

@@ -1,4 +1,12 @@
-export type Role = "SUPER_ADMIN" | "ADMIN" | "USER";
+export const ROLE = {
+  SUPER_ADMIN: "SUPER_ADMIN",
+  ADMIN: "ADMIN",
+  USER: "USER",
+} as const;
+
+export type Role = (typeof ROLE)[keyof typeof ROLE];
+export const EDITABLE_ROLE_VALUES = [ROLE.ADMIN, ROLE.USER] as const;
+export type EditableRole = (typeof EDITABLE_ROLE_VALUES)[number];
 
 export type SessionUser = {
   id: string;

@@ -3,21 +3,23 @@ import { useMemo, useState } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { UserPlus } from "lucide-react";
 import { api } from "../../api";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { useSession } from "../auth/session-context";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { EntityDetailsDrawer } from "../common/components/entity-details-drawer";
+import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { EntityListToolbar } from "../common/components/entity-list-toolbar";
 import { StatusBadge } from "../common/components/status-badge";
 import { CommunityOption, UserFormDialog, UserFormValues } from "./user-form-dialog";
 import { UserDetailsDrawerContent } from "./user-details-drawer-content";
-import { UserAddressRecord, UserRecord, UsersTable } from "./users-table";
+import { UserRecord, UsersTable } from "./users-table";
+import { EditableRole, ROLE } from "../../types";
 
 type Props = { enabled: boolean; canCreateAdmin: boolean };
 
-type EditableRole = "ADMIN" | "USER";
 type CommunityRecord = { id: string; name: string };
 type CreatedUserResponse = UserRecord & { invitationEmailSent?: boolean };
 type ChildMetaRecord = {
@@ -46,6 +48,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+  const [deletingUser, setDeletingUser] = useState<UserRecord | null>(null);
   const queryClient = useQueryClient();
   const users = useAuthedQuery<UserRecord[]>("users", "/users", enabled);
   const children = useAuthedQuery<ChildMetaRecord[]>("children-users-meta", "/children", enabled);
@@ -256,6 +259,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success("User deleted.");
+      setDeletingUser(null);
     },
     onError: (error) => toast.error(getApiMessage(error, "Failed to delete user.")),
   });
@@ -292,15 +296,18 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
                 setPage(1);
               }}
               placeholder={t("searchUsersPlaceholder")}
+              mobileInline
               actions={
                 <Button
+                  className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
                   onClick={() => {
                     setEditingUser(null);
                     setFormApiError(null);
                     setFormOpen(true);
                   }}
                 >
-                  {t("createUser")}
+                  <UserPlus className="h-4 w-4" />
+                  <span className="hidden md:inline">{t("createUser")}</span>
                 </Button>
               }
             />
@@ -314,7 +321,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
             onPageChange={setPage}
             onRowClick={setSelectedUser}
             onEdit={(user) => {
-              if (user.role === "SUPER_ADMIN") {
+              if (user.role === ROLE.SUPER_ADMIN) {
                 toast.error("Super admin cannot be edited here.");
                 return;
               }
@@ -322,12 +329,11 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
               setFormOpen(true);
             }}
             onDelete={(user) => {
-              if (user.role === "SUPER_ADMIN") {
+              if (user.role === ROLE.SUPER_ADMIN) {
                 toast.error("Super admin cannot be deleted.");
                 return;
               }
-              if (!window.confirm("Delete this user?")) return;
-              deleteUser.mutate(user.id);
+              setDeletingUser(user);
             }}
           />
 
@@ -335,8 +341,8 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
             open={formOpen}
             mode={editingUser ? "edit" : "create"}
             canCreateAdmin={canCreateAdmin}
-            canSelectCommunity={session?.user.role === "SUPER_ADMIN"}
-            forcedCommunityId={session?.user.role === "ADMIN" ? session.user.communityId : null}
+            canSelectCommunity={session?.user.role === ROLE.SUPER_ADMIN}
+            forcedCommunityId={session?.user.role === ROLE.ADMIN ? session.user.communityId : null}
             communityOptions={communityOptions}
             submitting={createUser.isPending || updateUser.isPending}
             apiError={formApiError}
@@ -348,7 +354,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
                     ssn: editingUser.ssn || "",
                     email: editingUser.email,
                     phoneNumber: editingUser.phoneNumber || "",
-                    role: editingUser.role === "SUPER_ADMIN" ? "ADMIN" : editingUser.role,
+                    role: editingUser.role === ROLE.SUPER_ADMIN ? ROLE.ADMIN : editingUser.role,
                     communityId: editingUser.communityId || "",
                     isActive: editingUser.isActive ?? false,
                     address: {
@@ -442,6 +448,24 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
               />
             ) : null}
           </EntityDetailsDrawer>
+          <DeleteConfirmDialog
+            open={!!deletingUser}
+            onOpenChange={(open) => {
+              if (!open) setDeletingUser(null);
+            }}
+            title="Delete user"
+            description={
+              deletingUser
+                ? `Are you sure you want to delete ${deletingUser.firstName} ${deletingUser.lastName}?`
+                : "Delete selected user?"
+            }
+            confirmText="Delete"
+            submitting={deleteUser.isPending}
+            onConfirm={() => {
+              if (!deletingUser) return;
+              deleteUser.mutate(deletingUser.id);
+            }}
+          />
         </>
       ) : (
         <p className="text-sm text-slate-500">Visible for ADMIN and SUPER_ADMIN.</p>

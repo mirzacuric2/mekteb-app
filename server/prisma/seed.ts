@@ -1,6 +1,7 @@
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { legacyCommunities, legacyUsers } from "./legacy-seed-data.js";
+import { initialLessons } from "./initial-lessons.js";
 
 const prisma = new PrismaClient();
 
@@ -135,41 +136,81 @@ async function main() {
     },
   });
 
-  await prisma.post.create({
-    data: {
-      title: "Welcome to the new mekteb app",
-      content: "We will track attendance, posts, and child progress from one place.",
+  const seededPostTitle = "Welcome to the new mekteb app";
+  const seededPostContent = "We will track attendance, posts, and child progress from one place.";
+  const seededLectureTopic = "Short surahs";
+
+  const existingPost = await prisma.post.findFirst({
+    where: {
+      title: seededPostTitle,
       authorId: admin.id,
       communityId: community.id,
-      comments: {
-        create: [{ content: "Great update, hvala!", authorId: parent.id }],
-      },
-      reactions: {
-        create: [{ kind: "like", userId: parent.id }],
-      },
     },
   });
 
-  await prisma.notification.create({
-    data: {
+  if (!existingPost) {
+    await prisma.post.create({
+      data: {
+        title: seededPostTitle,
+        content: seededPostContent,
+        authorId: admin.id,
+        communityId: community.id,
+        comments: {
+          create: [{ content: "Great update, hvala!", authorId: parent.id }],
+        },
+        reactions: {
+          create: [{ kind: "like", userId: parent.id }],
+        },
+      },
+    });
+  }
+
+  const existingNotification = await prisma.notification.findFirst({
+    where: {
       userId: parent.id,
       type: "POST_PUBLISHED",
       title: "New post from admin",
-      body: "Welcome to the new mekteb app",
+      body: seededPostTitle,
     },
   });
 
-  await prisma.lecture.create({
-    data: {
-      topic: "Short surahs",
-      heldAt: new Date(),
-      note: "Good class focus.",
+  if (!existingNotification) {
+    await prisma.notification.create({
+      data: {
+        userId: parent.id,
+        type: "POST_PUBLISHED",
+        title: "New post from admin",
+        body: seededPostTitle,
+      },
+    });
+  }
+
+  const existingLecture = await prisma.lecture.findFirst({
+    where: {
+      topic: seededLectureTopic,
       adminId: admin.id,
       communityId: community.id,
-      attendance: {
-        create: [{ childId: child.id, present: true, comment: "On time" }],
-      },
     },
+  });
+
+  if (!existingLecture) {
+    await prisma.lecture.create({
+      data: {
+        topic: seededLectureTopic,
+        heldAt: new Date(),
+        note: "Good class focus.",
+        adminId: admin.id,
+        communityId: community.id,
+        attendance: {
+          create: [{ childId: child.id, present: true, comment: "On time" }],
+        },
+      },
+    });
+  }
+
+  await prisma.lesson.createMany({
+    data: initialLessons,
+    skipDuplicates: true,
   });
 }
 

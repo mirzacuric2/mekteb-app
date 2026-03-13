@@ -6,6 +6,7 @@ import {
   BookOpen,
   ChevronRight,
   House,
+  MessageCircle,
   MessageSquare,
   Newspaper,
   UserRound,
@@ -17,6 +18,7 @@ import { dashboardSections, isSectionKey, SectionKey } from "../features/dashboa
 import { useSession } from "../features/auth/session-context";
 import { Sidebar, SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "../components/ui/sidebar";
 import { PrivateLayoutContext } from "./private-layout-context";
+import { ROLE } from "../types";
 
 function PrivateLayoutShell() {
   const { t, i18n } = useTranslation();
@@ -25,7 +27,7 @@ function PrivateLayoutShell() {
   const navigate = useNavigate();
   const { open, setOpen, setOpenMobile } = useSidebar();
   const currentSegment = location.pathname.split("/").pop() || "posts";
-  const canManage = session?.user.role === "ADMIN" || session?.user.role === "SUPER_ADMIN";
+  const canManage = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
 
   useEffect(() => {
     if (!isSectionKey(currentSegment)) {
@@ -56,7 +58,8 @@ function PrivateLayoutShell() {
   const context = useMemo<PrivateLayoutContext>(
     () => ({
       canManage,
-      canCreateAdmin: session.user.role === "SUPER_ADMIN",
+      canCreateAdmin: session.user.role === ROLE.SUPER_ADMIN,
+      canManageLessons: session.user.role === ROLE.SUPER_ADMIN,
     }),
     [canManage, session.user.role]
   );
@@ -117,9 +120,11 @@ function PrivateLayoutShell() {
 
       <button
         type="button"
-        className="fixed bottom-6 right-6 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition-opacity hover:opacity-90"
+        aria-label="Open chat"
+        title="Open chat"
+        className="fixed bottom-6 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-opacity hover:opacity-90"
       >
-        Chat
+        <MessageCircle className="h-5 w-5" />
       </button>
     </div>
   );

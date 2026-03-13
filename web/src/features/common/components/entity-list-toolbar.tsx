@@ -6,6 +6,7 @@ type EntityListToolbarProps = {
   onSearchChange: (value: string) => void;
   placeholder?: string;
   actions?: ReactNode;
+  mobileInline?: boolean;
 };
 
 export function EntityListToolbar({
@@ -13,10 +14,17 @@ export function EntityListToolbar({
   onSearchChange,
   placeholder = "Search...",
   actions,
+  mobileInline = false,
 }: EntityListToolbarProps) {
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div className="w-full md:max-w-sm">
+    <div
+      className={
+        mobileInline
+          ? "flex items-center gap-2 md:gap-3 md:justify-between"
+          : "flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+      }
+    >
+      <div className={mobileInline ? "min-w-0 flex-1 md:max-w-sm" : "w-full md:max-w-sm"}>
         <DebouncedSearchInput
           value={search}
           onDebouncedChange={onSearchChange}

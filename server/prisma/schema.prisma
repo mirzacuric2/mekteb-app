@@ -20,6 +20,14 @@ enum NotificationType {
   ATTENDANCE_UPDATED
 }
 
+enum Nivo {
+  First
+  Second
+  Third
+  Fourth
+  Fifth
+}
+
 model Community {
   id        String   @id @default(uuid())
   name      String   @unique
@@ -194,6 +202,16 @@ model Attendance {
   child   Child @relation(fields: [childId], references: [id], onDelete: Cascade)
 
   @@id([lectureId, childId])
+}
+
+model Lesson {
+  id        String   @id @default(uuid())
+  title     String
+  nivo      Nivo
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([title, nivo])
 }
 
 model Notification {

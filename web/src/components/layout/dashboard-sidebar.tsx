@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { dashboardSections, SectionKey } from "../../features/dashboard/sections";
 import { cn } from "../../lib/utils";
+import { Select } from "../ui/select";
 import {
   SidebarContent,
   SidebarFooter,
@@ -152,15 +153,11 @@ export function DashboardSidebar({
       <SidebarFooter>
         <div className={`mb-3 space-y-2 ${isCollapsedDesktop ? "hidden" : ""}`}>
           <label className="px-1 text-xs font-medium uppercase tracking-wide text-slate-500">Language</label>
-          <select
-            value={language}
-            onChange={(event) => onLanguageChange(event.target.value as "en" | "sv" | "bs")}
-            className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
-          >
+          <Select value={language} onChange={(event) => onLanguageChange(event.target.value as "en" | "sv" | "bs")}>
             <option value="en">English</option>
             <option value="sv">Svenska</option>
             <option value="bs">Bosanski</option>
-          </select>
+          </Select>
         </div>
 
         <div className={cn("relative", isCollapsedDesktop ? "flex justify-center" : "flex justify-start")}>

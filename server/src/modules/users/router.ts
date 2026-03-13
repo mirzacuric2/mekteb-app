@@ -20,6 +20,8 @@ export function usersRouter() {
     state: z.string().optional(),
     country: z.string().min(2),
   });
+  const MANAGEABLE_USER_ROLES = [Role.ADMIN, Role.USER] as const;
+  const manageableUserRoleSchema = z.enum(MANAGEABLE_USER_ROLES);
 
   router.get("/users", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
     const users = await prisma.user.findMany({
@@ -46,7 +48,7 @@ export function usersRouter() {
         lastName: z.string().min(2),
         ssn: ssnSchema.optional(),
         email: z.string().email(),
-        role: z.enum(["ADMIN", "USER"]),
+        role: manageableUserRoleSchema,
         phoneNumber: phoneSchema.optional(),
         communityId: z.string().optional(),
         address: addressSchema.optional(),
@@ -54,7 +56,7 @@ export function usersRouter() {
       .safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
 
-    if (payload.data.role === "ADMIN" && req.user!.role !== Role.SUPER_ADMIN) {
+    if (payload.data.role === Role.ADMIN && req.user!.role !== Role.SUPER_ADMIN) {
       return res.status(403).json({ message: "Only super admin can create admin" });
     }
 
@@ -166,7 +168,7 @@ export function usersRouter() {
         lastName: z.string().min(2).optional(),
         ssn: ssnSchema.optional(),
         phoneNumber: phoneSchema.optional(),
-        role: z.enum(["ADMIN", "USER"]).optional(),
+        role: manageableUserRoleSchema.optional(),
         communityId: z.string().optional(),
         isActive: z.boolean().optional(),
         address: addressSchema.nullable().optional(),
@@ -179,7 +181,7 @@ export function usersRouter() {
     if (req.user!.role !== Role.SUPER_ADMIN && existing.communityId !== req.user!.communityId) {
       return res.status(403).json({ message: "Forbidden" });
     }
-    if (payload.data.role === "ADMIN" && req.user!.role !== Role.SUPER_ADMIN) {
+    if (payload.data.role === Role.ADMIN && req.user!.role !== Role.SUPER_ADMIN) {
       return res.status(403).json({ message: "Only super admin can promote to admin" });
     }
     if (payload.data.communityId && !canAccessCommunity(req, payload.data.communityId)) {

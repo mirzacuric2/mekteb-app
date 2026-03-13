@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { MapPin, Plus, Trash2, Users } from "lucide-react";
+import { MapPin, PencilLine, Plus, Save, Trash2, UserPlus, Users, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Loader } from "../common/components/loader";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
+import { EDITABLE_ROLE_VALUES, ROLE } from "../../types";
 import {
   Dialog,
   DialogBody,
@@ -53,7 +55,7 @@ const userFormSchema = z.object({
     .max(30, "Phone number must be at most 30 characters.")
     .optional()
     .or(z.literal("")),
-  role: z.enum(["ADMIN", "USER"]),
+  role: z.enum(EDITABLE_ROLE_VALUES),
   communityId: z.string().optional().or(z.literal("")),
   isActive: z.boolean().default(false),
   address: z.union([filledAddressSchema, emptyAddressSchema]),
@@ -92,6 +94,7 @@ export function UserFormDialog({
 }: UserFormDialogProps) {
   const { t } = useTranslation();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [submitLocked, setSubmitLocked] = useState(false);
   const {
     register,
     handleSubmit,
@@ -107,7 +110,7 @@ export function UserFormDialog({
       ssn: "",
       email: "",
       phoneNumber: "",
-      role: "USER",
+      role: ROLE.USER,
       communityId: "",
       isActive: false,
       address: {
@@ -129,13 +132,14 @@ export function UserFormDialog({
   useEffect(() => {
     if (!open) return;
     setServerError(null);
+    setSubmitLocked(false);
     reset({
       firstName: initialValues?.firstName || "",
       lastName: initialValues?.lastName || "",
       ssn: initialValues?.ssn || "",
       email: initialValues?.email || "",
       phoneNumber: initialValues?.phoneNumber || "",
-      role: initialValues?.role || "USER",
+      role: initialValues?.role || ROLE.USER,
       communityId: canSelectCommunity
         ? initialValues?.communityId || ""
         : forcedCommunityId || initialValues?.communityId || "",
@@ -151,6 +155,12 @@ export function UserFormDialog({
       children: [],
     });
   }, [open, initialValues, reset, canSelectCommunity, forcedCommunityId]);
+
+  useEffect(() => {
+    if (!submitting) {
+      setSubmitLocked(false);
+    }
+  }, [submitting]);
 
   useEffect(() => {
     if (!apiError) return;
@@ -178,7 +188,14 @@ export function UserFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? t("createUser") : t("editUser")}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {mode === "create" ? (
+              <UserPlus className="h-4 w-4 text-slate-500" />
+            ) : (
+              <PencilLine className="h-4 w-4 text-slate-500" />
+            )}
+            <span>{mode === "create" ? t("createUser") : t("editUser")}</span>
+          </DialogTitle>
         </DialogHeader>
         <form
           className="flex max-h-[calc(90vh-73px)] flex-col"
@@ -188,7 +205,7 @@ export function UserFormDialog({
 
             const normalizedValues: UserFormValues = {
               ...values,
-              role: canCreateAdmin ? values.role : "USER",
+              role: canCreateAdmin ? values.role : ROLE.USER,
               communityId: canSelectCommunity ? values.communityId : forcedCommunityId || values.communityId,
             };
 
@@ -244,6 +261,7 @@ export function UserFormDialog({
               return;
             }
 
+            setSubmitLocked(true);
             onSubmit(parsed.data);
           })}
         >
@@ -285,30 +303,24 @@ export function UserFormDialog({
                 {canCreateAdmin ? (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">{t("role")}</label>
-                    <select
-                      {...register("role")}
-                      className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
-                    >
-                      <option value="USER">USER</option>
-                      <option value="ADMIN">ADMIN</option>
-                    </select>
+                    <Select {...register("role")}>
+                      <option value={ROLE.USER}>{ROLE.USER}</option>
+                      <option value={ROLE.ADMIN}>{ROLE.ADMIN}</option>
+                    </Select>
                     {errors.role ? <p className="mt-1 text-xs text-red-600">{errors.role.message}</p> : null}
                   </div>
                 ) : null}
                 {canSelectCommunity ? (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">{t("community")}</label>
-                    <select
-                      {...register("communityId")}
-                      className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
-                    >
+                    <Select {...register("communityId")}>
                       <option value="">{t("unassigned")}</option>
                       {communityOptions.map((community) => (
                         <option key={community.id} value={community.id}>
                           {community.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     {errors.communityId ? (
                       <p className="mt-1 text-xs text-red-600">{errors.communityId.message}</p>
                     ) : null}
@@ -366,15 +378,14 @@ export function UserFormDialog({
             {mode === "edit" ? (
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">{t("status")}</label>
-                <select
+                <Select
                   {...register("isActive", {
                     setValueAs: (value) => value === "true",
                   })}
-                  className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
                 >
                   <option value="false">{t("inactive")}</option>
                   <option value="true">{t("active")}</option>
-                </select>
+                </Select>
                 {errors.isActive ? <p className="mt-1 text-xs text-red-600">{errors.isActive.message}</p> : null}
               </div>
             ) : null}
@@ -483,10 +494,12 @@ export function UserFormDialog({
           <DialogFooter>
             {serverError ? <p className="mr-auto text-xs text-red-600">{serverError}</p> : null}
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <X className="mr-1 h-4 w-4" />
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={submitting} className="gap-2">
-              {mode === "create" && submitting ? <Loader /> : null}
+            <Button type="submit" disabled={submitting || submitLocked} className="gap-2">
+              {mode === "create" && submitting ? <Loader size="sm" text="" className="text-current" /> : null}
+              {(!submitting || mode !== "create") ? <Save className="h-4 w-4" /> : null}
               {mode === "create" ? t("createUser") : t("saveUser")}
             </Button>
           </DialogFooter>

@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "predev": "npm run db:sync",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "prestart": "npm run db:sync",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed:legacy": "tsx prisma/seed.ts",
     "prisma:seed": "tsx prisma/seed.ts",
+    "db:sync": "npm run prisma:migrate:deploy && npm run prisma:seed",
     "db:bootstrap": "npm run prisma:generate && npm run prisma:migrate:deploy && npm run prisma:seed",
     "lint": "echo \"No linter configured yet\""
   },

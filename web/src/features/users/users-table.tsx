@@ -3,9 +3,11 @@ import { EntityRowActions } from "../common/components/entity-row-actions";
 import { NaValue } from "../common/components/na-value";
 import { PaginationControls } from "../common/components/pagination-controls";
 import { StatusBadge } from "../common/components/status-badge";
+import { Loader } from "../common/components/loader";
 import { useTranslation } from "react-i18next";
+import { Role } from "../../types";
 
-type UserRole = "SUPER_ADMIN" | "ADMIN" | "USER";
+type UserRole = Role;
 
 export type UserAddressRecord = {
   streetLine1: string;
@@ -116,7 +118,7 @@ export function UsersTable({
         {isLoading ? (
           <tr>
             <td className="px-5 py-10 text-center text-slate-500" colSpan={9}>
-              {t("loadingUsers")}
+              <Loader size="lg" text={t("loadingUsers")} className="justify-center" />
             </td>
           </tr>
         ) : null}
