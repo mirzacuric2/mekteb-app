@@ -9,9 +9,11 @@ const secret = process.env.JWT_SECRET || "dev-secret";
 const refreshSecret = process.env.REFRESH_TOKEN_SECRET || `${secret}-refresh`;
 
 export const roleRank: Record<Role, number> = {
-  USER: 1,
-  ADMIN: 5,
-  SUPER_ADMIN: 10,
+  USER: 10,
+  PARENT: 20,
+  BOARD_MEMBER: 40,
+  ADMIN: 70,
+  SUPER_ADMIN: 100,
 };
 
 export function signAuthToken(user: AuthUser) {
@@ -60,6 +62,16 @@ export function requireRole(minRole: Role) {
   return (req: AppRequest, res: Response, next: NextFunction) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     if (roleRank[req.user.role] < roleRank[minRole]) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    return next();
+  };
+}
+
+export function requireAnyRole(...allowedRoles: Role[]) {
+  return (req: AppRequest, res: Response, next: NextFunction) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    if (!allowedRoles.includes(req.user.role as Role)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     return next();

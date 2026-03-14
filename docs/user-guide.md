@@ -7,7 +7,7 @@ This guide explains how to use the Mekteb App interface and core features.
 - Open the web app login page.
 - Sign in with your email and password.
 - After login, you are redirected to the dashboard.
-- Your available actions depend on your role (`SUPER_ADMIN`, `ADMIN`, `USER`).
+- Your available actions depend on your role (`SUPER_ADMIN`, `ADMIN`, `BOARD_MEMBER`, `PARENT`, legacy `USER`).
 
 ## 2) Dashboard Navigation
 

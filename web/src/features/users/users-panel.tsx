@@ -215,7 +215,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
       role,
       phoneNumber,
       communityId,
-      isActive,
+      status,
       address,
     }: {
       id: string;
@@ -225,7 +225,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
       role: EditableRole;
       phoneNumber?: string;
       communityId?: string;
-      isActive: boolean;
+      status: "ACTIVE" | "INACTIVE" | "PENDING";
       address?: UserAddressInput;
     }) =>
       (
@@ -236,7 +236,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
           role,
           phoneNumber,
           communityId,
-          isActive,
+          status,
           address,
         })
       ).data,
@@ -354,9 +354,14 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
                     ssn: editingUser.ssn || "",
                     email: editingUser.email,
                     phoneNumber: editingUser.phoneNumber || "",
-                    role: editingUser.role === ROLE.SUPER_ADMIN ? ROLE.ADMIN : editingUser.role,
+                    role:
+                      editingUser.role === ROLE.SUPER_ADMIN
+                        ? ROLE.ADMIN
+                        : editingUser.role === ROLE.USER
+                          ? ROLE.BOARD_MEMBER
+                          : editingUser.role,
                     communityId: editingUser.communityId || "",
-                    isActive: editingUser.isActive ?? false,
+                    status: editingUser.status || "INACTIVE",
                     address: {
                       streetLine1: editingUser.address?.streetLine1 || "",
                       streetLine2: editingUser.address?.streetLine2 || "",
@@ -386,7 +391,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
                     role: values.role,
                     phoneNumber: values.phoneNumber || undefined,
                     communityId: values.communityId || undefined,
-                    isActive: values.isActive,
+                    status: values.status,
                     address: toApiAddress(values.address),
                   },
                   {
@@ -432,7 +437,11 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
                 : "User details"
             }
             headerMeta={
-              selectedUser ? <StatusBadge isActive={selectedUser.isActive !== false} /> : undefined
+              selectedUser ? (
+                <StatusBadge
+                  status={selectedUser.status || "INACTIVE"}
+                />
+              ) : undefined
             }
             description={t("userDetails")}
           >

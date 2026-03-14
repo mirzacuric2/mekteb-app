@@ -4,6 +4,8 @@ export const AUTH_ROLE = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
   USER: "USER",
+  PARENT: "PARENT",
+  BOARD_MEMBER: "BOARD_MEMBER",
 } as const;
 export type AuthRole = (typeof AUTH_ROLE)[keyof typeof AUTH_ROLE];
 

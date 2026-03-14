@@ -11,6 +11,8 @@ enum Role {
   SUPER_ADMIN
   ADMIN
   USER
+  PARENT
+  BOARD_MEMBER
 }
 
 enum NotificationType {
@@ -28,12 +30,33 @@ enum Nivo {
   Fifth
 }
 
+enum BoardMemberRole {
+  CHAIRPERSON
+  SECRETARY
+  ECONOMY
+  MEMBER
+  ADVISOR
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+enum CommunityStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model Community {
   id        String   @id @default(uuid())
   name      String   @unique
   description String?
   contactEmail String?
   contactPhone String?
+  status    CommunityStatus @default(ACTIVE)
+  deactivatedAt DateTime?
   addressId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -43,6 +66,9 @@ model Community {
   children Child[]
   lectures Lecture[]
   posts    Post[]
+  boardMembers CommunityBoardMember[]
+
+  @@index([status])
 }
 
 model Address {
@@ -58,6 +84,7 @@ model Address {
 
   communities Community[]
   users       User[]
+  boardMembers CommunityBoardMember[]
 
   @@unique([streetLine1, postalCode, city, country])
 }
@@ -72,8 +99,7 @@ model User {
   email          String   @unique
   passwordHash   String?
   role           Role
-  isVerified     Boolean  @default(false)
-  isActive       Boolean  @default(false)
+  status         UserStatus @default(PENDING)
   invitedById    String?
   communityId    String?
   createdAt      DateTime @default(now())
@@ -91,6 +117,34 @@ model User {
   sentMessages   Message[] @relation("Sender")
   receivedMessages Message[] @relation("Receiver")
   notifications  Notification[]
+  boardMemberships CommunityBoardMember[]
+}
+
+model CommunityBoardMember {
+  id          String   @id @default(uuid())
+  communityId String
+  role        BoardMemberRole
+  userId      String?
+  isActive    Boolean  @default(true)
+  mandateStartDate DateTime @default(now())
+  mandateEndDate DateTime?
+  firstName   String?
+  lastName    String?
+  email       String?
+  phoneNumber String?
+  notes       String?
+  addressId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  address   Address?  @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([userId])
+  @@index([communityId, isActive])
+  @@index([communityId, role, isActive])
 }
 
 model Child {

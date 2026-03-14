@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useMemo } from "react";
 import {
   Bell,
+  Building2,
   BookOpen,
   ChevronRight,
   CircleHelp,
@@ -28,19 +29,40 @@ function PrivateLayoutShell() {
   const navigate = useNavigate();
   const { open, setOpen, setOpenMobile } = useSidebar();
   const currentSegment = location.pathname.split("/").pop() || "posts";
-  const canManage = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
+  const canManageUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
+  const canManageChildren =
+    session?.user.role === ROLE.ADMIN ||
+    session?.user.role === ROLE.SUPER_ADMIN ||
+    session?.user.role === ROLE.BOARD_MEMBER;
+  const canManageCommunities =
+    session?.user.role === ROLE.ADMIN ||
+    session?.user.role === ROLE.SUPER_ADMIN ||
+    session?.user.role === ROLE.BOARD_MEMBER;
+  const canPublishPosts =
+    session?.user.role === ROLE.ADMIN ||
+    session?.user.role === ROLE.SUPER_ADMIN ||
+    session?.user.role === ROLE.BOARD_MEMBER;
+  const canManage = canManageUsers || canManageChildren || canManageCommunities;
 
   useEffect(() => {
     if (!isSectionKey(currentSegment)) {
       navigate("/app/posts", { replace: true });
       return;
     }
-    if (!canManage && currentSegment === "users") {
+    if (currentSegment === "users" && !canManageUsers) {
+      navigate("/app/posts", { replace: true });
+      return;
+    }
+    if (currentSegment === "children" && !canManageChildren) {
+      navigate("/app/posts", { replace: true });
+      return;
+    }
+    if (currentSegment === "communities" && !canManageCommunities) {
       navigate("/app/posts", { replace: true });
       return;
     }
     setOpenMobile(false);
-  }, [canManage, currentSegment, navigate, setOpenMobile]);
+  }, [canManageChildren, canManageCommunities, canManageUsers, currentSegment, navigate, setOpenMobile]);
 
   if (!session) return null;
 
@@ -54,26 +76,36 @@ function PrivateLayoutShell() {
     users: <Users className="h-4 w-4 text-slate-500" />,
     children: <UserRound className="h-4 w-4 text-slate-500" />,
     lessons: <BookOpen className="h-4 w-4 text-slate-500" />,
+    communities: <Building2 className="h-4 w-4 text-slate-500" />,
   }[activeKey];
   const initials = `${session.user.firstName[0] ?? ""}${session.user.lastName[0] ?? ""}`.toUpperCase();
 
   const context = useMemo<PrivateLayoutContext>(
     () => ({
       canManage,
+      canManageUsers,
+      canManageChildren,
+      canPublishPosts,
       canCreateAdmin: session.user.role === ROLE.SUPER_ADMIN,
       canManageLessons: session.user.role === ROLE.SUPER_ADMIN,
+      canManageCommunities,
+      canCreateCommunities: session.user.role === ROLE.SUPER_ADMIN,
+      canAssignCommunityAdmins: session.user.role === ROLE.SUPER_ADMIN,
     }),
-    [canManage, session.user.role]
+    [canManage, canManageChildren, canManageCommunities, canManageUsers, canPublishPosts, session.user.role]
   );
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50">
-      <div className="flex w-full min-w-0">
+    <div className="h-screen overflow-hidden bg-slate-50">
+      <div className="flex h-full w-full min-w-0">
         <Sidebar variant="sidebar" className="md:top-0 md:h-screen md:rounded-none md:border-y-0 md:border-l-0">
           <DashboardSidebar
             activeKey={activeKey}
             onNavigate={(key) => navigate(`/app/${key}`)}
             canManage={canManage}
+            canManageUsers={canManageUsers}
+            canManageChildren={canManageChildren}
+            canManageCommunities={canManageCommunities}
             isCollapsed={!open}
             onToggleCollapse={() => setOpen(!open)}
             initials={initials}
@@ -85,8 +117,8 @@ function PrivateLayoutShell() {
           />
         </Sidebar>
 
-        <SidebarInset className="w-full overflow-x-hidden p-4 md:p-6">
-          <div className="mx-auto w-full min-w-0 max-w-[1120px] space-y-4 xl:w-[1120px]">
+        <SidebarInset className="h-full w-full overflow-hidden p-4 md:p-6">
+          <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-[1120px] flex-col space-y-4 xl:w-[1120px]">
             <Card className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="md:hidden">
@@ -113,7 +145,7 @@ function PrivateLayoutShell() {
                 </div>
               </div>
             </Card>
-            <div className="min-w-0 overflow-x-hidden">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
               <Outlet context={context} />
             </div>
           </div>

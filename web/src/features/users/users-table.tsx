@@ -29,8 +29,7 @@ export type UserRecord = {
   role: UserRole;
   communityId: string | null;
   communityName?: string | null;
-  isActive?: boolean;
-  isVerified?: boolean;
+  status?: "ACTIVE" | "INACTIVE" | "PENDING";
   createdAt?: string;
   updatedAt?: string;
   childrenCount?: number;
@@ -58,24 +57,18 @@ export function UsersTable({
   onDelete,
 }: UsersTableProps) {
   const { t } = useTranslation();
-  const formatAddress = (address?: UserAddressRecord | null) => {
-    if (!address) return null;
-    const cityLine = `${address.postalCode} ${address.city}`.trim();
-    return [address.streetLine1, cityLine, address.country].filter(Boolean).join(", ");
-  };
 
   return (
     <>
       <DataTable
         className="overflow-hidden"
         scrollClassName="overflow-x-auto overflow-y-hidden"
-        tableClassName="min-w-[1100px] border-collapse text-sm"
+        tableClassName="min-w-[980px] border-collapse text-sm"
         headers={
           <>
             <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableName")}</th>
             <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableEmail")}</th>
             <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTablePhone")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableAddress")}</th>
             <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableRole")}</th>
             <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableCommunity")}</th>
             <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableChildren")}</th>
@@ -99,16 +92,13 @@ export function UsersTable({
             <td className="whitespace-nowrap px-5 py-3.5">
               <NaValue value={user.phoneNumber} />
             </td>
-            <td className="whitespace-nowrap px-5 py-3.5">
-              <NaValue value={formatAddress(user.address)} />
-            </td>
             <td className="whitespace-nowrap px-5 py-3.5">{user.role}</td>
             <td className="whitespace-nowrap px-5 py-3.5">
               <NaValue value={user.communityName} />
             </td>
             <td className="whitespace-nowrap px-5 py-3.5">{user.childrenCount || 0}</td>
             <td className="whitespace-nowrap px-5 py-3.5">
-              <StatusBadge isActive={user.isActive !== false} />
+              <StatusBadge status={user.status || "INACTIVE"} />
             </td>
             <td className="w-[140px] whitespace-nowrap px-5 py-3.5 text-right align-middle">
               <EntityRowActions onEdit={() => onEdit(user)} onDelete={() => onDelete(user)} />
@@ -117,14 +107,14 @@ export function UsersTable({
         ))}
         {isLoading ? (
           <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={9}>
+            <td className="px-5 py-10 text-center text-slate-500" colSpan={8}>
               <Loader size="lg" text={t("loadingUsers")} className="justify-center" />
             </td>
           </tr>
         ) : null}
         {!users.length && !isLoading ? (
           <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={9}>
+            <td className="px-5 py-10 text-center text-slate-500" colSpan={8}>
               {t("noUsersFound")}
             </td>
           </tr>

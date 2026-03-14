@@ -2,7 +2,7 @@ import { Nivo, NotificationType, Role } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
-import { requireAuth, requireRole } from "../../auth.js";
+import { requireAnyRole, requireAuth, requireRole } from "../../auth.js";
 import { canAccessCommunity } from "../../common/access.js";
 import { AppRequest } from "../../types.js";
 
@@ -27,7 +27,11 @@ export function communicationRouter() {
     return res.json(posts);
   });
 
-  router.post("/posts", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.post(
+    "/posts",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const payload = z
       .object({
         title: z.string().min(3),
@@ -43,7 +47,10 @@ export function communicationRouter() {
       data: { title: payload.data.title, content: payload.data.content, authorId: req.user!.id, communityId: communityId! },
     });
 
-    const users = await prisma.user.findMany({ where: { role: Role.USER, communityId: communityId! }, select: { id: true } });
+    const users = await prisma.user.findMany({
+      where: { role: { in: [Role.USER, Role.PARENT, Role.BOARD_MEMBER] }, communityId: communityId! },
+      select: { id: true },
+    });
     await prisma.notification.createMany({
       data: users.map((u) => ({
         userId: u.id,
@@ -52,10 +59,15 @@ export function communicationRouter() {
         body: payload.data.title,
       })),
     });
-    return res.status(201).json(post);
-  });
+      return res.status(201).json(post);
+    }
+  );
 
-  router.patch("/posts/:postId", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.patch(
+    "/posts/:postId",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const payload = z
       .object({
         title: z.string().min(3).optional(),
@@ -67,16 +79,22 @@ export function communicationRouter() {
     if (!existing) return res.status(404).json({ message: "Post not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
     const updated = await prisma.post.update({ where: { id: req.params.postId }, data: payload.data });
-    return res.json(updated);
-  });
+      return res.json(updated);
+    }
+  );
 
-  router.delete("/posts/:postId", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.delete(
+    "/posts/:postId",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const existing = await prisma.post.findUnique({ where: { id: req.params.postId } });
     if (!existing) return res.status(404).json({ message: "Post not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
     await prisma.post.delete({ where: { id: req.params.postId } });
-    return res.status(204).send();
-  });
+      return res.status(204).send();
+    }
+  );
 
   router.post("/posts/:postId/comments", requireAuth, async (req: AppRequest, res) => {
     const payload = z.object({ content: z.string().min(1) }).safeParse(req.body);
@@ -130,7 +148,10 @@ export function communicationRouter() {
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
     const receiver = await prisma.user.findUnique({ where: { id: payload.data.receiverId } });
     if (!receiver) return res.status(404).json({ message: "Receiver not found" });
-    if (req.user!.role === Role.USER && receiver.role !== Role.ADMIN) {
+    if (
+      (req.user!.role === Role.USER || req.user!.role === Role.PARENT || req.user!.role === Role.BOARD_MEMBER) &&
+      receiver.role !== Role.ADMIN
+    ) {
       return res.status(403).json({ message: "User can only message admin" });
     }
 
@@ -167,7 +188,11 @@ export function communicationRouter() {
     return res.json(lectures);
   });
 
-  router.post("/lectures", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.post(
+    "/lectures",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const payload = z
       .object({
         topic: z.string().min(3),
@@ -216,10 +241,15 @@ export function communicationRouter() {
       })),
     });
 
-    return res.status(201).json(lecture);
-  });
+      return res.status(201).json(lecture);
+    }
+  );
 
-  router.patch("/lectures/:id", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.patch(
+    "/lectures/:id",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const payload = z
       .object({
         topic: z.string().min(3).optional(),
@@ -231,16 +261,22 @@ export function communicationRouter() {
     if (!existing) return res.status(404).json({ message: "Lecture not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
     const updated = await prisma.lecture.update({ where: { id: req.params.id }, data: payload.data });
-    return res.json(updated);
-  });
+      return res.json(updated);
+    }
+  );
 
-  router.delete("/lectures/:id", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.delete(
+    "/lectures/:id",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const existing = await prisma.lecture.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ message: "Lecture not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
     await prisma.lecture.delete({ where: { id: req.params.id } });
-    return res.status(204).send();
-  });
+      return res.status(204).send();
+    }
+  );
 
   router.get("/lessons", requireAuth, async (_req: AppRequest, res) => {
     const lessons = await prisma.lesson.findMany({

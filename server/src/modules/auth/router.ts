@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
+import { UserStatus } from "@prisma/client";
 import {
   comparePassword,
   generateRawToken,
@@ -24,8 +25,8 @@ export function authRouter() {
 
     const user = await prisma.user.findUnique({ where: { email: payload.data.email } });
     if (!user || !user.passwordHash) return res.status(400).json({ message: "Invalid credentials" });
-    if (!user.isVerified) return res.status(403).json({ message: "User not verified" });
-    if (!user.isActive) return res.status(403).json({ message: "User inactive" });
+    if (user.status === UserStatus.PENDING) return res.status(403).json({ message: "User not verified" });
+    if (user.status === UserStatus.INACTIVE) return res.status(403).json({ message: "User inactive" });
 
     const valid = await comparePassword(payload.data.password, user.passwordHash);
     if (!valid) return res.status(400).json({ message: "Invalid credentials" });
@@ -65,8 +66,8 @@ export function authRouter() {
 
     const user = await prisma.user.findUnique({ where: { id: decoded.sub } });
     if (!user) return res.status(401).json({ message: "Invalid refresh token" });
-    if (!user.isVerified) return res.status(403).json({ message: "User not verified" });
-    if (!user.isActive) return res.status(403).json({ message: "User inactive" });
+    if (user.status === UserStatus.PENDING) return res.status(403).json({ message: "User not verified" });
+    if (user.status === UserStatus.INACTIVE) return res.status(403).json({ message: "User inactive" });
 
     const token = signAuthToken({
       id: user.id,
@@ -107,8 +108,7 @@ export function authRouter() {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        isVerified: true,
-        isActive: true,
+        status: UserStatus.ACTIVE,
         passwordHash: await hashPassword(payload.data.password),
       },
     });

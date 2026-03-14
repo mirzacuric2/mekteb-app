@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Bell,
   BookOpen,
+  Building2,
   CircleHelp,
   ChevronLeft,
   ChevronRight,
@@ -32,6 +33,9 @@ type Props = {
   activeKey: SectionKey;
   onNavigate: (key: SectionKey) => void;
   canManage: boolean;
+  canManageUsers: boolean;
+  canManageChildren: boolean;
+  canManageCommunities: boolean;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   initials: string;
@@ -46,6 +50,9 @@ export function DashboardSidebar({
   activeKey,
   onNavigate,
   canManage,
+  canManageUsers,
+  canManageChildren,
+  canManageCommunities,
   isCollapsed,
   onToggleCollapse,
   initials,
@@ -68,6 +75,7 @@ export function DashboardSidebar({
     users: <Users className="h-4 w-4 shrink-0" />,
     children: <UserRound className="h-4 w-4 shrink-0" />,
     lessons: <BookOpen className="h-4 w-4 shrink-0" />,
+    communities: <Building2 className="h-4 w-4 shrink-0" />,
   };
 
   return (
@@ -117,7 +125,11 @@ export function DashboardSidebar({
               {dashboardSections
                 .filter(
                   (section) =>
-                    section.group === "management" && (canManage || section.key !== "users")
+                    section.group === "management" &&
+                    ((section.key === "users" && canManageUsers) ||
+                      (section.key === "children" && canManageChildren) ||
+                      (section.key === "communities" && canManageCommunities) ||
+                      section.key === "lessons")
                 )
                 .map((section) => (
                   <SidebarMenuItem key={section.key}>
@@ -136,7 +148,13 @@ export function DashboardSidebar({
             <SidebarGroupLabel>Management</SidebarGroupLabel>
             <SidebarMenu>
               {dashboardSections
-                .filter((section) => section.group === "management" && section.key !== "users")
+                .filter(
+                  (section) =>
+                    section.group === "management" &&
+                    ((section.key === "children" && canManageChildren) ||
+                      (section.key === "communities" && canManageCommunities) ||
+                      section.key === "lessons")
+                )
                 .map((section) => (
                   <SidebarMenuItem key={section.key}>
                     <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>

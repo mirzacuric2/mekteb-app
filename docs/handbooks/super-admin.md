@@ -12,7 +12,7 @@ SUPER_ADMIN has the highest access level across communities.
 ## What You Can Do
 
 - View and manage users across all communities.
-- Create users with `ADMIN` or `USER` role.
+- Create users with `ADMIN`, `BOARD_MEMBER`, or `PARENT` role.
 - Reassign users to different communities.
 - Access all children, posts, messages, and notifications.
 - Create/update/delete lessons.

@@ -10,7 +10,7 @@ ADMIN manages users and content within assigned community scope.
 
 ## What You Can Do
 
-- Create/update/delete `USER` accounts in your community.
+- Create/update/delete `BOARD_MEMBER` and `PARENT` accounts in your community.
 - View users and children in your community.
 - Create/update/delete posts for your community.
 - Manage lectures/attendance entries.

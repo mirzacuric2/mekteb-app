@@ -29,7 +29,7 @@ export function HelpPanel() {
         </ul>
       </Card>
 
-      {(role === ROLE.SUPER_ADMIN || role === ROLE.ADMIN || role === ROLE.USER) && (
+      {(role === ROLE.SUPER_ADMIN || role === ROLE.ADMIN || role === ROLE.USER || role === ROLE.BOARD_MEMBER) && (
         <Card className="space-y-2">
           <h4 className="text-base font-semibold">{t("helpCommonBasicsTitle")}</h4>
           <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
@@ -71,7 +71,7 @@ export function HelpPanel() {
         </Card>
       )}
 
-      {role === ROLE.USER && (
+      {(role === ROLE.USER || role === ROLE.BOARD_MEMBER) && (
         <Card className="space-y-2">
           <h4 className="flex items-center gap-2 text-base font-semibold">
             <UserRound className="h-4 w-4 text-slate-500" />

@@ -1,8 +1,8 @@
-import { Role } from "@prisma/client";
+import { CommunityStatus, Role, UserStatus } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
-import { generateRawToken, hashToken, requireAuth, requireRole } from "../../auth.js";
+import { generateRawToken, hashToken, requireAnyRole, requireAuth, requireRole } from "../../auth.js";
 import { sendEmail } from "../../email.js";
 import { canAccessCommunity } from "../../common/access.js";
 import { AppRequest } from "../../types.js";
@@ -20,7 +20,7 @@ export function usersRouter() {
     state: z.string().optional(),
     country: z.string().min(2),
   });
-  const MANAGEABLE_USER_ROLES = [Role.ADMIN, Role.USER] as const;
+  const MANAGEABLE_USER_ROLES = [Role.ADMIN, Role.BOARD_MEMBER, Role.PARENT] as const;
   const manageableUserRoleSchema = z.enum(MANAGEABLE_USER_ROLES);
 
   router.get("/users", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
@@ -113,11 +113,11 @@ export function usersRouter() {
     if (!communityId) {
       return res
         .status(400)
-        .json({ message: "Community is required for ADMIN/USER", field: "communityId" });
+        .json({ message: "Community is required for ADMIN/BOARD_MEMBER/PARENT", field: "communityId" });
     }
     if (communityId) {
       const existingCommunity = await prisma.community.findUnique({ where: { id: communityId } });
-      if (!existingCommunity) {
+      if (!existingCommunity || existingCommunity.status !== CommunityStatus.ACTIVE) {
         return res.status(400).json({ message: "Community not found", field: "communityId" });
       }
     }
@@ -133,8 +133,7 @@ export function usersRouter() {
         invitedById: req.user!.id,
         communityId: communityId || null,
         addressId: addressId || null,
-        isVerified: false,
-        isActive: false,
+        status: UserStatus.PENDING,
       },
       include: { address: true },
     });
@@ -170,7 +169,7 @@ export function usersRouter() {
         phoneNumber: phoneSchema.optional(),
         role: manageableUserRoleSchema.optional(),
         communityId: z.string().optional(),
-        isActive: z.boolean().optional(),
+        status: z.nativeEnum(UserStatus).optional(),
         address: addressSchema.nullable().optional(),
       })
       .safeParse(req.body);
@@ -191,7 +190,7 @@ export function usersRouter() {
       const existingCommunity = await prisma.community.findUnique({
         where: { id: payload.data.communityId },
       });
-      if (!existingCommunity) {
+      if (!existingCommunity || existingCommunity.status !== CommunityStatus.ACTIVE) {
         return res.status(400).json({ message: "Community not found", field: "communityId" });
       }
     }
@@ -245,7 +244,7 @@ export function usersRouter() {
         lastName: payload.data.lastName,
         role: payload.data.role,
         communityId: payload.data.communityId,
-        isActive: payload.data.isActive,
+        status: payload.data.status,
         ssn: ssn || undefined,
         phoneNumber: payload.data.phoneNumber?.trim() || undefined,
         addressId: addressIdUpdate,
@@ -267,7 +266,7 @@ export function usersRouter() {
   });
 
   router.get("/children", requireAuth, async (req: AppRequest, res) => {
-    if (req.user!.role === Role.USER) {
+    if (req.user!.role === Role.USER || req.user!.role === Role.PARENT) {
       const mine = await prisma.child.findMany({
         where: { parents: { some: { parentId: req.user!.id } } },
         include: { attendance: true },
@@ -282,7 +281,11 @@ export function usersRouter() {
     return res.json(items);
   });
 
-  router.post("/children", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.post(
+    "/children",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const payload = z
       .object({
         firstName: z.string().min(2),
@@ -310,10 +313,15 @@ export function usersRouter() {
       },
       include: { parents: true },
     });
-    return res.status(201).json(child);
-  });
+      return res.status(201).json(child);
+    }
+  );
 
-  router.patch("/children/:id", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.patch(
+    "/children/:id",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const payload = z
       .object({
         firstName: z.string().min(2).optional(),
@@ -337,16 +345,22 @@ export function usersRouter() {
       },
       include: { parents: true },
     });
-    return res.json(updated);
-  });
+      return res.json(updated);
+    }
+  );
 
-  router.delete("/children/:id", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+  router.delete(
+    "/children/:id",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    async (req: AppRequest, res) => {
     const existing = await prisma.child.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ message: "Child not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
     await prisma.child.delete({ where: { id: req.params.id } });
-    return res.status(204).send();
-  });
+      return res.status(204).send();
+    }
+  );
 
   return router;
 }

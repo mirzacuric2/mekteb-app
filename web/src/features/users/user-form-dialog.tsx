@@ -57,7 +57,7 @@ const userFormSchema = z.object({
     .or(z.literal("")),
   role: z.enum(EDITABLE_ROLE_VALUES),
   communityId: z.string().optional().or(z.literal("")),
-  isActive: z.boolean().default(false),
+  status: z.enum(["ACTIVE", "INACTIVE", "PENDING"]).default("PENDING"),
   address: z.union([filledAddressSchema, emptyAddressSchema]),
   children: z.array(childSchema).default([]),
 });
@@ -110,9 +110,9 @@ export function UserFormDialog({
       ssn: "",
       email: "",
       phoneNumber: "",
-      role: ROLE.USER,
+      role: ROLE.BOARD_MEMBER,
       communityId: "",
-      isActive: false,
+      status: "PENDING",
       address: {
         streetLine1: "",
         streetLine2: "",
@@ -139,11 +139,11 @@ export function UserFormDialog({
       ssn: initialValues?.ssn || "",
       email: initialValues?.email || "",
       phoneNumber: initialValues?.phoneNumber || "",
-      role: initialValues?.role || ROLE.USER,
+      role: initialValues?.role || ROLE.BOARD_MEMBER,
       communityId: canSelectCommunity
         ? initialValues?.communityId || ""
         : forcedCommunityId || initialValues?.communityId || "",
-      isActive: initialValues?.isActive ?? false,
+      status: initialValues?.status || "PENDING",
       address: {
         streetLine1: initialValues?.address?.streetLine1 || "",
         streetLine2: initialValues?.address?.streetLine2 || "",
@@ -174,7 +174,7 @@ export function UserFormDialog({
       field === "role" ||
       field === "communityId" ||
       field === "address" ||
-      field === "isActive"
+      field === "status"
     ) {
       setError(field, { type: "server", message: apiError.message });
       return;
@@ -205,7 +205,7 @@ export function UserFormDialog({
 
             const normalizedValues: UserFormValues = {
               ...values,
-              role: canCreateAdmin ? values.role : ROLE.USER,
+              role: canCreateAdmin ? values.role : ROLE.BOARD_MEMBER,
               communityId: canSelectCommunity ? values.communityId : forcedCommunityId || values.communityId,
             };
 
@@ -226,7 +226,7 @@ export function UserFormDialog({
                   field === "phoneNumber" ||
                   field === "role" ||
                   field === "communityId" ||
-                  field === "isActive"
+                  field === "status"
                 ) {
                   setError(field, { type: "manual", message: issue.message });
                   continue;
@@ -304,7 +304,8 @@ export function UserFormDialog({
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">{t("role")}</label>
                     <Select {...register("role")}>
-                      <option value={ROLE.USER}>{ROLE.USER}</option>
+                      <option value={ROLE.BOARD_MEMBER}>{ROLE.BOARD_MEMBER}</option>
+                      <option value={ROLE.PARENT}>{ROLE.PARENT}</option>
                       <option value={ROLE.ADMIN}>{ROLE.ADMIN}</option>
                     </Select>
                     {errors.role ? <p className="mt-1 text-xs text-red-600">{errors.role.message}</p> : null}
@@ -378,15 +379,12 @@ export function UserFormDialog({
             {mode === "edit" ? (
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">{t("status")}</label>
-                <Select
-                  {...register("isActive", {
-                    setValueAs: (value) => value === "true",
-                  })}
-                >
-                  <option value="false">{t("inactive")}</option>
-                  <option value="true">{t("active")}</option>
+                <Select {...register("status")}>
+                  <option value="PENDING">{t("pending")}</option>
+                  <option value="ACTIVE">{t("active")}</option>
+                  <option value="INACTIVE">{t("inactive")}</option>
                 </Select>
-                {errors.isActive ? <p className="mt-1 text-xs text-red-600">{errors.isActive.message}</p> : null}
+                {errors.status ? <p className="mt-1 text-xs text-red-600">{errors.status.message}</p> : null}
               </div>
             ) : null}
 

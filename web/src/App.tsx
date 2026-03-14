@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { VerifyPage } from "./features/auth/verify-page";
 import {
   ChildrenRoute,
+  CommunitiesRoute,
   HelpRoute,
   LessonsRoute,
   MessagesRoute,
@@ -27,6 +28,7 @@ export function App() {
         <Route path="users" element={<UsersRoute />} />
         <Route path="children" element={<ChildrenRoute />} />
         <Route path="lessons" element={<LessonsRoute />} />
+        <Route path="communities" element={<CommunitiesRoute />} />
         <Route path="messages" element={<MessagesRoute />} />
         <Route path="notifications" element={<NotificationsRoute />} />
       </Route>

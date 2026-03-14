@@ -1,6 +1,6 @@
-# USER Handbook
+# USER/PARENT Handbook
 
-USER is a parent/family role with access to relevant community information.
+`PARENT` (and legacy `USER`) is a parent/family role with access to relevant community information.
 
 ## Primary Responsibilities
 
