@@ -14,6 +14,9 @@
 - View notifications related to your account.
 - Send messages to admin (depending on policy).
 - View your child-related data where available.
+- Update your linked children details (for example name, SSN, birth date, address).
+- See child lifecycle state (`ACTIVE`, `COMPLETED`, `DISCONTINUED`, `INACTIVE`) in your children list.
+- Child edit modal validates entered values before save (for example valid birth date format and complete address fields when address is used).
 - Change app language from the sidebar footer.
 
 ## What You Cannot Do
@@ -22,6 +25,9 @@
 - Manage roles or community setup.
 - Access admin-only management actions.
 - Modify lessons catalog.
+- Update child `community` or `nivo` (admin-only fields).
+- Update child parent links (admin-only field).
+- Access children that are not linked to your account.
 
 ## Recommended Workflow
 

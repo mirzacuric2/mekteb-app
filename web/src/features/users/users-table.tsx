@@ -62,7 +62,7 @@ export function UsersTable({
     <>
       <DataTable
         className="overflow-hidden"
-        scrollClassName="overflow-x-auto overflow-y-hidden"
+        scrollClassName="overflow-x-auto !overflow-y-hidden"
         tableClassName="min-w-[980px] border-collapse text-sm"
         headers={
           <>
@@ -74,7 +74,7 @@ export function UsersTable({
             <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableChildren")}</th>
             <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableStatus")}</th>
             <th className="w-[140px] whitespace-nowrap border-b border-border px-5 py-3.5 font-medium text-right">
-              {t("usersTableActions")}
+              <span className="sr-only">{t("usersTableActions")}</span>
             </th>
           </>
         }

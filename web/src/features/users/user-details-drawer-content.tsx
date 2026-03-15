@@ -3,12 +3,13 @@ import { useTranslation } from "react-i18next";
 import { Tabs } from "../../components/ui/tabs";
 import { NaValue } from "../common/components/na-value";
 import { UserAddressRecord, UserRecord } from "./users-table";
+import { LESSON_NIVO_LABEL, LessonNivo } from "../lessons/constants";
 
 type ChildSummary = {
   id: string;
   firstName?: string;
   lastName?: string;
-  level?: string;
+  nivo?: LessonNivo;
 };
 
 type Props = {
@@ -95,7 +96,7 @@ export function UserDetailsDrawerContent({ user, communityName, children }: Prop
               return (
                 <Section key={child.id} title={`Child ${index + 1}`}>
                   <DetailRow label="Name" value={<NaValue value={childName} />} />
-                  <DetailRow label="Level" value={<NaValue value={child.level} />} />
+                  <DetailRow label="Nivo" value={<NaValue value={child.nivo ? LESSON_NIVO_LABEL[child.nivo] : undefined} />} />
                 </Section>
               );
             })

@@ -12,6 +12,12 @@ ADMIN manages users and content within assigned community scope.
 
 - Create/update/delete `BOARD_MEMBER` and `PARENT` accounts in your community.
 - View users and children in your community.
+- Create children with required `SSN`, `community`, `nivo`, and at least one linked parent.
+- Update children in your community, including `nivo`, parent links, and optional child address.
+- Mark children as `COMPLETED` when they finish lessons.
+- Mark children as `DISCONTINUED` when they stop attending before completion.
+- Inactivate children in your community when needed (separate from completion, keeps history).
+- Use child create/update modal with inline validation for required fields (SSN, name, birth date, parent links, community for super admin context, and complete address if any address value is entered).
 - Create/update/delete posts for your community.
 - Manage lectures/attendance entries.
 - Send and receive messages.
@@ -23,6 +29,7 @@ ADMIN manages users and content within assigned community scope.
 - Promote users outside role policy.
 - Perform cross-community privileged operations.
 - Manage lessons catalog if restricted to super admin.
+- Modify children outside your assigned community.
 
 ## Recommended Workflow
 

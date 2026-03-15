@@ -75,7 +75,7 @@ export function LessonsPanel({ canManage }: Props) {
       (lesson) =>
         lesson.title.toLowerCase().includes(term) ||
         LESSON_NIVO_LABEL[lesson.nivo].toLowerCase().includes(term) ||
-        lesson.nivo.toLowerCase().includes(term)
+        String(lesson.nivo).includes(term)
     );
   }, [lessons.data, search]);
 
@@ -102,13 +102,14 @@ export function LessonsPanel({ canManage }: Props) {
         actions={
           canManage ? (
             <Button
+              className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
               onClick={() => {
                 setEditingLesson(null);
                 setFormOpen(true);
               }}
             >
               <BookPlus className="h-4 w-4" />
-              Create lesson
+              <span className="hidden md:inline">Create lesson</span>
             </Button>
           ) : undefined
         }

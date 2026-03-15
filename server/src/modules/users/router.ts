@@ -1,4 +1,4 @@
-import { CommunityStatus, Role, UserStatus } from "@prisma/client";
+import { ChildStatus, CommunityStatus, Role, UserStatus } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
@@ -20,6 +20,16 @@ export function usersRouter() {
     state: z.string().optional(),
     country: z.string().min(2),
   });
+  const childAddressSchema = z.object({
+    streetLine1: z.string().trim().min(2),
+    streetLine2: z.string().trim().optional(),
+    postalCode: z.string().trim().min(2),
+    city: z.string().trim().min(2),
+    state: z.string().trim().optional(),
+    country: z.string().trim().min(2),
+  });
+  const childSsnSchema = z.string().trim().min(10).max(20);
+  const childNivoSchema = z.number().int().min(1).max(5);
   const MANAGEABLE_USER_ROLES = [Role.ADMIN, Role.BOARD_MEMBER, Role.PARENT] as const;
   const manageableUserRoleSchema = z.enum(MANAGEABLE_USER_ROLES);
 
@@ -54,7 +64,13 @@ export function usersRouter() {
         address: addressSchema.optional(),
       })
       .safeParse(req.body);
-    if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+    if (!payload.success) {
+      const parentIdsIssue = payload.error.issues.find((issue) => issue.path[0] === "parentIds");
+      if (parentIdsIssue) {
+        return res.status(400).json({ message: "At least one parent is required", field: "parentIds" });
+      }
+      return res.status(400).json({ message: "Invalid payload" });
+    }
 
     if (payload.data.role === Role.ADMIN && req.user!.role !== Role.SUPER_ADMIN) {
       return res.status(403).json({ message: "Only super admin can create admin" });
@@ -173,7 +189,13 @@ export function usersRouter() {
         address: addressSchema.nullable().optional(),
       })
       .safeParse(req.body);
-    if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+    if (!payload.success) {
+      const parentIdsIssue = payload.error.issues.find((issue) => issue.path[0] === "parentIds");
+      if (parentIdsIssue) {
+        return res.status(400).json({ message: "At least one parent is required", field: "parentIds" });
+      }
+      return res.status(400).json({ message: "Invalid payload" });
+    }
 
     const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ message: "User not found" });
@@ -269,14 +291,35 @@ export function usersRouter() {
     if (req.user!.role === Role.USER || req.user!.role === Role.PARENT) {
       const mine = await prisma.child.findMany({
         where: { parents: { some: { parentId: req.user!.id } } },
-        include: { attendance: true },
+        include: {
+          address: true,
+          parents: {
+            include: {
+              parent: {
+                select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+              },
+            },
+          },
+          attendance: true,
+        },
+        orderBy: [{ status: "asc" }, { firstName: "asc" }, { lastName: "asc" }],
       });
       return res.json(mine);
     }
 
     const items = await prisma.child.findMany({
       where: req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId || undefined },
-      include: { parents: true },
+      include: {
+        address: true,
+        parents: {
+          include: {
+            parent: {
+              select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ status: "asc" }, { firstName: "asc" }, { lastName: "asc" }],
     });
     return res.json(items);
   });
@@ -284,34 +327,102 @@ export function usersRouter() {
   router.post(
     "/children",
     requireAuth,
-    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
     async (req: AppRequest, res) => {
     const payload = z
       .object({
         firstName: z.string().min(2),
         lastName: z.string().min(2),
-        ssn: ssnSchema.optional(),
+        ssn: childSsnSchema,
         birthDate: z.string(),
-        level: z.string(),
+        nivo: childNivoSchema,
         communityId: z.string().optional(),
-        parentIds: z.array(z.string()).default([]),
+        parentIds: z.array(z.string()).min(1),
+        address: childAddressSchema.optional(),
       })
       .safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
     const communityId = payload.data.communityId || req.user!.communityId || undefined;
+    if (!communityId) {
+      return res.status(400).json({ message: "Community is required for child creation", field: "communityId" });
+    }
     if (!canAccessCommunity(req, communityId)) return res.status(403).json({ message: "Forbidden community" });
+
+    const existingCommunity = await prisma.community.findUnique({ where: { id: communityId } });
+    if (!existingCommunity || existingCommunity.status !== CommunityStatus.ACTIVE) {
+      return res.status(400).json({ message: "Community not found", field: "communityId" });
+    }
+
+    const ssn = payload.data.ssn.trim();
+    const existingBySsn = await prisma.child.findUnique({ where: { ssn } });
+    if (existingBySsn) {
+      return res.status(409).json({ message: "SSN already exists", field: "ssn" });
+    }
+
+    const uniqueParentIds = [...new Set(payload.data.parentIds)];
+    const allowedParentRoles = [Role.PARENT, Role.USER];
+    const parents = await prisma.user.findMany({
+      where: {
+        id: { in: uniqueParentIds },
+        role: { in: allowedParentRoles },
+        communityId,
+      },
+      select: { id: true },
+    });
+    if (parents.length !== uniqueParentIds.length) {
+      return res.status(400).json({ message: "All parents must exist in the same community", field: "parentIds" });
+    }
+
+    let addressId: string | undefined;
+    if (payload.data.address) {
+      const normalizedAddress = {
+        streetLine1: payload.data.address.streetLine1.trim(),
+        streetLine2: payload.data.address.streetLine2?.trim() || undefined,
+        postalCode: payload.data.address.postalCode.trim(),
+        city: payload.data.address.city.trim(),
+        state: payload.data.address.state?.trim() || undefined,
+        country: payload.data.address.country.trim(),
+      };
+      const address = await prisma.address.upsert({
+        where: {
+          streetLine1_postalCode_city_country: {
+            streetLine1: normalizedAddress.streetLine1,
+            postalCode: normalizedAddress.postalCode,
+            city: normalizedAddress.city,
+            country: normalizedAddress.country,
+          },
+        },
+        update: {
+          streetLine2: normalizedAddress.streetLine2,
+          state: normalizedAddress.state,
+        },
+        create: normalizedAddress,
+      });
+      addressId = address.id;
+    }
 
     const child = await prisma.child.create({
       data: {
         firstName: payload.data.firstName,
         lastName: payload.data.lastName,
-        ssn: payload.data.ssn,
+        ssn,
         birthDate: new Date(payload.data.birthDate),
-        level: payload.data.level,
-        communityId: communityId!,
-        parents: { create: payload.data.parentIds.map((parentId) => ({ parentId })) },
+        nivo: payload.data.nivo,
+        status: ChildStatus.ACTIVE,
+        communityId,
+        addressId: addressId || null,
+        parents: { create: uniqueParentIds.map((parentId) => ({ parentId })) },
       },
-      include: { parents: true },
+      include: {
+        address: true,
+        parents: {
+          include: {
+            parent: {
+              select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+            },
+          },
+        },
+      },
     });
       return res.status(201).json(child);
     }
@@ -320,30 +431,194 @@ export function usersRouter() {
   router.patch(
     "/children/:id",
     requireAuth,
-    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.PARENT, Role.USER),
     async (req: AppRequest, res) => {
     const payload = z
       .object({
         firstName: z.string().min(2).optional(),
         lastName: z.string().min(2).optional(),
-        ssn: ssnSchema.optional(),
+        ssn: childSsnSchema.optional(),
         birthDate: z.string().optional(),
-        level: z.string().optional(),
+        nivo: childNivoSchema.optional(),
+        communityId: z.string().optional(),
+        parentIds: z.array(z.string()).min(1).optional(),
+        status: z.nativeEnum(ChildStatus).optional(),
+        address: childAddressSchema.nullable().optional(),
       })
       .safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
 
-    const existing = await prisma.child.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.child.findUnique({
+      where: { id: req.params.id },
+      include: { parents: { select: { parentId: true } } },
+    });
     if (!existing) return res.status(404).json({ message: "Child not found" });
-    if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
+    const isParentScoped = req.user!.role === Role.PARENT || req.user!.role === Role.USER;
+
+    if (isParentScoped) {
+      const ownsChild = existing.parents.some((parent) => parent.parentId === req.user!.id);
+      if (!ownsChild) return res.status(403).json({ message: "Forbidden" });
+      if (payload.data.communityId !== undefined || payload.data.nivo !== undefined) {
+        return res.status(403).json({ message: "Only admin can update community or nivo" });
+      }
+      if (payload.data.status !== undefined) {
+        return res.status(403).json({ message: "Only admin can update child status" });
+      }
+      if (payload.data.parentIds !== undefined) {
+        return res.status(403).json({ message: "Only admin can reassign parents" });
+      }
+    } else if (!canAccessCommunity(req, existing.communityId)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    let targetCommunityId = existing.communityId;
+    if (!isParentScoped && payload.data.communityId) {
+      if (!canAccessCommunity(req, payload.data.communityId)) {
+        return res.status(403).json({ message: "Cannot assign outside your community" });
+      }
+      const existingCommunity = await prisma.community.findUnique({ where: { id: payload.data.communityId } });
+      if (!existingCommunity || existingCommunity.status !== CommunityStatus.ACTIVE) {
+        return res.status(400).json({ message: "Community not found", field: "communityId" });
+      }
+      targetCommunityId = payload.data.communityId;
+    }
+
+    const nextSsn = payload.data.ssn?.trim() ?? existing.ssn?.trim() ?? "";
+    const isStatusOnlyPatch =
+      payload.data.status !== undefined &&
+      payload.data.firstName === undefined &&
+      payload.data.lastName === undefined &&
+      payload.data.ssn === undefined &&
+      payload.data.birthDate === undefined &&
+      payload.data.nivo === undefined &&
+      payload.data.communityId === undefined &&
+      payload.data.parentIds === undefined &&
+      payload.data.address === undefined;
+
+    if (!isStatusOnlyPatch && !nextSsn) {
+      return res.status(400).json({ message: "SSN is required", field: "ssn" });
+    }
+
+    if (nextSsn) {
+      const existingBySsn = await prisma.child.findUnique({ where: { ssn: nextSsn } });
+      if (existingBySsn && existingBySsn.id !== existing.id) {
+        return res.status(409).json({ message: "SSN already exists", field: "ssn" });
+      }
+    }
+
+    let addressIdUpdate: string | null | undefined = undefined;
+    if (Object.prototype.hasOwnProperty.call(payload.data, "address")) {
+      if (payload.data.address === null) {
+        addressIdUpdate = null;
+      } else if (payload.data.address) {
+        const normalizedAddress = {
+          streetLine1: payload.data.address.streetLine1.trim(),
+          streetLine2: payload.data.address.streetLine2?.trim() || undefined,
+          postalCode: payload.data.address.postalCode.trim(),
+          city: payload.data.address.city.trim(),
+          state: payload.data.address.state?.trim() || undefined,
+          country: payload.data.address.country.trim(),
+        };
+        const address = await prisma.address.upsert({
+          where: {
+            streetLine1_postalCode_city_country: {
+              streetLine1: normalizedAddress.streetLine1,
+              postalCode: normalizedAddress.postalCode,
+              city: normalizedAddress.city,
+              country: normalizedAddress.country,
+            },
+          },
+          update: {
+            streetLine2: normalizedAddress.streetLine2,
+            state: normalizedAddress.state,
+          },
+          create: normalizedAddress,
+        });
+        addressIdUpdate = address.id;
+      }
+    }
+
+    if (!isParentScoped && payload.data.parentIds) {
+      const uniqueParentIds = [...new Set(payload.data.parentIds)];
+      const allowedParentRoles = [Role.PARENT, Role.USER];
+      const parents = await prisma.user.findMany({
+        where: {
+          id: { in: uniqueParentIds },
+          role: { in: allowedParentRoles },
+          communityId: targetCommunityId,
+        },
+        select: { id: true },
+      });
+      if (parents.length !== uniqueParentIds.length) {
+        return res.status(400).json({ message: "All parents must exist in the same community", field: "parentIds" });
+      }
+
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.parentChild.deleteMany({ where: { childId: existing.id } });
+        await tx.parentChild.createMany({
+          data: uniqueParentIds.map((parentId) => ({ parentId, childId: existing.id })),
+        });
+        return tx.child.update({
+          where: { id: req.params.id },
+          data: {
+            firstName: payload.data.firstName,
+            lastName: payload.data.lastName,
+            ssn: payload.data.ssn !== undefined ? nextSsn : undefined,
+            birthDate: payload.data.birthDate ? new Date(payload.data.birthDate) : undefined,
+            nivo: payload.data.nivo,
+            communityId: payload.data.communityId,
+            status: payload.data.status,
+            deactivatedAt:
+              payload.data.status === undefined
+                ? undefined
+                : payload.data.status === ChildStatus.INACTIVE
+                  ? new Date()
+                  : null,
+            addressId: addressIdUpdate,
+          },
+          include: {
+            address: true,
+            parents: {
+              include: {
+                parent: {
+                  select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+                },
+              },
+            },
+          },
+        });
+      });
+      return res.json(updated);
+    }
 
     const updated = await prisma.child.update({
       where: { id: req.params.id },
       data: {
-        ...payload.data,
+        firstName: payload.data.firstName,
+        lastName: payload.data.lastName,
+        ssn: payload.data.ssn !== undefined ? nextSsn : undefined,
         birthDate: payload.data.birthDate ? new Date(payload.data.birthDate) : undefined,
+        nivo: payload.data.nivo,
+        communityId: payload.data.communityId,
+        status: payload.data.status,
+        deactivatedAt:
+          payload.data.status === undefined
+            ? undefined
+            : payload.data.status === ChildStatus.INACTIVE
+              ? new Date()
+              : null,
+        addressId: addressIdUpdate,
       },
-      include: { parents: true },
+      include: {
+        address: true,
+        parents: {
+          include: {
+            parent: {
+              select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+            },
+          },
+        },
+      },
     });
       return res.json(updated);
     }
@@ -352,12 +627,18 @@ export function usersRouter() {
   router.delete(
     "/children/:id",
     requireAuth,
-    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
     async (req: AppRequest, res) => {
     const existing = await prisma.child.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ message: "Child not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
-    await prisma.child.delete({ where: { id: req.params.id } });
+    await prisma.child.update({
+      where: { id: req.params.id },
+      data: {
+        status: ChildStatus.INACTIVE,
+        deactivatedAt: new Date(),
+      },
+    });
       return res.status(204).send();
     }
   );

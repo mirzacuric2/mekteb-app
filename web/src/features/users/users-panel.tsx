@@ -17,6 +17,7 @@ import { CommunityOption, UserFormDialog, UserFormValues } from "./user-form-dia
 import { UserDetailsDrawerContent } from "./user-details-drawer-content";
 import { UserRecord, UsersTable } from "./users-table";
 import { EditableRole, ROLE } from "../../types";
+import { LessonNivo } from "../lessons/constants";
 
 type Props = { enabled: boolean; canCreateAdmin: boolean };
 
@@ -26,7 +27,7 @@ type ChildMetaRecord = {
   id: string;
   firstName?: string;
   lastName?: string;
-  level?: string;
+  nivo?: LessonNivo;
   parents?: { parentId: string }[];
 };
 type UserAddressInput = {
@@ -277,7 +278,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
           lastName: child.lastName,
           ssn: child.ssn,
           birthDate: child.birthDate,
-          level: child.level,
+          nivo: child.nivo,
           parentIds: [userId],
         })
       )
@@ -285,7 +286,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
   };
 
   return (
-    <Card className="flex flex-col gap-1 overflow-x-hidden p-5">
+    <Card className="min-w-0 flex flex-col gap-1 overflow-x-hidden p-5">
       {enabled ? (
         <>
           <div className="shrink-0 space-y-6 pb-2">
@@ -296,7 +297,6 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
                 setPage(1);
               }}
               placeholder={t("searchUsersPlaceholder")}
-              mobileInline
               actions={
                 <Button
                   className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"

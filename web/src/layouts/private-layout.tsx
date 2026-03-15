@@ -33,7 +33,8 @@ function PrivateLayoutShell() {
   const canManageChildren =
     session?.user.role === ROLE.ADMIN ||
     session?.user.role === ROLE.SUPER_ADMIN ||
-    session?.user.role === ROLE.BOARD_MEMBER;
+    session?.user.role === ROLE.PARENT ||
+    session?.user.role === ROLE.USER;
   const canManageCommunities =
     session?.user.role === ROLE.ADMIN ||
     session?.user.role === ROLE.SUPER_ADMIN ||
@@ -96,9 +97,9 @@ function PrivateLayoutShell() {
   );
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50">
-      <div className="flex h-full w-full min-w-0">
-        <Sidebar variant="sidebar" className="md:top-0 md:h-screen md:rounded-none md:border-y-0 md:border-l-0">
+    <div className="relative h-full w-full min-w-0 max-w-full overflow-hidden bg-slate-50">
+      <div className="h-full w-full min-w-0 md:flex">
+        <Sidebar variant="sidebar" className="md:top-0 md:h-full md:rounded-none md:border-y-0 md:border-l-0">
           <DashboardSidebar
             activeKey={activeKey}
             onNavigate={(key) => navigate(`/app/${key}`)}
@@ -117,8 +118,8 @@ function PrivateLayoutShell() {
           />
         </Sidebar>
 
-        <SidebarInset className="h-full w-full overflow-hidden p-4 md:p-6">
-          <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-[1120px] flex-col space-y-4 xl:w-[1120px]">
+        <SidebarInset className="h-full min-w-0 overflow-hidden p-4 md:p-6">
+          <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-[1120px] flex-col space-y-4">
             <Card className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="md:hidden">
@@ -145,7 +146,7 @@ function PrivateLayoutShell() {
                 </div>
               </div>
             </Card>
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden [overscroll-behavior-x:none]">
               <Outlet context={context} />
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
 
 type DialogProps = {
@@ -27,16 +28,17 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-[60]">
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex overflow-y-auto overflow-x-hidden p-3 sm:p-4">
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-black/40"
+        className="fixed inset-0 bg-black/40"
         onClick={() => onOpenChange(false)}
       />
       {children}
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -49,7 +51,7 @@ export function DialogContent({ children, className }: DialogContentProps) {
   return (
     <section
       className={cn(
-        "absolute left-1/2 top-1/2 w-[95vw] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-white shadow-xl",
+        "relative m-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-border bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)]",
         className
       )}
     >
@@ -67,7 +69,7 @@ export function DialogTitle({ children, className }: { children: ReactNode; clas
 }
 
 export function DialogBody({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("space-y-4 p-4", className)}>{children}</div>;
+  return <div className={cn("min-h-0 flex-1 space-y-4 overflow-y-auto p-4", className)}>{children}</div>;
 }
 
 export function DialogFooter({ children, className }: { children: ReactNode; className?: string }) {

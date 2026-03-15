@@ -8,6 +8,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { EDITABLE_ROLE_VALUES, ROLE } from "../../types";
+import { LESSON_NIVO, LESSON_NIVO_LABEL, LESSON_NIVO_ORDER } from "../lessons/constants";
 import {
   Dialog,
   DialogBody,
@@ -22,7 +23,7 @@ const childSchema = z.object({
   lastName: z.string().min(2, "Child last name must be at least 2 characters."),
   ssn: z.string().min(10, "Child SSN must be at least 10 characters."),
   birthDate: z.string().min(1, "Child birth date is required."),
-  level: z.string().min(1, "Child level is required."),
+  nivo: z.nativeEnum(LESSON_NIVO),
 });
 
 const filledAddressSchema = z.object({
@@ -198,7 +199,7 @@ export function UserFormDialog({
           </DialogTitle>
         </DialogHeader>
         <form
-          className="flex max-h-[calc(90vh-73px)] flex-col"
+          className="flex min-h-0 flex-1 max-h-[calc(90vh-73px)] flex-col"
           onSubmit={handleSubmit((values) => {
             setServerError(null);
             clearErrors();
@@ -407,7 +408,7 @@ export function UserFormDialog({
                       lastName: "",
                       ssn: "",
                       birthDate: "",
-                      level: "",
+                      nivo: LESSON_NIVO.First,
                     })
                   }
                 >
@@ -452,8 +453,14 @@ export function UserFormDialog({
                           <Input type="date" {...register(`children.${index}.birthDate` as const)} />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="mb-1 block text-xs font-medium text-slate-600">{t("level")}</label>
-                          <Input placeholder="Level" {...register(`children.${index}.level` as const)} />
+                          <label className="mb-1 block text-xs font-medium text-slate-600">Nivo</label>
+                          <Select {...register(`children.${index}.nivo` as const, { valueAsNumber: true })}>
+                            {LESSON_NIVO_ORDER.map((value) => (
+                              <option key={value} value={value}>
+                                {LESSON_NIVO_LABEL[value]}
+                              </option>
+                            ))}
+                          </Select>
                         </div>
                       </div>
                       {errorsAny?.children?.[index]?.firstName ? (
@@ -476,9 +483,9 @@ export function UserFormDialog({
                           {errorsAny.children[index].birthDate.message}
                         </p>
                       ) : null}
-                      {errorsAny?.children?.[index]?.level ? (
+                      {errorsAny?.children?.[index]?.nivo ? (
                         <p className="mt-1 text-xs text-red-600">
-                          {errorsAny.children[index].level.message}
+                          {errorsAny.children[index].nivo.message}
                         </p>
                       ) : null}
                     </div>

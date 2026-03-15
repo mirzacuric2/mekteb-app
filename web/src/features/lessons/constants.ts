@@ -2,11 +2,11 @@ export const LESSONS_API_PATH = "/lessons";
 export const LESSONS_QUERY_KEY = "lessons";
 
 export const LESSON_NIVO = {
-  First: "First",
-  Second: "Second",
-  Third: "Third",
-  Fourth: "Fourth",
-  Fifth: "Fifth",
+  First: 1,
+  Second: 2,
+  Third: 3,
+  Fourth: 4,
+  Fifth: 5,
 } as const;
 
 export type LessonNivo = (typeof LESSON_NIVO)[keyof typeof LESSON_NIVO];

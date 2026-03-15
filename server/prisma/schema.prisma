@@ -22,14 +22,6 @@ enum NotificationType {
   ATTENDANCE_UPDATED
 }
 
-enum Nivo {
-  First
-  Second
-  Third
-  Fourth
-  Fifth
-}
-
 enum BoardMemberRole {
   CHAIRPERSON
   SECRETARY
@@ -46,6 +38,13 @@ enum UserStatus {
 
 enum CommunityStatus {
   ACTIVE
+  INACTIVE
+}
+
+enum ChildStatus {
+  ACTIVE
+  COMPLETED
+  DISCONTINUED
   INACTIVE
 }
 
@@ -85,6 +84,7 @@ model Address {
   communities Community[]
   users       User[]
   boardMembers CommunityBoardMember[]
+  children    Child[]
 
   @@unique([streetLine1, postalCode, city, country])
 }
@@ -153,14 +153,20 @@ model Child {
   lastName     String
   ssn          String?  @unique
   birthDate    DateTime
-  level        String
+  nivo         Int
+  status       ChildStatus @default(ACTIVE)
+  deactivatedAt DateTime?
   communityId  String
+  addressId    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   community    Community @relation(fields: [communityId], references: [id])
+  address      Address?  @relation(fields: [addressId], references: [id])
   parents      ParentChild[]
   attendance   Attendance[]
+
+  @@index([communityId, status])
 }
 
 model ParentChild {
@@ -261,7 +267,7 @@ model Attendance {
 model Lesson {
   id        String   @id @default(uuid())
   title     String
-  nivo      Nivo
+  nivo      Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

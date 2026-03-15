@@ -103,7 +103,7 @@ export function LessonFormDialog({
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Nivo</label>
-              <Select {...register("nivo")}>
+              <Select {...register("nivo", { valueAsNumber: true })}>
                 {LESSON_NIVO_ORDER.map((value) => (
                   <option key={value} value={value}>
                     {LESSON_NIVO_LABEL[value]}

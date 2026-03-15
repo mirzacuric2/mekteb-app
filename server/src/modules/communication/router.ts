@@ -1,4 +1,4 @@
-import { Nivo, NotificationType, Role } from "@prisma/client";
+import { NotificationType, Role } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
@@ -10,11 +10,11 @@ export function communicationRouter() {
   const router = Router();
   const lessonPayloadSchema = z.object({
     title: z.string().min(2),
-    nivo: z.nativeEnum(Nivo),
+    nivo: z.number().int().min(1).max(5),
   });
   const lessonUpdatePayloadSchema = z.object({
     title: z.string().min(2).optional(),
-    nivo: z.nativeEnum(Nivo).optional(),
+    nivo: z.number().int().min(1).max(5).optional(),
   });
 
   router.get("/posts", requireAuth, async (req: AppRequest, res) => {

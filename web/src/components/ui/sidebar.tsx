@@ -80,7 +80,7 @@ export function SidebarProvider({ children, defaultOpen = true, open: openProp, 
 
   return (
     <SidebarContext.Provider value={value}>
-      <div className="group/sidebar-wrapper flex min-h-screen w-full">{children}</div>
+      <div className="group/sidebar-wrapper h-full w-full min-w-0 max-w-full overflow-hidden">{children}</div>
     </SidebarContext.Provider>
   );
 }
@@ -116,7 +116,7 @@ export function Sidebar({
     <>
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-slate-900/40 transition-opacity md:hidden",
+          "absolute inset-0 z-40 bg-slate-900/40 transition-opacity md:hidden",
           openMobile ? "opacity-100" : "pointer-events-none opacity-0"
         )}
         onClick={() => setOpenMobile(false)}
@@ -127,7 +127,7 @@ export function Sidebar({
         data-collapsible={collapsible}
         data-variant={variant}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-full flex-col overflow-hidden border-r border-border bg-white p-4 transition-all duration-200 md:sticky md:top-6 md:h-[calc(100vh-3rem)]",
+          "absolute inset-y-0 left-0 z-50 flex h-full flex-col overflow-hidden border-r border-border bg-white p-4 transition-[transform,width] duration-200 md:sticky md:top-6 md:h-[calc(100vh-3rem)]",
           variant === "floating" || variant === "inset" ? "md:rounded-xl md:border" : "",
           isMobile ? (openMobile ? "translate-x-0 w-72" : "-translate-x-full w-72") : "translate-x-0",
           side === "right" ? "left-auto right-0" : "left-0",

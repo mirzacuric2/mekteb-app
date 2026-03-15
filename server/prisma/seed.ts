@@ -289,7 +289,7 @@ async function main() {
       firstName: "Haris",
       lastName: "Parentic",
       birthDate: new Date("2014-05-10"),
-      level: "2",
+      nivo: 2,
       communityId: community.id,
     },
     create: {
@@ -297,7 +297,7 @@ async function main() {
       lastName: "Parentic",
       ssn: "201405100004",
       birthDate: new Date("2014-05-10"),
-      level: "2",
+      nivo: 2,
       communityId: community.id,
     },
   });

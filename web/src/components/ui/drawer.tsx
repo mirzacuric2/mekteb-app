@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
 
 type DrawerDirection = "top" | "right" | "bottom" | "left";
@@ -35,20 +36,6 @@ export function Drawer({ open, onOpenChange, children }: DrawerProps) {
   }, [open, onOpenChange]);
 
   return <DrawerContext.Provider value={{ open, onOpenChange }}>{children}</DrawerContext.Provider>;
-}
-
-type DrawerTriggerProps = {
-  children: ReactNode;
-  className?: string;
-};
-
-export function DrawerTrigger({ children, className }: DrawerTriggerProps) {
-  const { onOpenChange } = useDrawerContext();
-  return (
-    <button type="button" className={className} onClick={() => onOpenChange(true)}>
-      {children}
-    </button>
-  );
 }
 
 type DrawerCloseProps = {
@@ -88,7 +75,7 @@ const directionTransformClass: Record<DrawerDirection, { open: string; closed: s
 export function DrawerContent({ children, direction = "right", className }: DrawerContentProps) {
   const { open, onOpenChange } = useDrawerContext();
 
-  return (
+  return createPortal(
     <div className={cn("fixed inset-0 z-50", open ? "pointer-events-auto" : "pointer-events-none")}>
       <button
         type="button"
@@ -109,7 +96,8 @@ export function DrawerContent({ children, direction = "right", className }: Draw
       >
         {children}
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }
 

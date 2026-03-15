@@ -220,13 +220,14 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
         actions={
           canCreate ? (
             <Button
+              className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
               onClick={() => {
                 setEditingCommunity(null);
                 setFormOpen(true);
               }}
             >
               <Plus className="h-4 w-4" />
-              Create community
+              <span className="hidden md:inline">Create community</span>
             </Button>
           ) : undefined
         }

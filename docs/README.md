@@ -46,3 +46,43 @@ This folder contains user-facing documentation for daily platform usage.
 - Super admin community list shows both active and inactive communities.
 - Newly invited users are created with `PENDING` status until verification.
 - User and community lifecycle now use explicit status values (enums) instead of boolean active/verified flags.
+- Children management enforces required `SSN + community + nivo + at least one parent` on create.
+- Children create/update now follow modal form flow (same UX pattern as other CRUD modules).
+- Children list search now uses the shared list-toolbar pattern (`EntityListToolbar`) used across management screens.
+- Children list now follows the users-style management pattern (paginated table rows + row actions + details drawer).
+- Children table uses full available width of the content card (with responsive horizontal scroll fallback).
+- Children table keeps a compact actions column with icon-only controls (header text hidden visually).
+- Users table matches this compact actions-column behavior (header text hidden visually, actions stay icon-based).
+- Children table `Nivo` is shown as progress indicator (dots + `current/total`) for compact readability.
+- Children `Nivo` also shows a 5-dot progress indicator (green for completed levels, sky for current level).
+- Nivo dots include clearer visual emphasis for the current level and hover/focus tooltips per level state.
+- Nivo progress now also shows a compact numeric index (`current/total`, e.g. `2/5`) for fast readability.
+- Nivo progress uses a cleaner minimal-dot style; current level is shown as a hollow sky dot with a filled center for clearer focus.
+- In child create/update modal, admin can select `Nivo` directly by clicking progress dots shown inline with the `Nivo` label and aligned in-row with community selection when visible (no card wrapper).
+- Children `Nivo` is stored as integer (`1..5`) in the database instead of the previous `Nivo` enum (`First..Fifth`). UI labels remain unchanged (e.g. "Nivo 1", "Nivo 2"). The `Nivo` Prisma enum has been removed and replaced with `Int` fields on both `Child` and `Lesson` models.
+- Table row actions use icon buttons on desktop and a 3-dots dropdown menu on mobile for cleaner small-screen UX.
+- Parent assignment in child modal uses searchable multi-select combobox (scales for large parent lists).
+- Child address fields are grouped in a dedicated address card section inside the modal.
+- Child records support optional address, multi-parent links, and lifecycle statuses (`ACTIVE`, `COMPLETED`, `DISCONTINUED`, `INACTIVE`).
+- Child creation defaults status to `ACTIVE`; completion is tracked separately from inactivation.
+- Child delete action uses soft-delete and sets status to `INACTIVE` (with confirmation dialog).
+- Child create/update actions now show user feedback toasts for success and API errors.
+- Child create/update modal uses Zod-based validation for full payload checks on submit attempt (required SSN, names, birth date format, required community/parents by role, and partial-address completion), with inline field errors.
+- `ADMIN` is scoped to own-community children for create/update/inactivate; `PARENT` sees only linked children and can edit child data except `community` and `nivo`.
+- Shared modal dialog layout is mobile-safe: dialogs render via portal to `document.body`, use flex + `margin: auto` centering (no percentage-based `min-h-full`), and constrain height with internal body scroll.
+- `Dialog` centering uses `display: flex` on the viewport overlay with `margin: auto` on `DialogContent`.
+- `Dialog` backdrop uses `position: fixed` (independent of the flex layout) so it always covers the full viewport.
+- `DialogBody` uses `min-h-0 flex-1` in its flex-column parent so it can shrink below content height, enabling `overflow-y-auto` scrolling for tall forms instead of clipping the footer.
+- `DrawerContent` now renders via `createPortal` to `document.body` (same pattern as `Dialog`), preventing unintended margins from parent `space-y-*` rules and avoiding nesting inside overflow containers.
+- `Dialog` and `Drawer` escape-key handlers use a stable ref for `onOpenChange` to avoid effect re-runs when callers pass inline callbacks.
+- **Layout containment (viewport lock):** `html`, `body`, and `#root` all use `height: 100%; overflow: hidden;` so no page-level scrolling is possible. All scrolling happens inside dedicated scroll containers within each layout.
+- **Private layout height cascade:** The SidebarProvider wrapper and PrivateLayoutShell root both use `h-full overflow-hidden`, cascading `height: 100%` from the viewport through `html → body → #root → wrapper → shell`. This avoids `100vh` which exceeds the visible viewport on mobile browsers (address bar gap).
+- **Sidebar positioning:** The sidebar uses `position: absolute` (not `fixed`) so it can be clipped by the shell root's `overflow: hidden`. On desktop, `md:sticky` overrides to sticky positioning within the flex layout. The shell root has `position: relative` to serve as the containing block for the absolutely-positioned sidebar and overlay. This prevents the sidebar from causing horizontal/vertical overflow on mobile (since `position: fixed` elements cannot be clipped by parent overflow).
+- **Sidebar transitions:** Uses `transition-[transform,width]` instead of `transition-all` to prevent unexpected transitions on non-animatable properties.
+- **Sidebar height:** The sidebar uses `md:h-full` (percentage of the flex container) instead of `md:h-screen` (100vh) for consistent sizing within the layout height cascade.
+- **Content container max-width:** The inner content container uses only `max-w-[1120px]` (not a fixed `xl:w-[1120px]`) to prevent overflow when the sidebar is expanded on viewports between 1280px and ~1450px.
+- **PublicLayout:** Wraps content in a `h-full overflow-y-auto` container so public pages (login, verify) can scroll independently within the locked viewport.
+- Private shell applies row flex only on desktop (`md:flex`); on mobile, sidebar remains overlay-only and main content keeps full viewport width.
+- Shared table wrappers clamp width (`min-w-0/max-w-full`) so large table min-width stays inside local x-scroll areas and never expands page width.
+- Users/Children panel cards are `min-w-0` to prevent flex-item min-content width from leaking into document layout on small screens.
+- While dialog is open, body overflow and overscroll are explicitly locked to avoid page drift behind modals.

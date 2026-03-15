@@ -13,12 +13,12 @@ export function DataTable({
   headers,
   children,
   className,
-  scrollClassName = "overflow-x-auto",
+  scrollClassName = "overflow-x-auto overflow-y-hidden",
   tableClassName = "min-w-full border-collapse text-sm",
 }: DataTableProps) {
   return (
-    <div className={cn("w-full overflow-hidden rounded-md border border-border", className)}>
-      <div className={cn("w-full overflow-x-auto", scrollClassName)}>
+    <div className={cn("min-w-0 w-full max-w-full overflow-hidden rounded-md border border-border", className)}>
+      <div className={cn("min-w-0 w-full max-w-full overflow-x-auto overflow-y-hidden [overscroll-behavior-x:contain]", scrollClassName)}>
         <table className={cn(tableClassName)}>
           <thead className="bg-slate-100 text-left">
             <tr>{headers}</tr>
