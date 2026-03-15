@@ -1,24 +1,27 @@
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   Building2,
   BookOpen,
+  ClipboardPenLine,
   ChevronRight,
   CircleHelp,
   House,
-  MessageCircle,
+  Mail,
   MessageSquare,
   Newspaper,
+  PanelLeft,
   UserRound,
   Users,
 } from "lucide-react";
-import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
 import { DashboardSidebar } from "../components/layout/dashboard-sidebar";
 import { dashboardSections, isSectionKey, SectionKey } from "../features/dashboard/sections";
 import { useSession } from "../features/auth/session-context";
 import { Sidebar, SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "../components/ui/sidebar";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { PrivateLayoutContext } from "./private-layout-context";
 import { ROLE } from "../types";
 
@@ -28,8 +31,10 @@ function PrivateLayoutShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { open, setOpen, setOpenMobile } = useSidebar();
+  const [isQuickReportOpen, setIsQuickReportOpen] = useState(false);
   const currentSegment = location.pathname.split("/").pop() || "posts";
   const canManageUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
+  const canReportActivities = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canManageChildren =
     session?.user.role === ROLE.ADMIN ||
     session?.user.role === ROLE.SUPER_ADMIN ||
@@ -107,8 +112,6 @@ function PrivateLayoutShell() {
             canManageUsers={canManageUsers}
             canManageChildren={canManageChildren}
             canManageCommunities={canManageCommunities}
-            isCollapsed={!open}
-            onToggleCollapse={() => setOpen(!open)}
             initials={initials}
             fullName={`${session.user.firstName} ${session.user.lastName}`}
             role={session.user.role}
@@ -118,49 +121,110 @@ function PrivateLayoutShell() {
           />
         </Sidebar>
 
-        <SidebarInset className="h-full min-w-0 overflow-hidden p-4 md:p-6">
+        <SidebarInset className="h-full min-w-0 overflow-hidden px-3 pb-4 pt-0 md:px-6 md:pb-6 md:pt-0">
           <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-[1120px] flex-col space-y-4">
-            <Card className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger className="md:hidden">
-                  Menu
-                </SidebarTrigger>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <House className="h-4 w-4 text-slate-500" />
+            <div className="sticky top-0 z-30 -mx-3 border-b border-border bg-white px-3 py-0 shadow-sm md:-mx-6 md:px-6 md:pl-3">
+              <div className="flex h-14 items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger className="md:hidden">Menu</SidebarTrigger>
                   <button
                     type="button"
-                    className="transition-colors hover:text-slate-900"
-                    onClick={() => navigate("/app/posts")}
+                    aria-label="Toggle sidebar"
+                    className="hidden h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 md:ml-1 md:inline-flex"
+                    onClick={() => setOpen(!open)}
                   >
-                    {t("dashboard")}
-                  </button>
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 font-medium text-primary transition-colors hover:bg-primary/15"
-                    onClick={() => navigate(`/app/${activeKey}`)}
-                  >
-                    {breadcrumbIcon}
-                    <span>{t(selectedSection.labelKey)}</span>
+                    <PanelLeft className="h-5 w-5" />
                   </button>
                 </div>
+                <div className="flex items-center gap-2 sm:gap-2">
+                  <div className="group relative">
+                    <button
+                      type="button"
+                      aria-label={t("notifications")}
+                      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                      onClick={() => navigate("/app/notifications")}
+                    >
+                      <Bell className="h-5 w-5" />
+                      <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                        3
+                      </span>
+                    </button>
+                    <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      {t("notifications")}
+                    </span>
+                  </div>
+                  <div className="group relative">
+                    <button
+                      type="button"
+                      aria-label={t("messages")}
+                      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                      onClick={() => navigate("/app/messages")}
+                    >
+                      <Mail className="h-5 w-5" />
+                      <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                        5
+                      </span>
+                    </button>
+                    <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      {t("messages")}
+                    </span>
+                  </div>
+                  {canReportActivities ? (
+                    <Button
+                      type="button"
+                      className="ml-1 whitespace-nowrap"
+                      aria-label={t("reportActivities")}
+                      onClick={() => setIsQuickReportOpen(true)}
+                    >
+                      <ClipboardPenLine className="h-4 w-4" />
+                      <span className="hidden sm:inline">{t("reportActivities")}</span>
+                    </Button>
+                  ) : null}
+                </div>
               </div>
-            </Card>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <House className="h-4 w-4 text-slate-500" />
+              <button
+                type="button"
+                className="transition-colors hover:text-slate-900"
+                onClick={() => navigate("/app/posts")}
+              >
+                {t("dashboard")}
+              </button>
+              <ChevronRight className="h-4 w-4 text-slate-400" />
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 font-medium text-primary transition-colors hover:bg-primary/15"
+                onClick={() => navigate(`/app/${activeKey}`)}
+              >
+                {breadcrumbIcon}
+                <span>{t(selectedSection.labelKey)}</span>
+              </button>
+            </div>
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden [overscroll-behavior-x:none]">
               <Outlet context={context} />
             </div>
           </div>
         </SidebarInset>
       </div>
-
-      <button
-        type="button"
-        aria-label="Open chat"
-        title="Open chat"
-        className="fixed bottom-6 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-opacity hover:opacity-90"
-      >
-        <MessageCircle className="h-5 w-5" />
-      </button>
+      <Dialog open={isQuickReportOpen} onOpenChange={setIsQuickReportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Child progress reporting</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p className="text-sm text-slate-600">
+              This modal will soon include reporting flows for child progress, comments, absences, and homeworks.
+            </p>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsQuickReportOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

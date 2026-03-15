@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Building2, Info, PencilLine, Plus, Save, Trash2, Users, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/ui/button";
 import { ComboboxChips } from "../../components/ui/combobox-chips";
 import { Input } from "../../components/ui/input";
@@ -84,6 +85,7 @@ export function CommunityFormDialog({
   onOpenChange,
   onSubmit,
 }: CommunityFormDialogProps) {
+  const { t } = useTranslation();
   const canEditIdentity = mode === "create" || canAssignAdmins;
   const [submitLocked, setSubmitLocked] = useState(false);
   const [pendingRemoveIndex, setPendingRemoveIndex] = useState<number | null>(null);
@@ -155,7 +157,7 @@ export function CommunityFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mode === "create" ? <Building2 className="h-4 w-4 text-slate-500" /> : <PencilLine className="h-4 w-4 text-slate-500" />}
-            <span>{mode === "create" ? "Create community" : "Edit community"}</span>
+            <span>{mode === "create" ? t("communitiesCreate") : t("communitiesEdit")}</span>
           </DialogTitle>
         </DialogHeader>
         <form
@@ -198,7 +200,7 @@ export function CommunityFormDialog({
                   label: (
                     <>
                       <Info className="h-4 w-4" />
-                      <span>Basic info</span>
+                      <span>{t("basicInfo")}</span>
                     </>
                   ),
                 },
@@ -207,7 +209,7 @@ export function CommunityFormDialog({
                   label: (
                     <>
                       <Users className="h-4 w-4" />
-                      <span>Members</span>
+                      <span>{t("communitiesMembersTab")}</span>
                     </>
                   ),
                 },
@@ -216,60 +218,60 @@ export function CommunityFormDialog({
               {activeTab === "basic" ? (
                 <div className="space-y-2">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Community name</label>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">{t("communitiesNameLabel")}</label>
                     <Input {...register("name")} disabled={!canEditIdentity} />
                     {errors.name ? <p className="mt-1 text-xs text-red-600">{errors.name.message}</p> : null}
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Description</label>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">{t("communitiesDescriptionLabel")}</label>
                     <Input {...register("description")} disabled={!canEditIdentity} />
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">Contact email</label>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">{t("communitiesContactEmailLabel")}</label>
                       <Input {...register("contactEmail")} />
                       {errors.contactEmail ? <p className="mt-1 text-xs text-red-600">{errors.contactEmail.message}</p> : null}
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">Contact phone</label>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">{t("communitiesContactPhoneLabel")}</label>
                       <Input {...register("contactPhone")} />
                     </div>
                   </div>
 
                   <div className="rounded-md border border-border p-2.5">
-                    <p className="mb-2 text-sm font-medium text-slate-700">Address (required)</p>
+                    <p className="mb-2 text-sm font-medium text-slate-700">{t("communitiesAddressRequired")}</p>
                     <div className="grid gap-3 md:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Street line 1</label>
+                        <label className="mb-1 block text-sm text-slate-700">{t("streetLine1")}</label>
                         <Input {...register("address.streetLine1")} />
                         {errors.address?.streetLine1 ? (
                           <p className="mt-1 text-xs text-red-600">{errors.address.streetLine1.message}</p>
                         ) : null}
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Street line 2</label>
+                        <label className="mb-1 block text-sm text-slate-700">{t("communitiesStreetLine2Label")}</label>
                         <Input {...register("address.streetLine2")} />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Postal code</label>
+                        <label className="mb-1 block text-sm text-slate-700">{t("postalCode")}</label>
                         <Input {...register("address.postalCode")} />
                         {errors.address?.postalCode ? (
                           <p className="mt-1 text-xs text-red-600">{errors.address.postalCode.message}</p>
                         ) : null}
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">City</label>
+                        <label className="mb-1 block text-sm text-slate-700">{t("city")}</label>
                         <Input {...register("address.city")} />
                         {errors.address?.city ? <p className="mt-1 text-xs text-red-600">{errors.address.city.message}</p> : null}
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">State</label>
+                        <label className="mb-1 block text-sm text-slate-700">{t("communitiesStateLabel")}</label>
                         <Input {...register("address.state")} />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Country</label>
+                        <label className="mb-1 block text-sm text-slate-700">{t("country")}</label>
                         <Input {...register("address.country")} />
                         {errors.address?.country ? (
                           <p className="mt-1 text-xs text-red-600">{errors.address.country.message}</p>
@@ -282,8 +284,8 @@ export function CommunityFormDialog({
                 <div className="space-y-2">
                   <div className="rounded-md border border-border p-2.5">
                     <p className="mb-2 text-sm font-medium text-slate-700">
-                      Imam assignment
-                      {canAssignAdmins ? " (super admin only)" : " (super admin restricted)"}
+                      {t("communitiesImamAssignment")}
+                      {canAssignAdmins ? ` ${t("communitiesSuperAdminOnlySuffix")}` : ` ${t("communitiesSuperAdminRestrictedSuffix")}`}
                     </p>
                     {canAssignAdmins ? (
                       <div className="space-y-2">
@@ -292,13 +294,13 @@ export function CommunityFormDialog({
                           options={adminOptions.map((option) => ({ value: option.id, label: option.label }))}
                           values={selectedAdminIds}
                           onChange={(nextValues) => setValue("adminUserIds", nextValues, { shouldDirty: true })}
-                          placeholder="Select admin(s) for this community"
-                          emptyText="No admin users available."
+                          placeholder={t("communitiesSelectAdminsPlaceholder")}
+                          emptyText={t("communitiesNoAdminUsers")}
                         />
                         {adminOptions.length ? (
-                          <p className="text-xs text-slate-500">You can select one or more admins (Imams).</p>
+                          <p className="text-xs text-slate-500">{t("communitiesAdminsHelper")}</p>
                         ) : (
-                          <p className="text-xs text-slate-500">No admin users available.</p>
+                          <p className="text-xs text-slate-500">{t("communitiesNoAdminUsers")}</p>
                         )}
                       </div>
                     ) : (
@@ -310,7 +312,7 @@ export function CommunityFormDialog({
                             </p>
                           ))
                         ) : (
-                          <p className="text-xs text-slate-500">No imam assignment found for this community.</p>
+                          <p className="text-xs text-slate-500">{t("communitiesNoImamAssignment")}</p>
                         )}
                       </div>
                     )}
@@ -318,25 +320,25 @@ export function CommunityFormDialog({
 
                   <div className="rounded-md border border-border p-2.5">
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-700">Board members</p>
+                      <p className="text-sm font-medium text-slate-700">{t("communitiesBoardMembersLabel")}</p>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => append({ userId: "", role: "MEMBER" as BoardMemberRole })}
                       >
                         <Plus className="h-4 w-4" />
-                        Add board member
+                        {t("communitiesAddBoardMember")}
                       </Button>
                     </div>
                     <p className="mb-2 text-xs text-slate-500">
-                      Select users from the list and assign board roles.
+                      {t("communitiesBoardMembersHelper")}
                     </p>
                     {fields.length ? (
                       <div className="space-y-2">
                         {fields.map((field, index) => (
                           <div key={field.id} className="grid gap-2 rounded-md border border-border p-2 md:grid-cols-[2fr_1fr_auto]">
                             <Select {...register(`boardMembers.${index}.userId`)}>
-                              <option value="">Select user...</option>
+                              <option value="">{t("communitiesSelectUserPlaceholder")}</option>
                               {boardMemberUserOptions.map((option) => (
                                 <option key={option.id} value={option.id}>
                                   {option.label}
@@ -352,13 +354,13 @@ export function CommunityFormDialog({
                             </Select>
                             <Button type="button" variant="outline" onClick={() => setPendingRemoveIndex(index)}>
                               <Trash2 className="h-4 w-4" />
-                              Remove
+                              {t("remove")}
                             </Button>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-slate-500">No board members selected yet.</p>
+                      <p className="text-xs text-slate-500">{t("communitiesNoBoardMembersSelected")}</p>
                     )}
                   </div>
                 </div>
@@ -368,11 +370,11 @@ export function CommunityFormDialog({
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               <X className="h-4 w-4" />
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={submitting || submitLocked}>
               <Save className="h-4 w-4" />
-              {mode === "create" ? "Create community" : "Save community"}
+              {mode === "create" ? t("communitiesCreate") : t("communitiesSave")}
             </Button>
           </DialogFooter>
         </form>
@@ -382,9 +384,9 @@ export function CommunityFormDialog({
         onOpenChange={(nextOpen) => {
           if (!nextOpen) setPendingRemoveIndex(null);
         }}
-        title="Remove board member"
-        description="Are you sure you want to remove this board member assignment?"
-        confirmText="Remove"
+        title={t("communitiesRemoveBoardMemberTitle")}
+        description={t("communitiesRemoveBoardMemberDescription")}
+        confirmText={t("remove")}
         onConfirm={() => {
           if (pendingRemoveIndex === null) return;
           remove(pendingRemoveIndex);

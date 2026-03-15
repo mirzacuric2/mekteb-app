@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { BookPlus, PencilLine, Save, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
@@ -39,6 +40,7 @@ export function LessonFormDialog({
   onOpenChange,
   onSubmit,
 }: LessonFormDialogProps) {
+  const { t } = useTranslation();
   const [submitLocked, setSubmitLocked] = useState(false);
   const {
     register,
@@ -75,7 +77,7 @@ export function LessonFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mode === "create" ? <BookPlus className="h-4 w-4 text-slate-500" /> : <PencilLine className="h-4 w-4 text-slate-500" />}
-            <span>{mode === "create" ? "Create lesson" : "Edit lesson"}</span>
+            <span>{mode === "create" ? t("lessonsCreate") : t("lessonsEdit")}</span>
           </DialogTitle>
         </DialogHeader>
         <form
@@ -97,12 +99,12 @@ export function LessonFormDialog({
         >
           <DialogBody className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Lesson title</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">{t("lessonsTitleLabel")}</label>
               <Input {...register("title")} />
               {errors.title ? <p className="mt-1 text-xs text-red-600">{errors.title.message}</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Nivo</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">{t("lessonsNivoLabel")}</label>
               <Select {...register("nivo", { valueAsNumber: true })}>
                 {LESSON_NIVO_ORDER.map((value) => (
                   <option key={value} value={value}>
@@ -116,11 +118,11 @@ export function LessonFormDialog({
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               <X className="mr-1 h-4 w-4" />
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={submitting || submitLocked}>
               <Save className="mr-1 h-4 w-4" />
-              {mode === "create" ? "Create lesson" : "Save lesson"}
+              {mode === "create" ? t("lessonsCreate") : t("lessonsSave")}
             </Button>
           </DialogFooter>
         </form>

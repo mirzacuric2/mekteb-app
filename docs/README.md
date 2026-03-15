@@ -86,3 +86,31 @@ This folder contains user-facing documentation for daily platform usage.
 - Shared table wrappers clamp width (`min-w-0/max-w-full`) so large table min-width stays inside local x-scroll areas and never expands page width.
 - Users/Children panel cards are `min-w-0` to prevent flex-item min-content width from leaking into document layout on small screens.
 - While dialog is open, body overflow and overscroll are explicitly locked to avoid page drift behind modals.
+- Private dashboard now has a dedicated sticky top header with a primary reporting action and quick-access notifications/messages icons with unread badges.
+- Header action is responsive: desktop shows icon + text, while mobile uses icon-only for compact spacing.
+- Sidebar branding now uses full logo in expanded desktop state and compact logo mark for collapsed/mobile state.
+- Sidebar branding assets are now hosted under `web/public/branding` (`izbus-logo.png`, `logo-small.svg`) so `mekteb-app` does not depend on sibling project asset paths.
+- Expanded desktop sidebar width is reduced further for a more compact layout (`md:w-60`).
+- In collapsed desktop sidebar footer, the Help icon is placed on a separate line under the user avatar to avoid cramped/broken alignment.
+- In collapsed desktop sidebar, the Help icon is hidden to keep footer actions minimal and avoid crowding.
+- Sticky header horizontal padding now matches content/breadcrumb alignment for a consistent left edge across rows.
+- Expanded sidebar logo now has dedicated centered spacing and is clickable (navigates to dashboard) for clearer branding UX.
+- Sidebar logo row and top header row now use matching fixed height (`h-14`) for cleaner cross-column alignment.
+- Sidebar logo row no longer renders a bottom divider for a cleaner visual transition into navigation items.
+- In collapsed sidebar mode, a subtle divider is shown between General and Management sections to improve icon-group scanning.
+- Localization coverage is expanded for `communities`, `children`, and `lessons` management pages: key labels, actions, dialogs, and feedback now include Bosnian (`bs`) and Swedish (`sv`) translations (in addition to English).
+- Sidebar branding behavior: mobile drawer now uses the full logo, while compact logo is used only for collapsed desktop sidebar.
+- Sidebar/header chrome labels are fully localized (`Language`, `General`, `Management`, `Report activities`, `Logout`) for `en`, `sv`, and `bs`.
+- Header message/notification icons now include translated hover/focus tooltips (using i18n labels for `messages` and `notifications`).
+- `Report activities` header action is visible only to `ADMIN` and `SUPER_ADMIN`.
+- Language switcher UI is now a shared component reused by both login and sidebar (`EN/SV/BS` button group) for consistent behavior and styling.
+- In collapsed sidebar mode, language switcher shows only the active language code (compact single-button view).
+- Sidebar language label is removed; in expanded mode language options fill full row width with equal button sizing.
+- In collapsed sidebar mode, the active-language badge uses the same primary active color styling as selected language buttons.
+- In collapsed sidebar mode, clicking the active-language badge opens a compact popover with other language options so users can switch language without expanding the sidebar.
+- Header actions are ordered with notifications/messages first and `Report activities` anchored as the rightmost action.
+- On mobile, the report button has extra separation from notification/message icons for clearer touch-friendly spacing.
+- Desktop collapse/expand sidebar icon in the header uses slight left offset (`ml`) while keeping icon centered inside its hover circle.
+- Mobile header `Menu` trigger is slightly offset left for tighter visual proximity to the sidebar edge.
+- Mobile header `Menu` trigger follows the same horizontal content rail as the breadcrumb for cleaner alignment.
+- Sidebar container top padding is removed (`pt-0`) so the logo row aligns vertically with the sticky top header.

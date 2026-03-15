@@ -6,6 +6,7 @@ import { LoginResponse } from "../../types";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
+import { LanguageSwitcher } from "../../components/common/language-switcher";
 
 type Props = {
   onSuccess: (data: LoginResponse) => void;
@@ -40,17 +41,7 @@ export function LoginForm({ onSuccess }: Props) {
         </Button>
       </form>
       {mutation.isError ? <p className="text-sm text-red-600">Login failed.</p> : null}
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={() => i18n.changeLanguage("en")}>
-          EN
-        </Button>
-        <Button variant="outline" onClick={() => i18n.changeLanguage("sv")}>
-          SV
-        </Button>
-        <Button variant="outline" onClick={() => i18n.changeLanguage("bs")}>
-          BS
-        </Button>
-      </div>
+      <LanguageSwitcher value={i18n.language as "en" | "sv" | "bs"} onChange={(language) => i18n.changeLanguage(language)} />
     </Card>
   );
 }

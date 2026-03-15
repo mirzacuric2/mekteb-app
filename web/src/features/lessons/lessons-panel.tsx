@@ -6,6 +6,7 @@ import { api } from "../../api";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthedQuery } from "../common/use-authed-query";
 import {
   LESSON_NIVO_LABEL,
@@ -22,6 +23,7 @@ import { Loader } from "../common/components/loader";
 type Props = { canManage: boolean };
 
 export function LessonsPanel({ canManage }: Props) {
+  const { t } = useTranslation();
   const lessons = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, true);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -40,10 +42,10 @@ export function LessonsPanel({ canManage }: Props) {
     mutationFn: async (values: LessonFormValues) => (await api.post(LESSONS_API_PATH, values)).data,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY] });
-      toast.success("Lesson created.");
+      toast.success(t("lessonsCreated"));
       setFormOpen(false);
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to create lesson.")),
+    onError: (error) => toast.error(getErrorMessage(error, t("lessonsCreateFailed"))),
   });
 
   const updateLesson = useMutation({
@@ -51,21 +53,21 @@ export function LessonsPanel({ canManage }: Props) {
       (await api.patch(`${LESSONS_API_PATH}/${editingLesson?.id}`, values)).data,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY] });
-      toast.success("Lesson updated.");
+      toast.success(t("lessonsUpdated"));
       setFormOpen(false);
       setEditingLesson(null);
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to update lesson.")),
+    onError: (error) => toast.error(getErrorMessage(error, t("lessonsUpdateFailed"))),
   });
 
   const deleteLesson = useMutation({
     mutationFn: async (id: string) => api.delete(`${LESSONS_API_PATH}/${id}`),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY] });
-      toast.success("Lesson deleted.");
+      toast.success(t("lessonsDeleted"));
       setDeletingLesson(null);
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to delete lesson.")),
+    onError: (error) => toast.error(getErrorMessage(error, t("lessonsDeleteFailed"))),
   });
 
   const filteredLessons = useMemo(() => {
@@ -98,7 +100,7 @@ export function LessonsPanel({ canManage }: Props) {
       <EntityListToolbar
         search={search}
         onSearchChange={setSearch}
-        placeholder="Search lessons by title or nivo..."
+        placeholder={t("lessonsSearchPlaceholder")}
         actions={
           canManage ? (
             <Button
@@ -109,12 +111,12 @@ export function LessonsPanel({ canManage }: Props) {
               }}
             >
               <BookPlus className="h-4 w-4" />
-              <span className="hidden md:inline">Create lesson</span>
+              <span className="hidden md:inline">{t("lessonsCreate")}</span>
             </Button>
           ) : undefined
         }
       />
-      {!canManage ? <p className="text-sm text-slate-500">Only super admin can create, edit, or delete lessons.</p> : null}
+      {!canManage ? <p className="text-sm text-slate-500">{t("lessonsSuperAdminOnly")}</p> : null}
 
       <div className="max-h-[calc(100dvh-220px)] space-y-3 overflow-y-auto pr-1 text-sm">
         {isLessonsListLoading ? (
@@ -141,7 +143,7 @@ export function LessonsPanel({ canManage }: Props) {
                             setFormOpen(true);
                           }}
                         >
-                          Edit
+                          {t("edit")}
                         </Button>
                         <Button
                           variant="outline"
@@ -149,14 +151,14 @@ export function LessonsPanel({ canManage }: Props) {
                             setDeletingLesson(lesson);
                           }}
                         >
-                          Delete
+                          {t("delete")}
                         </Button>
                       </div>
                     ) : null}
                   </div>
                 ))
               ) : (
-                <p className="text-slate-500">No lessons.</p>
+                <p className="text-slate-500">{t("lessonsNoResults")}</p>
               )}
             </div>
           ))
@@ -191,11 +193,11 @@ export function LessonsPanel({ canManage }: Props) {
         onOpenChange={(open) => {
           if (!open) setDeletingLesson(null);
         }}
-        title="Delete lesson"
+        title={t("lessonsDeleteTitle")}
         description={
-          deletingLesson ? `Are you sure you want to delete "${deletingLesson.title}"?` : "Delete selected lesson?"
+          deletingLesson ? t("lessonsDeleteDescription", { title: deletingLesson.title }) : t("lessonsDeleteDescriptionFallback")
         }
-        confirmText="Delete"
+        confirmText={t("delete")}
         submitting={deleteLesson.isPending}
         onConfirm={() => {
           if (!deletingLesson) return;

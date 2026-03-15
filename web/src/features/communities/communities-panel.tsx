@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { api } from "../../api";
 import { Button } from "../../components/ui/button";
@@ -75,6 +76,7 @@ function buildAddressPayload(address: {
 }
 
 export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Props) {
+  const { t } = useTranslation();
   const { session } = useSession();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -158,11 +160,11 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
       if (editingCommunity?.id) {
         await queryClient.invalidateQueries({ queryKey: ["community-details", editingCommunity.id] });
       }
-      toast.success("Community created.");
+      toast.success(t("communitiesCreated"));
       setFormOpen(false);
       setEditingCommunity(null);
     },
-    onError: (error) => toast.error(getApiMessage(error, "Failed to create community.")),
+    onError: (error) => toast.error(getApiMessage(error, t("communitiesCreateFailed"))),
   });
 
   const updateCommunity = useMutation({
@@ -186,27 +188,27 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
       if (editingCommunity?.id) {
         await queryClient.invalidateQueries({ queryKey: ["community-details", editingCommunity.id] });
       }
-      toast.success("Community updated.");
+      toast.success(t("communitiesUpdated"));
       setFormOpen(false);
       setEditingCommunity(null);
     },
-    onError: (error) => toast.error(getApiMessage(error, "Failed to update community.")),
+    onError: (error) => toast.error(getApiMessage(error, t("communitiesUpdateFailed"))),
   });
 
   const deleteCommunity = useMutation({
     mutationFn: async (id: string) => api.delete(`${COMMUNITIES_API_PATH}/${id}`),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [COMMUNITIES_QUERY_KEY] });
-      toast.success("Community inactivated.");
+      toast.success(t("communitiesInactivated"));
       setDeletingCommunity(null);
     },
-    onError: (error) => toast.error(getApiMessage(error, "Failed to inactivate community.")),
+    onError: (error) => toast.error(getApiMessage(error, t("communitiesInactivateFailed"))),
   });
 
   if (!canManage) {
     return (
       <Card>
-        <p className="text-sm text-slate-500">Visible for ADMIN and SUPER_ADMIN.</p>
+        <p className="text-sm text-slate-500">{t("communitiesVisibleForAdminOnly")}</p>
       </Card>
     );
   }
@@ -216,7 +218,7 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
       <EntityListToolbar
         search={search}
         onSearchChange={setSearch}
-        placeholder="Search communities by name or city..."
+        placeholder={t("communitiesSearchPlaceholder")}
         actions={
           canCreate ? (
             <Button
@@ -227,7 +229,7 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
               }}
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden md:inline">Create community</span>
+              <span className="hidden md:inline">{t("communitiesCreate")}</span>
             </Button>
           ) : undefined
         }
@@ -267,15 +269,16 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
                     <p className="font-medium">{community.name}</p>
                     {community.status === "INACTIVE" ? (
                       <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                        Inactive
+                        {t("inactive")}
                       </span>
                     ) : null}
                   </div>
                   <p className="text-xs text-slate-500">
-                    {community.address?.city || "No city"} - {community.address?.country || "No country"}
+                    {community.address?.city || t("communitiesNoCity")} - {community.address?.country || t("communitiesNoCountry")}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Admins: {community.users?.length || 0} | Board members: {community._count?.boardMembers || 0}
+                    {t("communitiesAdminsCount")}: {community.users?.length || 0} | {t("communitiesBoardMembersCount")}:{" "}
+                    {community._count?.boardMembers || 0}
                   </p>
                 </div>
                 {canCreate && community.status !== "INACTIVE" ? (
@@ -289,14 +292,14 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
-                    Inactivate
+                    {t("communitiesInactivate")}
                   </Button>
                 ) : null}
               </div>
             </div>
           ))
         ) : (
-          <p className="text-sm text-slate-500">No communities found.</p>
+          <p className="text-sm text-slate-500">{t("communitiesNoResults")}</p>
         )}
       </div>
 
@@ -345,7 +348,7 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
         }}
         onSubmit={(values) => {
           if (!editingCommunity && canAssignAdmins && !values.adminUserIds.length) {
-            toast.error("At least one ADMIN assignment is required. You can assign multiple.");
+            toast.error(t("communitiesAdminRequired"));
             return;
           }
           if (editingCommunity) {
@@ -361,13 +364,13 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
         onOpenChange={(open) => {
           if (!open) setDeletingCommunity(null);
         }}
-        title="Inactivate community"
+        title={t("communitiesInactivateTitle")}
         description={
           deletingCommunity
-            ? `Inactivate "${deletingCommunity.name}"? It will be hidden from active lists.`
-            : "Inactivate selected community?"
+            ? t("communitiesInactivateDescription", { name: deletingCommunity.name })
+            : t("communitiesInactivateDescriptionFallback")
         }
-        confirmText="Inactivate"
+        confirmText={t("communitiesInactivate")}
         submitting={deleteCommunity.isPending}
         onConfirm={() => {
           if (!deletingCommunity) return;

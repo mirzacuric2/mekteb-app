@@ -13,6 +13,9 @@ This guide explains how to use the Mekteb App interface and core features.
 
 - Use the sidebar to switch between sections.
 - Use the breadcrumb at the top to confirm your current page.
+- The top dashboard header stays visible while you scroll page content.
+- Use the header report action to open the reporting modal entry point (progress/comments/absence/homework flow placeholder); desktop shows label + icon, mobile shows icon-only.
+- Use the header notification bell and message envelope icons for quick access to `Notifications` and `Messages`; badges show unread counters.
 - Use language selector in the sidebar footer when needed.
 - Use the Help icon near your profile avatar for quick role-based guidance.
 

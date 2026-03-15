@@ -5,8 +5,6 @@ import {
   BookOpen,
   Building2,
   CircleHelp,
-  ChevronLeft,
-  ChevronRight,
   MessageSquare,
   Newspaper,
   LogOut,
@@ -16,7 +14,7 @@ import {
 } from "lucide-react";
 import { dashboardSections, SectionKey } from "../../features/dashboard/sections";
 import { cn } from "../../lib/utils";
-import { Select } from "../ui/select";
+import { LanguageSwitcher } from "../common/language-switcher";
 import {
   SidebarContent,
   SidebarFooter,
@@ -36,8 +34,6 @@ type Props = {
   canManageUsers: boolean;
   canManageChildren: boolean;
   canManageCommunities: boolean;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
   initials: string;
   fullName: string;
   role: string;
@@ -53,8 +49,6 @@ export function DashboardSidebar({
   canManageUsers,
   canManageChildren,
   canManageCommunities,
-  isCollapsed,
-  onToggleCollapse,
   initials,
   fullName,
   role,
@@ -65,6 +59,9 @@ export function DashboardSidebar({
   const { t } = useTranslation();
   const { open, isMobile } = useSidebar();
   const isCollapsedDesktop = !open && !isMobile;
+  const fullLogoSrc = "/branding/izbus-logo.png";
+  const compactLogoSrc = "/branding/logo-small.svg";
+  const shouldUseCompactLogo = !isMobile && !open;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const roleLabel = useMemo(() => role.replace("_", " "), [role]);
   const sectionIcons: Record<SectionKey, ReactNode> = {
@@ -81,27 +78,33 @@ export function DashboardSidebar({
   return (
     <>
       <SidebarHeader>
-        <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            <h1 className={`text-xl font-semibold ${!open && !isMobile ? "hidden" : ""}`}>{t("dashboard")}</h1>
-            <p className={`text-sm text-slate-500 ${!open && !isMobile ? "hidden" : ""}`}>Mekteb</p>
-          </div>
-          {!isMobile ? (
+        <div className="-mx-4 px-4">
+          <div className="flex h-14 items-center justify-center">
             <button
               type="button"
-              aria-label="Toggle sidebar"
-              className="shrink-0 rounded-md p-1 text-slate-600 hover:bg-slate-100"
-              onClick={onToggleCollapse}
+              aria-label="Go to dashboard"
+              className={cn(
+                "inline-flex items-center rounded-md transition-opacity hover:opacity-90",
+                shouldUseCompactLogo ? "justify-center" : "justify-center px-1 py-1"
+              )}
+              onClick={() => onNavigate("posts")}
             >
-              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              <img
+                src={shouldUseCompactLogo ? compactLogoSrc : fullLogoSrc}
+                alt="Mekteb logo"
+                className={cn(
+                  "object-contain",
+                  shouldUseCompactLogo ? "h-10 w-10" : "h-11 w-auto max-w-[172px]"
+                )}
+              />
             </button>
-          ) : null}
+          </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>General</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("general")}</SidebarGroupLabel>
           <SidebarMenu>
             {dashboardSections
               .filter((section) => section.group === "general")
@@ -118,69 +121,77 @@ export function DashboardSidebar({
           </SidebarMenu>
         </SidebarGroup>
 
-        {canManage ? (
-          <SidebarGroup>
-            <SidebarGroupLabel>Management</SidebarGroupLabel>
-            <SidebarMenu>
-              {dashboardSections
-                .filter(
-                  (section) =>
-                    section.group === "management" &&
-                    ((section.key === "users" && canManageUsers) ||
-                      (section.key === "children" && canManageChildren) ||
-                      (section.key === "communities" && canManageCommunities) ||
-                      section.key === "lessons")
-                )
-                .map((section) => (
-                  <SidebarMenuItem key={section.key}>
-                    <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
-                      <span className="flex items-center gap-2">
-                        {sectionIcons[section.key]}
-                        {!open && !isMobile ? null : <span>{t(section.labelKey)}</span>}
-                      </span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
-          </SidebarGroup>
-        ) : (
-          <SidebarGroup>
-            <SidebarGroupLabel>Management</SidebarGroupLabel>
-            <SidebarMenu>
-              {dashboardSections
-                .filter(
-                  (section) =>
-                    section.group === "management" &&
-                    ((section.key === "children" && canManageChildren) ||
-                      (section.key === "communities" && canManageCommunities) ||
-                      section.key === "lessons")
-                )
-                .map((section) => (
-                  <SidebarMenuItem key={section.key}>
-                    <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
-                      <span className="flex items-center gap-2">
-                        {sectionIcons[section.key]}
-                        {!open && !isMobile ? null : <span>{t(section.labelKey)}</span>}
-                      </span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
-          </SidebarGroup>
-        )}
+        <div className={cn(isCollapsedDesktop ? "mt-2 border-t border-border pt-2" : "")}>
+          {canManage ? (
+            <SidebarGroup>
+              <SidebarGroupLabel>{t("management")}</SidebarGroupLabel>
+              <SidebarMenu>
+                {dashboardSections
+                  .filter(
+                    (section) =>
+                      section.group === "management" &&
+                      ((section.key === "users" && canManageUsers) ||
+                        (section.key === "children" && canManageChildren) ||
+                        (section.key === "communities" && canManageCommunities) ||
+                        section.key === "lessons")
+                  )
+                  .map((section) => (
+                    <SidebarMenuItem key={section.key}>
+                      <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
+                        <span className="flex items-center gap-2">
+                          {sectionIcons[section.key]}
+                          {!open && !isMobile ? null : <span>{t(section.labelKey)}</span>}
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          ) : (
+            <SidebarGroup>
+              <SidebarGroupLabel>{t("management")}</SidebarGroupLabel>
+              <SidebarMenu>
+                {dashboardSections
+                  .filter(
+                    (section) =>
+                      section.group === "management" &&
+                      ((section.key === "children" && canManageChildren) ||
+                        (section.key === "communities" && canManageCommunities) ||
+                        section.key === "lessons")
+                  )
+                  .map((section) => (
+                    <SidebarMenuItem key={section.key}>
+                      <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
+                        <span className="flex items-center gap-2">
+                          {sectionIcons[section.key]}
+                          {!open && !isMobile ? null : <span>{t(section.labelKey)}</span>}
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          )}
+        </div>
       </SidebarContent>
 
       <SidebarFooter>
-        <div className={`mb-3 space-y-2 ${isCollapsedDesktop ? "hidden" : ""}`}>
-          <label className="px-1 text-xs font-medium uppercase tracking-wide text-slate-500">Language</label>
-          <Select value={language} onChange={(event) => onLanguageChange(event.target.value as "en" | "sv" | "bs")}>
-            <option value="en">English</option>
-            <option value="sv">Svenska</option>
-            <option value="bs">Bosanski</option>
-          </Select>
+        <div className={cn("mb-3 space-y-2", isCollapsedDesktop ? "flex flex-col items-center" : "")}>
+          <LanguageSwitcher
+            value={language as "en" | "sv" | "bs"}
+            onChange={onLanguageChange}
+            compact={isCollapsedDesktop}
+            fullWidth={!isCollapsedDesktop}
+            className={isCollapsedDesktop ? "justify-center" : "w-full"}
+          />
         </div>
 
-        <div className={cn("relative flex items-center gap-2", isCollapsedDesktop ? "justify-center" : "w-full")}>
+        <div
+          className={cn(
+            "relative flex items-center gap-2",
+            isCollapsedDesktop ? "flex-col justify-center" : "w-full"
+          )}
+        >
           <button
             type="button"
             aria-label="Open user options"
@@ -189,22 +200,24 @@ export function DashboardSidebar({
           >
             {initials}
           </button>
-          <div className={cn("group relative", !isCollapsedDesktop ? "ml-auto" : "")}>
-            <button
-              type="button"
-              aria-label="Open help"
-              className={cn(
-                "inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700",
-                activeKey === "help" ? "bg-primary/10 text-primary" : ""
-              )}
-              onClick={() => onNavigate("help")}
-            >
-              <CircleHelp className="h-4 w-4" />
-            </button>
-            <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              {t("help")}
-            </span>
-          </div>
+          {isCollapsedDesktop ? null : (
+            <div className="group relative ml-auto">
+              <button
+                type="button"
+                aria-label="Open help"
+                className={cn(
+                  "inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700",
+                  activeKey === "help" ? "bg-primary/10 text-primary" : ""
+                )}
+                onClick={() => onNavigate("help")}
+              >
+                <CircleHelp className="h-4 w-4" />
+              </button>
+              <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                {t("help")}
+              </span>
+            </div>
+          )}
 
           {isUserMenuOpen ? (
             <div
@@ -224,7 +237,7 @@ export function DashboardSidebar({
                 onClick={onLogout}
               >
                 <LogOut className="h-4 w-4 text-slate-500" />
-                <span>Logout</span>
+                <span>{t("logout")}</span>
               </button>
             </div>
           ) : null}

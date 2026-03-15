@@ -110,7 +110,7 @@ export function Sidebar({
   const isCollapsed = state === "collapsed";
 
   const desktopWidthClass =
-    collapsible === "none" ? "md:w-72" : collapsible === "offcanvas" ? (open ? "md:w-72" : "md:w-0 md:overflow-hidden md:border-transparent md:p-0") : isCollapsed ? "md:w-20" : "md:w-72";
+    collapsible === "none" ? "md:w-60" : collapsible === "offcanvas" ? (open ? "md:w-60" : "md:w-0 md:overflow-hidden md:border-transparent md:p-0") : isCollapsed ? "md:w-20" : "md:w-60";
 
   return (
     <>
@@ -127,7 +127,7 @@ export function Sidebar({
         data-collapsible={collapsible}
         data-variant={variant}
         className={cn(
-          "absolute inset-y-0 left-0 z-50 flex h-full flex-col overflow-hidden border-r border-border bg-white p-4 transition-[transform,width] duration-200 md:sticky md:top-6 md:h-[calc(100vh-3rem)]",
+          "absolute inset-y-0 left-0 z-50 flex h-full flex-col overflow-hidden border-r border-border bg-white px-4 pb-4 pt-0 transition-[transform,width] duration-200 md:sticky md:top-6 md:h-[calc(100vh-3rem)]",
           variant === "floating" || variant === "inset" ? "md:rounded-xl md:border" : "",
           isMobile ? (openMobile ? "translate-x-0 w-72" : "-translate-x-full w-72") : "translate-x-0",
           side === "right" ? "left-auto right-0" : "left-0",

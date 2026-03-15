@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import { AxiosError } from "axios";
 import { z } from "zod";
@@ -116,6 +117,7 @@ const childFormSchema = z
   });
 
 export function ChildrenPanel({ canManage: _canManage }: Props) {
+  const { t } = useTranslation();
   const { session } = useSession();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -204,10 +206,10 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     }
 
     if (canChooseCommunity && !communityId.trim()) {
-      nextErrors.communityId = "Community is required.";
+      nextErrors.communityId = t("childrenCommunityRequired");
     }
     if (canAdminManage && parentIds.length === 0) {
-      nextErrors.parentIds = "At least one parent is required.";
+      nextErrors.parentIds = t("childrenParentsRequired");
     }
 
     setFormErrors(nextErrors);
@@ -254,10 +256,10 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
       setCountry("");
       setFormOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["children"] });
-      toast.success("Child created.");
+      toast.success(t("childrenCreated"));
     },
     onError: (error) => {
-      const apiFieldError = getApiFieldError(error, "Failed to create child.");
+      const apiFieldError = getApiFieldError(error, t("childrenCreateFailed"));
       setFormApiError(apiFieldError);
       toast.error(apiFieldError.message);
     },
@@ -304,10 +306,10 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
       setCountry("");
       setFormOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["children"] });
-      toast.success("Child updated.");
+      toast.success(t("childrenUpdated"));
     },
     onError: (error) => {
-      const apiFieldError = getApiFieldError(error, "Failed to update child.");
+      const apiFieldError = getApiFieldError(error, t("childrenUpdateFailed"));
       setFormApiError(apiFieldError);
       toast.error(apiFieldError.message);
     },
@@ -351,7 +353,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     return (children.data || []).filter((child) => {
       const fullName = `${child.firstName} ${child.lastName}`.toLowerCase();
       const ssnValue = (child.ssn || "").toLowerCase();
-      const statusValue = statusLabel[child.status].toLowerCase();
+      const statusValue = t(statusLabel[child.status]).toLowerCase();
       const parentsValue = (child.parents || [])
         .map((parent) => `${parent.parent?.firstName || ""} ${parent.parent?.lastName || ""}`.trim().toLowerCase())
         .join(" ");
@@ -380,7 +382,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
           setSearch(value);
           setPage(1);
         }}
-        placeholder="Search children by name, SSN, status, or parent..."
+        placeholder={t("childrenSearchPlaceholder")}
         actions={
           canAdminManage ? (
             <Button
@@ -405,7 +407,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
               }}
             >
               <UserPlus className="h-4 w-4" />
-              <span className="hidden md:inline">Create child</span>
+              <span className="hidden md:inline">{t("childrenCreate")}</span>
             </Button>
           ) : undefined
         }
@@ -465,14 +467,14 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {editingId ? <PencilLine className="h-4 w-4 text-slate-500" /> : <UserPlus className="h-4 w-4 text-slate-500" />}
-              <span>{editingId ? "Edit child" : "Create child"}</span>
+              <span>{editingId ? t("childrenEdit") : t("childrenCreate")}</span>
             </DialogTitle>
           </DialogHeader>
           <DialogBody className="space-y-3">
             <div className="grid gap-2 md:grid-cols-2">
               <div>
                 <Input
-                  placeholder="First name"
+                  placeholder={t("firstName")}
                   value={firstName}
                   onChange={(e) => {
                     setFirstName(e.target.value);
@@ -483,7 +485,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
               </div>
               <div>
                 <Input
-                  placeholder="Last name"
+                  placeholder={t("lastName")}
                   value={lastName}
                   onChange={(e) => {
                     setLastName(e.target.value);
@@ -494,7 +496,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
               </div>
               <div>
                 <Input
-                  placeholder="SSN"
+                  placeholder={t("ssn")}
                   value={ssn}
                   onChange={(e) => {
                     setSsn(e.target.value);
@@ -505,7 +507,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
               </div>
               <div>
                 <Input
-                  placeholder="Birth date (YYYY-MM-DD)"
+                  placeholder={t("childrenBirthDatePlaceholder")}
                   value={birthDate}
                   onChange={(e) => {
                     setBirthDate(e.target.value);
@@ -523,7 +525,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
                       clearFormError("communityId");
                     }}
                   >
-                    <option value="">Select community</option>
+                    <option value="">{t("childrenSelectCommunity")}</option>
                     {(communities.data || []).map((community) => (
                       <option key={community.id} value={community.id}>
                         {community.name}
@@ -535,7 +537,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
               ) : null}
               {canAdminManage ? (
                 <div className="flex items-center gap-3">
-                  <p className="text-sm font-medium text-slate-700">Nivo</p>
+                  <p className="text-sm font-medium text-slate-700">{t("childrenNivoLabel")}</p>
                   <NivoProgress nivo={nivo} showIndexLabel selectable onSelect={setNivo} />
                 </div>
               ) : null}
@@ -543,7 +545,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
                 <div className="md:col-span-2 rounded-md border border-border p-2">
                   <p className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-600">
                     <Users className="h-3.5 w-3.5" />
-                    <span>Parents (required, can be multiple)</span>
+                    <span>{t("childrenParentsRequiredLabel")}</span>
                   </p>
                   <ComboboxChips
                     multiple
@@ -556,12 +558,12 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
                         setFormApiError(null);
                       }
                     }}
-                    placeholder="Select parent(s)"
-                    emptyText="No parents found."
+                    placeholder={t("childrenSelectParents")}
+                    emptyText={t("childrenNoParentsFound")}
                   />
                   {formErrors.parentIds || formApiError?.field === "parentIds" ? (
                     <p className="mt-1 text-xs text-red-600">
-                      {formApiError?.field === "parentIds" ? formApiError.message : "At least one parent is required."}
+                      {formApiError?.field === "parentIds" ? formApiError.message : t("childrenParentsRequired")}
                     </p>
                   ) : null}
                 </div>
@@ -569,20 +571,20 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
               <div className="md:col-span-2 rounded-md border border-border p-2.5">
                 <p className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-slate-700">
                   <MapPin className="h-4 w-4 text-slate-500" />
-                  <span>Address (optional)</span>
+                  <span>{t("childrenAddressOptional")}</span>
                 </p>
                 <div className="grid gap-2 md:grid-cols-2">
                   <Input
-                    placeholder="Street line 1 (optional)"
+                    placeholder={t("childrenStreetLine1Optional")}
                     value={streetLine1}
                     onChange={(e) => {
                       setStreetLine1(e.target.value);
                       clearFormError("streetLine1");
                     }}
                   />
-                  <Input placeholder="Street line 2 (optional)" value={streetLine2} onChange={(e) => setStreetLine2(e.target.value)} />
+                  <Input placeholder={t("childrenStreetLine2Optional")} value={streetLine2} onChange={(e) => setStreetLine2(e.target.value)} />
                   <Input
-                    placeholder="Postal code (optional)"
+                    placeholder={t("childrenPostalCodeOptional")}
                     value={postalCode}
                     onChange={(e) => {
                       setPostalCode(e.target.value);
@@ -590,16 +592,16 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
                     }}
                   />
                   <Input
-                    placeholder="City (optional)"
+                    placeholder={t("childrenCityOptional")}
                     value={city}
                     onChange={(e) => {
                       setCity(e.target.value);
                       clearFormError("city");
                     }}
                   />
-                  <Input placeholder="State (optional)" value={stateValue} onChange={(e) => setStateValue(e.target.value)} />
+                  <Input placeholder={t("childrenStateOptional")} value={stateValue} onChange={(e) => setStateValue(e.target.value)} />
                   <Input
-                    placeholder="Country (optional)"
+                    placeholder={t("childrenCountryOptional")}
                     value={country}
                     onChange={(e) => {
                       setCountry(e.target.value);
@@ -620,7 +622,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
             ) : null}
             <Button variant="outline" onClick={() => setFormOpen(false)}>
               <X className="mr-1 h-4 w-4" />
-              Cancel
+              {t("cancel")}
             </Button>
             {editingId ? (
               <Button
@@ -632,7 +634,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
                 disabled={updateChild.isPending}
               >
                 <Save className="mr-1 h-4 w-4" />
-                Save child
+                {t("childrenSave")}
               </Button>
             ) : canAdminManage ? (
               <Button
@@ -644,7 +646,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
                 disabled={createChild.isPending || !canAdminManage}
               >
                 <UserPlus className="mr-1 h-4 w-4" />
-                Create child
+                {t("childrenCreate")}
               </Button>
             ) : null}
           </DialogFooter>
@@ -655,15 +657,15 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
         onOpenChange={(open) => {
           if (!open) setSelectedChild(null);
         }}
-        title={selectedChild ? `${selectedChild.firstName} ${selectedChild.lastName}` : "Child details"}
+        title={selectedChild ? `${selectedChild.firstName} ${selectedChild.lastName}` : t("childrenDetails")}
         headerMeta={
           selectedChild ? (
             <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
-              {statusLabel[selectedChild.status]}
+              {t(statusLabel[selectedChild.status])}
             </span>
           ) : undefined
         }
-        description="Child details"
+        description={t("childrenDetails")}
       >
         {selectedChild ? <ChildDetailsDrawerContent child={selectedChild} /> : null}
       </EntityDetailsDrawer>
@@ -672,13 +674,13 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
         onOpenChange={(open) => {
           if (!open) setDeletingChild(null);
         }}
-        title="Inactivate child"
+        title={t("childrenInactivateTitle")}
         description={
           deletingChild
-            ? `Set ${deletingChild.firstName} ${deletingChild.lastName} to INACTIVE?`
-            : "Set selected child to INACTIVE?"
+            ? t("childrenInactivateDescription", { name: `${deletingChild.firstName} ${deletingChild.lastName}` })
+            : t("childrenInactivateDescriptionFallback")
         }
-        confirmText="Set INACTIVE"
+        confirmText={t("childrenSetInactive")}
         submitting={inactivateChild.isPending}
         onConfirm={() => {
           if (!deletingChild) return;

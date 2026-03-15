@@ -4,6 +4,7 @@ import { PaginationControls } from "../common/components/pagination-controls";
 import { Loader } from "../common/components/loader";
 import { Button } from "../../components/ui/button";
 import { Pencil } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { NivoProgress } from "./nivo-progress";
 import { CHILD_STATUS, type ChildRecord, type ChildStatus } from "./types";
 
@@ -20,17 +21,33 @@ type ChildrenTableProps = {
   canDelete: boolean;
 };
 
-function childStatusBadge(status: ChildStatus) {
+function childStatusBadge(status: ChildStatus, t: (key: string) => string) {
   if (status === CHILD_STATUS.ACTIVE) {
-    return <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">Active</span>;
+    return (
+      <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+        {t("active")}
+      </span>
+    );
   }
   if (status === CHILD_STATUS.COMPLETED) {
-    return <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">Completed</span>;
+    return (
+      <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
+        {t("completed")}
+      </span>
+    );
   }
   if (status === CHILD_STATUS.DISCONTINUED) {
-    return <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">Discontinued</span>;
+    return (
+      <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+        {t("discontinued")}
+      </span>
+    );
   }
-  return <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">Inactive</span>;
+  return (
+    <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
+      {t("inactive")}
+    </span>
+  );
 }
 
 export function ChildrenTable({
@@ -45,6 +62,7 @@ export function ChildrenTable({
   canEdit,
   canDelete,
 }: ChildrenTableProps) {
+  const { t } = useTranslation();
   return (
     <>
       <DataTable
@@ -53,12 +71,12 @@ export function ChildrenTable({
         tableClassName="w-full min-w-[920px] border-collapse text-sm"
         headers={
           <>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">Name</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">Nivo</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">Parents</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">Status</th>
+            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableName")}</th>
+            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("childrenNivoLabel")}</th>
+            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("childrenParentsLabel")}</th>
+            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("status")}</th>
             <th className="w-[140px] whitespace-nowrap border-b border-border px-5 py-3.5 text-right font-medium">
-              <span className="sr-only">Actions</span>
+              <span className="sr-only">{t("usersTableActions")}</span>
             </th>
           </>
         }
@@ -79,9 +97,9 @@ export function ChildrenTable({
               {(child.parents || [])
                 .map((parent) => `${parent.parent?.firstName || ""} ${parent.parent?.lastName || ""}`.trim())
                 .filter(Boolean)
-                .join(", ") || "N/A"}
+                .join(", ") || t("na")}
             </td>
-            <td className="whitespace-nowrap px-5 py-3.5">{childStatusBadge(child.status)}</td>
+            <td className="whitespace-nowrap px-5 py-3.5">{childStatusBadge(child.status, t)}</td>
             <td className="w-[140px] whitespace-nowrap px-5 py-3.5 text-right align-middle">
               {canEdit && canDelete ? (
                 <EntityRowActions
@@ -97,7 +115,7 @@ export function ChildrenTable({
                       event.stopPropagation();
                       onEdit(child);
                     }}
-                    aria-label="Edit"
+                    aria-label={t("edit")}
                   >
                     <Pencil size={16} />
                   </Button>
@@ -109,14 +127,14 @@ export function ChildrenTable({
         {isLoading ? (
           <tr>
             <td className="px-5 py-10 text-center text-slate-500" colSpan={5}>
-              <Loader size="lg" text="Loading children..." className="justify-center" />
+              <Loader size="lg" text={t("childrenLoading")} className="justify-center" />
             </td>
           </tr>
         ) : null}
         {!children.length && !isLoading ? (
           <tr>
             <td className="px-5 py-10 text-center text-slate-500" colSpan={5}>
-              No children found.
+              {t("childrenNoResults")}
             </td>
           </tr>
         ) : null}
