@@ -48,14 +48,22 @@ This guide explains how to use the Mekteb App interface and core features.
 - If action is not available, your role likely has read-only access.
 - Lesson levels are standardized, so use consistent titles and level assignment.
 
-## 7) Data Quality Checklist
+## 7) Activity Reporting Workflow (Admin/Super Admin)
+
+- Save lecture attendance reports first (draft stage), then use `Complete lecture` from Activities table when the report is finalized.
+- Attendance entry is optimized for speed: by default all children are marked present, then you toggle off only absences.
+- Homework assignment in report modal is optional and lecture-level (single homework for the selected nivo report).
+- Use the `Homework queue` tab under Activities as a separate follow-up window: select `Nivo` + `Lecture`, then mark homework done child-by-child.
+- Parents and linked guardians see lecture/homework outcomes in dashboard and child history once reports are saved.
+
+## 8) Data Quality Checklist
 
 - Confirm spelling and names before saving records.
 - Avoid creating duplicate users, children, or lessons.
 - Re-check role and community assignment before creating users.
 - Confirm destructive actions in the delete confirmation dialog.
 
-## 8) Troubleshooting
+## 9) Troubleshooting
 
 - If you see "Forbidden", your role/community scope does not allow the action.
 - If data looks stale, refresh the page and retry.

@@ -38,12 +38,15 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   const [formApiError, setFormApiError] = useState<{ field?: string; message: string } | null>(null);
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
-  const { canAdminManage, canEditChildren, canInactivate, canChooseCommunity } = useRoleAccess();
+  const { canAdminManage, canEditChildren, canInactivate, canChooseCommunity, isParent, isUser, isBoardMember } =
+    useRoleAccess();
   const searchTerm = search.trim();
+  const mineOnly = isParent || isUser || isBoardMember;
   const children = useChildrenListQuery({
     search: searchTerm,
     page,
     pageSize: DEFAULT_PAGE_SIZE,
+    mineOnly,
   });
   const users = useChildrenParentOptionsQuery(canAdminManage);
   const communities = useChildrenCommunityOptionsQuery(canChooseCommunity);

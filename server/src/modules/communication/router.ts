@@ -1,4 +1,4 @@
-import { ChildStatus, NotificationType, Role } from "@prisma/client";
+import { ChildStatus, LectureStatus, NotificationType, Role } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
@@ -19,9 +19,90 @@ export function communicationRouter() {
   const lectureListQuerySchema = z.object({
     q: z.string().trim().min(1).optional(),
     nivo: z.coerce.number().int().min(1).max(5).optional(),
+    status: z.nativeEnum(LectureStatus).optional(),
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
   });
+  const homeworkListQuerySchema = z.object({
+    q: z.string().trim().min(1).optional(),
+    nivo: z.coerce.number().int().min(1).max(5).optional(),
+    done: z.coerce.number().int().min(0).max(1).optional(),
+    childId: z.string().optional(),
+    lectureId: z.string().optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  });
+  const toHomeworkKey = (childId: string, lessonId: string) => `${childId}::${lessonId}`;
+  const applyHomeworkStateToLecture = async <T extends { attendance: Array<{ childId: string; lessonId?: string | null }> }>(
+    lecture: T
+  ): Promise<T> => {
+    const lessonPairs = lecture.attendance
+      .filter((item) => Boolean(item.lessonId))
+      .map((item) => ({ childId: item.childId, lessonId: item.lessonId as string }));
+
+    if (!lessonPairs.length) {
+      return {
+        ...lecture,
+        attendance: lecture.attendance.map((item) => ({
+          ...item,
+          homeworkDone: null,
+          homeworkTitle: null,
+          homeworkDescription: null,
+        })),
+      };
+    }
+
+    const childIds = [...new Set(lessonPairs.map((item) => item.childId))];
+    const lessonIds = [...new Set(lessonPairs.map((item) => item.lessonId))];
+    const homeworkRows = await prisma.homework.findMany({
+      where: {
+        childId: { in: childIds },
+        lessonId: { in: lessonIds },
+      },
+      select: {
+        childId: true,
+        lessonId: true,
+        done: true,
+        title: true,
+        description: true,
+      },
+    });
+
+    const homeworkMap = new Map<string, { done: boolean; title: string; description: string | null }>();
+    for (const row of homeworkRows) {
+      homeworkMap.set(toHomeworkKey(row.childId, row.lessonId), {
+        done: row.done,
+        title: row.title,
+        description: row.description,
+      });
+    }
+
+    return {
+      ...lecture,
+      attendance: lecture.attendance.map((item) => {
+        if (!item.lessonId) {
+          return {
+            ...item,
+            homeworkDone: null,
+            homeworkTitle: null,
+            homeworkDescription: null,
+          };
+        }
+        const homework = homeworkMap.get(toHomeworkKey(item.childId, item.lessonId));
+        return {
+          ...item,
+          homeworkDone: homework?.done ?? null,
+          homeworkTitle: homework?.title ?? null,
+          homeworkDescription: homework?.description ?? null,
+        };
+      }),
+    };
+  };
+  const applyHomeworkStateToLectures = async <
+    T extends { attendance: Array<{ childId: string; lessonId?: string | null }> },
+  >(
+    lectures: T[]
+  ): Promise<T[]> => Promise.all(lectures.map((lecture) => applyHomeworkStateToLecture(lecture)));
 
   router.get("/posts", requireAuth, async (req: AppRequest, res) => {
     const where = req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId || undefined };
@@ -197,6 +278,7 @@ export function communicationRouter() {
     const where = {
       ...(req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId || undefined }),
       ...(query.data.nivo !== undefined ? { nivo: query.data.nivo } : {}),
+      ...(query.data.status ? { status: query.data.status } : {}),
       ...(searchTerm
         ? {
             OR: [
@@ -238,7 +320,8 @@ export function communicationRouter() {
           take: pageSize,
         }),
       ]);
-      return res.json({ items, total, page, pageSize });
+      const itemsWithHomework = await applyHomeworkStateToLectures(items);
+      return res.json({ items: itemsWithHomework, total, page, pageSize });
     }
 
     const lectures = await prisma.lecture.findMany({
@@ -246,7 +329,8 @@ export function communicationRouter() {
       include,
       orderBy: { createdAt: "desc" },
     });
-    return res.json(lectures);
+    const lecturesWithHomework = await applyHomeworkStateToLectures(lectures);
+    return res.json(lecturesWithHomework);
   });
 
   router.post(
@@ -259,6 +343,7 @@ export function communicationRouter() {
         topic: z.string().min(3).optional(),
         nivo: z.number().int().min(1).max(5),
         note: z.string().optional(),
+        markCompleted: z.boolean().optional(),
         communityId: z.string().optional(),
         attendance: z
           .array(
@@ -267,6 +352,8 @@ export function communicationRouter() {
               lessonId: z.string().optional(),
               present: z.boolean(),
               homeworkDone: z.boolean().optional(),
+              homeworkTitle: z.string().trim().optional(),
+              homeworkDescription: z.string().trim().optional(),
               comment: z.string().optional(),
             })
           )
@@ -284,6 +371,11 @@ export function communicationRouter() {
       return res.status(400).json({ message: "Each child can be reported only once per lecture" });
     }
     const lessonIds = [...new Set(payload.data.attendance.map((item) => item.lessonId).filter((id): id is string => Boolean(id)))];
+    const shouldMarkCompleted = payload.data.markCompleted === true;
+    if (shouldMarkCompleted && payload.data.attendance.some((item) => !item.lessonId)) {
+      return res.status(400).json({ message: "All attendance rows must include a lesson before completion" });
+    }
+    const lessonTitleById = new Map<string, string>();
     const children = await prisma.child.findMany({
       where: {
         id: { in: childIds },
@@ -301,43 +393,77 @@ export function communicationRouter() {
     if (lessonIds.length > 0) {
       const lessons = await prisma.lesson.findMany({
         where: { id: { in: lessonIds }, nivo: payload.data.nivo },
-        select: { id: true },
+        select: { id: true, title: true },
       });
       if (lessons.length !== lessonIds.length) {
         return res.status(400).json({ message: "Selected lessons must belong to the selected nivo" });
       }
+      for (const lesson of lessons) {
+        lessonTitleById.set(lesson.id, lesson.title);
+      }
     }
     const resolvedTopic = payload.data.topic?.trim() || `Nivo ${payload.data.nivo} activity report`;
 
-    const lecture = await prisma.lecture.create({
-      data: {
-        topic: resolvedTopic,
-        nivo: payload.data.nivo,
-        note: payload.data.note,
-        adminId: req.user!.id,
-        communityId: communityId!,
-        attendance: {
-          create: payload.data.attendance.map((item) => ({
-            childId: item.childId,
-            lessonId: item.lessonId,
-            present: item.present,
-            homeworkDone: item.homeworkDone,
-            comment: item.comment,
-          })),
+    const lecture = await prisma.$transaction(async (tx) => {
+      const createdLecture = await tx.lecture.create({
+        data: {
+          topic: resolvedTopic,
+          nivo: payload.data.nivo,
+          note: payload.data.note,
+          status: shouldMarkCompleted ? LectureStatus.COMPLETED : LectureStatus.DRAFT,
+          completedAt: shouldMarkCompleted ? new Date() : null,
+          adminId: req.user!.id,
+          communityId: communityId!,
+          attendance: {
+            create: payload.data.attendance.map((item) => ({
+              childId: item.childId,
+              lessonId: item.lessonId,
+              present: item.present,
+              comment: item.comment,
+            })),
+          },
         },
-      },
-      include: {
-        attendance: {
-          include: {
-            child: {
-              select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
-            },
-            lesson: {
-              select: { id: true, title: true, nivo: true },
+        include: {
+          attendance: {
+            include: {
+              child: {
+                select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
+              },
+              lesson: {
+                select: { id: true, title: true, nivo: true },
+              },
             },
           },
         },
-      },
+      });
+
+      const homeworkEntries = payload.data.attendance.filter(
+        (item): item is typeof item & { lessonId: string } =>
+          Boolean(item.lessonId) &&
+          (typeof item.homeworkDone === "boolean" ||
+            Boolean(item.homeworkTitle?.trim()) ||
+            Boolean(item.homeworkDescription?.trim()))
+      );
+      for (const entry of homeworkEntries) {
+        const homeworkTitle = entry.homeworkTitle?.trim() || lessonTitleById.get(entry.lessonId) || "Homework";
+        await tx.homework.upsert({
+          where: { childId_lessonId: { childId: entry.childId, lessonId: entry.lessonId } },
+          create: {
+            childId: entry.childId,
+            lessonId: entry.lessonId,
+            title: homeworkTitle,
+            description: entry.homeworkDescription?.trim() || null,
+            done: typeof entry.homeworkDone === "boolean" ? entry.homeworkDone : false,
+          },
+          update: {
+            title: homeworkTitle,
+            description: entry.homeworkDescription?.trim() || null,
+            ...(typeof entry.homeworkDone === "boolean" ? { done: entry.homeworkDone } : {}),
+          },
+        });
+      }
+
+      return createdLecture;
     });
 
     const parents = await prisma.parentChild.findMany({
@@ -354,7 +480,8 @@ export function communicationRouter() {
       })),
     });
 
-      return res.status(201).json(lecture);
+      const lectureWithHomework = await applyHomeworkStateToLecture(lecture);
+      return res.status(201).json(lectureWithHomework);
     }
   );
 
@@ -368,6 +495,7 @@ export function communicationRouter() {
         topic: z.string().min(3).optional(),
         nivo: z.number().int().min(1).max(5).optional(),
         note: z.string().optional(),
+        markCompleted: z.boolean().optional(),
         attendance: z
           .array(
             z.object({
@@ -375,6 +503,8 @@ export function communicationRouter() {
               lessonId: z.string().optional(),
               present: z.boolean(),
               homeworkDone: z.boolean().optional(),
+              homeworkTitle: z.string().trim().optional(),
+              homeworkDescription: z.string().trim().optional(),
               comment: z.string().optional(),
             })
           )
@@ -383,14 +513,19 @@ export function communicationRouter() {
       })
       .safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
-    const existing = await prisma.lecture.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.lecture.findUnique({
+      where: { id: req.params.id },
+      include: { attendance: { select: { lessonId: true } } },
+    });
     if (!existing) return res.status(404).json({ message: "Lecture not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
     const resolvedNivo = payload.data.nivo ?? existing.nivo;
     if (payload.data.attendance && !resolvedNivo) {
       return res.status(400).json({ message: "Nivo is required when updating attendance" });
     }
+    const shouldMarkCompleted = payload.data.markCompleted === true;
 
+    const lessonTitleById = new Map<string, string>();
     if (payload.data.attendance) {
       const providedChildIds = payload.data.attendance.map((item) => item.childId);
       const childIds = [...new Set(providedChildIds)];
@@ -416,11 +551,24 @@ export function communicationRouter() {
       if (lessonIds.length > 0) {
         const lessons = await prisma.lesson.findMany({
           where: { id: { in: lessonIds }, nivo: resolvedNivo! },
-          select: { id: true },
+          select: { id: true, title: true },
         });
         if (lessons.length !== lessonIds.length) {
           return res.status(400).json({ message: "Selected lessons must belong to the selected nivo" });
         }
+        for (const lesson of lessons) {
+          lessonTitleById.set(lesson.id, lesson.title);
+        }
+      }
+    }
+    if (shouldMarkCompleted) {
+      const rowsToValidate = payload.data.attendance ?? existing.attendance;
+      if (!rowsToValidate.length) {
+        return res.status(400).json({ message: "Lecture must have attendance records before completion" });
+      }
+      const hasMissingLesson = rowsToValidate.some((row) => !row.lessonId);
+      if (hasMissingLesson) {
+        return res.status(400).json({ message: "All attendance rows must include a lesson before completion" });
       }
     }
 
@@ -431,6 +579,8 @@ export function communicationRouter() {
           topic: payload.data.topic,
           nivo: payload.data.nivo,
           note: payload.data.note,
+          status: shouldMarkCompleted ? LectureStatus.COMPLETED : LectureStatus.DRAFT,
+          completedAt: shouldMarkCompleted ? new Date() : null,
         },
       });
 
@@ -442,10 +592,35 @@ export function communicationRouter() {
             childId: item.childId,
             lessonId: item.lessonId,
             present: item.present,
-            homeworkDone: item.homeworkDone,
             comment: item.comment,
           })),
         });
+
+        const homeworkEntries = payload.data.attendance.filter(
+          (item): item is typeof item & { lessonId: string } =>
+            Boolean(item.lessonId) &&
+            (typeof item.homeworkDone === "boolean" ||
+              Boolean(item.homeworkTitle?.trim()) ||
+              Boolean(item.homeworkDescription?.trim()))
+        );
+        for (const entry of homeworkEntries) {
+          const homeworkTitle = entry.homeworkTitle?.trim() || lessonTitleById.get(entry.lessonId) || "Homework";
+          await tx.homework.upsert({
+            where: { childId_lessonId: { childId: entry.childId, lessonId: entry.lessonId } },
+            create: {
+              childId: entry.childId,
+              lessonId: entry.lessonId,
+              title: homeworkTitle,
+              description: entry.homeworkDescription?.trim() || null,
+              done: typeof entry.homeworkDone === "boolean" ? entry.homeworkDone : false,
+            },
+            update: {
+              title: homeworkTitle,
+              description: entry.homeworkDescription?.trim() || null,
+              ...(typeof entry.homeworkDone === "boolean" ? { done: entry.homeworkDone } : {}),
+            },
+          });
+        }
 
         const childIds = [...new Set(payload.data.attendance.map((x) => x.childId))];
         const parents = await tx.parentChild.findMany({
@@ -481,9 +656,216 @@ export function communicationRouter() {
         },
       });
     });
-    return res.json(updated);
+    const updatedWithHomework = updated ? await applyHomeworkStateToLecture(updated) : updated;
+    return res.json(updatedWithHomework);
     }
   );
+
+  router.post(
+    "/lectures/:id/complete",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
+    async (req: AppRequest, res) => {
+      const existing = await prisma.lecture.findUnique({
+        where: { id: req.params.id },
+        include: { attendance: { select: { childId: true, lessonId: true } } },
+      });
+      if (!existing) return res.status(404).json({ message: "Lecture not found" });
+      if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
+      if (!existing.attendance.length) {
+        return res.status(400).json({ message: "Lecture must have attendance records before completion" });
+      }
+      const hasMissingLesson = existing.attendance.some((row) => !row.lessonId);
+      if (hasMissingLesson) {
+        return res.status(400).json({ message: "All attendance rows must include a lesson before completion" });
+      }
+      const completedLecture = await prisma.lecture.findUnique({
+        where: { id: req.params.id },
+        include: {
+          attendance: {
+            include: {
+              child: {
+                select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
+              },
+              lesson: {
+                select: { id: true, title: true, nivo: true },
+              },
+            },
+          },
+        },
+      });
+      if (!completedLecture) return res.status(404).json({ message: "Lecture not found" });
+      if (completedLecture.status === LectureStatus.COMPLETED) {
+        const hydrated = await applyHomeworkStateToLecture(completedLecture);
+        return res.json(hydrated);
+      }
+      const updated = await prisma.lecture.update({
+        where: { id: req.params.id },
+        data: {
+          status: LectureStatus.COMPLETED,
+          completedAt: new Date(),
+        },
+        include: {
+          attendance: {
+            include: {
+              child: {
+                select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
+              },
+              lesson: {
+                select: { id: true, title: true, nivo: true },
+              },
+            },
+          },
+        },
+      });
+      const hydrated = await applyHomeworkStateToLecture(updated);
+      return res.json(hydrated);
+    }
+  );
+
+  router.get("/homework", requireAuth, async (req: AppRequest, res) => {
+    const query = homeworkListQuerySchema.safeParse(req.query);
+    if (!query.success) return res.status(400).json({ message: "Invalid query parameters" });
+
+    const page = query.data.page ?? 1;
+    const pageSize = query.data.pageSize ?? 10;
+    const searchTerm = query.data.q?.trim();
+    const role = req.user!.role;
+    const isLinkedScopeRole = role === Role.PARENT || role === Role.USER || role === Role.BOARD_MEMBER;
+    const isSuperAdmin = role === Role.SUPER_ADMIN;
+
+    const linkedChildIds = isLinkedScopeRole
+      ? (
+          await prisma.parentChild.findMany({
+            where: { parentId: req.user!.id },
+            select: { childId: true },
+          })
+        ).map((row) => row.childId)
+      : [];
+    if (isLinkedScopeRole && linkedChildIds.length === 0) {
+      return res.json({ items: [], total: 0, page, pageSize });
+    }
+
+    let lecturePairFilter:
+      | {
+          OR: Array<{ childId: string; lessonId: string }>;
+        }
+      | undefined;
+    if (query.data.lectureId) {
+      const lecture = await prisma.lecture.findUnique({
+        where: { id: query.data.lectureId },
+        include: { attendance: { select: { childId: true, lessonId: true } } },
+      });
+      if (!lecture) return res.status(404).json({ message: "Lecture not found" });
+      if (!canAccessCommunity(req, lecture.communityId)) return res.status(403).json({ message: "Forbidden community" });
+
+      const pairs = lecture.attendance
+        .filter((row): row is { childId: string; lessonId: string } => Boolean(row.lessonId))
+        .map((row) => ({ childId: row.childId, lessonId: row.lessonId }));
+      if (!pairs.length) {
+        return res.json({ items: [], total: 0, page, pageSize });
+      }
+      lecturePairFilter = { OR: pairs };
+    }
+
+    const where = {
+      ...(typeof query.data.done === "number" ? { done: query.data.done === 1 } : {}),
+      ...(query.data.childId ? { childId: query.data.childId } : {}),
+      child: {
+        ...(isSuperAdmin ? {} : { communityId: req.user!.communityId || undefined }),
+        ...(query.data.nivo !== undefined ? { nivo: query.data.nivo } : {}),
+        ...(isLinkedScopeRole ? { id: { in: linkedChildIds } } : {}),
+      },
+      AND: [
+        ...(lecturePairFilter ? [lecturePairFilter] : []),
+        ...(searchTerm
+          ? [
+              {
+                OR: [
+                  { title: { contains: searchTerm, mode: "insensitive" as const } },
+                  { description: { contains: searchTerm, mode: "insensitive" as const } },
+                  { child: { firstName: { contains: searchTerm, mode: "insensitive" as const } } },
+                  { child: { lastName: { contains: searchTerm, mode: "insensitive" as const } } },
+                  { lesson: { title: { contains: searchTerm, mode: "insensitive" as const } } },
+                ],
+              },
+            ]
+          : []),
+      ],
+    };
+
+    const [total, items] = await prisma.$transaction([
+      prisma.homework.count({ where }),
+      prisma.homework.findMany({
+        where,
+        include: {
+          child: { select: { id: true, firstName: true, lastName: true, nivo: true } },
+          lesson: { select: { id: true, title: true, nivo: true } },
+        },
+        orderBy: [{ done: "asc" }, { updatedAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    return res.json({ items, total, page, pageSize });
+  });
+
+  router.patch("/homework/:childId/:lessonId", requireAuth, async (req: AppRequest, res) => {
+    const payload = z
+      .object({
+        done: z.boolean().optional(),
+        title: z.string().trim().min(1).optional(),
+        description: z.string().trim().optional(),
+      })
+      .safeParse(req.body);
+    if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+
+    const child = await prisma.child.findUnique({
+      where: { id: req.params.childId },
+      select: { id: true, firstName: true, communityId: true },
+    });
+    if (!child) return res.status(404).json({ message: "Child not found" });
+
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: req.params.lessonId },
+      select: { id: true, title: true },
+    });
+    if (!lesson) return res.status(404).json({ message: "Lesson not found" });
+
+    const role = req.user!.role;
+    if (role !== Role.SUPER_ADMIN && child.communityId !== req.user!.communityId) {
+      return res.status(403).json({ message: "Forbidden community" });
+    }
+    if (role === Role.PARENT || role === Role.USER || role === Role.BOARD_MEMBER) {
+      const linked = await prisma.parentChild.findUnique({
+        where: { parentId_childId: { parentId: req.user!.id, childId: req.params.childId } },
+      });
+      if (!linked) return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const updated = await prisma.homework.upsert({
+      where: { childId_lessonId: { childId: req.params.childId, lessonId: req.params.lessonId } },
+      create: {
+        childId: req.params.childId,
+        lessonId: req.params.lessonId,
+        done: payload.data.done ?? false,
+        title: payload.data.title || lesson.title || "Homework",
+        description: payload.data.description?.trim() || null,
+      },
+      update: {
+        ...(typeof payload.data.done === "boolean" ? { done: payload.data.done } : {}),
+        ...(payload.data.title !== undefined ? { title: payload.data.title } : {}),
+        ...(payload.data.description !== undefined ? { description: payload.data.description.trim() || null } : {}),
+      },
+      include: {
+        child: { select: { id: true, firstName: true, lastName: true, nivo: true } },
+        lesson: { select: { id: true, title: true, nivo: true } },
+      },
+    });
+
+    return res.json(updated);
+  });
 
   router.delete(
     "/lectures/:id",

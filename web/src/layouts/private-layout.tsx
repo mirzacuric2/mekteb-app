@@ -41,7 +41,8 @@ function PrivateLayoutShell() {
     session?.user.role === ROLE.ADMIN ||
     session?.user.role === ROLE.SUPER_ADMIN ||
     session?.user.role === ROLE.PARENT ||
-    session?.user.role === ROLE.USER;
+    session?.user.role === ROLE.USER ||
+    session?.user.role === ROLE.BOARD_MEMBER;
   const canManageCommunities =
     session?.user.role === ROLE.ADMIN ||
     session?.user.role === ROLE.SUPER_ADMIN ||

@@ -1,4 +1,5 @@
 import { LessonNivo } from "../lessons/constants";
+import { LectureStatus } from "../reporting/types";
 
 export const CHILD_STATUS = {
   ACTIVE: "ACTIVE",
@@ -42,12 +43,16 @@ export type ChildAttendanceRecord = {
   lessonId?: string | null;
   present: boolean;
   homeworkDone?: boolean | null;
+  homeworkTitle?: string | null;
+  homeworkDescription?: string | null;
   comment?: string | null;
   markedAt: string;
   lecture: {
     id: string;
     topic: string;
     nivo?: LessonNivo | null;
+    status: LectureStatus;
+    completedAt?: string | null;
     createdAt: string;
     updatedAt: string;
   };

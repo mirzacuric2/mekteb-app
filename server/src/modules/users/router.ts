@@ -36,6 +36,7 @@ export function usersRouter() {
     q: z.string().trim().min(1).optional(),
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    mine: z.coerce.number().int().min(0).max(1).optional(),
   });
   const MANAGEABLE_USER_ROLES = [Role.ADMIN, Role.BOARD_MEMBER, Role.PARENT] as const;
   const manageableUserRoleSchema = z.enum(MANAGEABLE_USER_ROLES);
@@ -46,6 +47,88 @@ export function usersRouter() {
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
   });
+  const toHomeworkKey = (childId: string, lessonId: string) => `${childId}::${lessonId}`;
+  const applyHomeworkStateToChildren = async <
+    T extends { attendance?: Array<{ childId: string; lessonId?: string | null }> },
+  >(
+    children: T[]
+  ): Promise<
+    Array<
+      T & {
+        attendance?: Array<{
+          childId: string;
+          lessonId?: string | null;
+          homeworkDone: boolean | null;
+          homeworkTitle: string | null;
+          homeworkDescription: string | null;
+        }>;
+      }
+    >
+  > => {
+    const lessonPairs = children.flatMap((child) =>
+      (child.attendance || [])
+        .filter((item) => Boolean(item.lessonId))
+        .map((item) => ({ childId: item.childId, lessonId: item.lessonId as string }))
+    );
+
+    if (!lessonPairs.length) {
+      return children.map((child) => ({
+        ...child,
+        attendance: (child.attendance || []).map((item) => ({
+          ...item,
+          homeworkDone: null,
+          homeworkTitle: null,
+          homeworkDescription: null,
+        })),
+      }));
+    }
+
+    const childIds = [...new Set(lessonPairs.map((item) => item.childId))];
+    const lessonIds = [...new Set(lessonPairs.map((item) => item.lessonId))];
+    const homeworkRows = await prisma.homework.findMany({
+      where: {
+        childId: { in: childIds },
+        lessonId: { in: lessonIds },
+      },
+      select: {
+        childId: true,
+        lessonId: true,
+        done: true,
+        title: true,
+        description: true,
+      },
+    });
+
+    const homeworkMap = new Map<string, { done: boolean; title: string; description: string | null }>();
+    for (const row of homeworkRows) {
+      homeworkMap.set(toHomeworkKey(row.childId, row.lessonId), {
+        done: row.done,
+        title: row.title,
+        description: row.description,
+      });
+    }
+
+    return children.map((child) => ({
+      ...child,
+      attendance: (child.attendance || []).map((item) => {
+        if (!item.lessonId) {
+          return {
+            ...item,
+            homeworkDone: null,
+            homeworkTitle: null,
+            homeworkDescription: null,
+          };
+        }
+        const homework = homeworkMap.get(toHomeworkKey(item.childId, item.lessonId));
+        return {
+          ...item,
+          homeworkDone: homework?.done ?? null,
+          homeworkTitle: homework?.title ?? null,
+          homeworkDescription: homework?.description ?? null,
+        };
+      }),
+    }));
+  };
 
   router.get("/users", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
     const query = usersListQuerySchema.safeParse(req.query);
@@ -343,9 +426,12 @@ export function usersRouter() {
     const page = query.data.page ?? 1;
     const pageSize = query.data.pageSize ?? 10;
     const searchTerm = query.data.q?.trim();
+    const mineOnly = query.data.mine === 1;
+    const isLinkedChildrenOnlyRole =
+      req.user!.role === Role.USER || req.user!.role === Role.PARENT || req.user!.role === Role.BOARD_MEMBER;
     const isSuperAdmin = req.user!.role === Role.SUPER_ADMIN;
     const requestorCommunityId = req.user!.communityId;
-    if (!isSuperAdmin && !requestorCommunityId) {
+    if (!isSuperAdmin && !isLinkedChildrenOnlyRole && !mineOnly && !requestorCommunityId) {
       return res.status(403).json({ message: "Community assignment required" });
     }
     const whereFilters = {
@@ -385,7 +471,15 @@ export function usersRouter() {
       attendance: {
         include: {
           lecture: {
-            select: { id: true, topic: true, nivo: true, createdAt: true, updatedAt: true },
+            select: {
+              id: true,
+              topic: true,
+              nivo: true,
+              status: true,
+              completedAt: true,
+              createdAt: true,
+              updatedAt: true,
+            },
           },
           lesson: {
             select: { id: true, title: true, nivo: true },
@@ -396,7 +490,7 @@ export function usersRouter() {
     };
     const childrenOrderBy = [{ status: "asc" as const }, { firstName: "asc" as const }, { lastName: "asc" as const }];
 
-    if (req.user!.role === Role.USER || req.user!.role === Role.PARENT) {
+    if (isLinkedChildrenOnlyRole || mineOnly) {
       const scopedWhere = {
         parents: { some: { parentId: req.user!.id } },
         ...whereFilters,
@@ -412,14 +506,16 @@ export function usersRouter() {
             take: pageSize,
           }),
         ]);
-        return res.json({ items, total, page, pageSize });
+        const itemsWithHomework = await applyHomeworkStateToChildren(items);
+        return res.json({ items: itemsWithHomework, total, page, pageSize });
       }
       const mine = await prisma.child.findMany({
         where: scopedWhere,
         include: childrenInclude,
         orderBy: childrenOrderBy,
       });
-      return res.json(mine);
+      const mineWithHomework = await applyHomeworkStateToChildren(mine);
+      return res.json(mineWithHomework);
     }
 
     const scopedWhere = isSuperAdmin ? whereFilters : { communityId: requestorCommunityId!, ...whereFilters };
@@ -434,14 +530,16 @@ export function usersRouter() {
           take: pageSize,
         }),
       ]);
-      return res.json({ items, total, page, pageSize });
+      const itemsWithHomework = await applyHomeworkStateToChildren(items);
+      return res.json({ items: itemsWithHomework, total, page, pageSize });
     }
     const items = await prisma.child.findMany({
       where: scopedWhere,
       include: childrenInclude,
       orderBy: childrenOrderBy,
     });
-    return res.json(items);
+    const itemsWithHomework = await applyHomeworkStateToChildren(items);
+    return res.json(itemsWithHomework);
   });
 
   router.post(

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NivoProgress } from "./nivo-progress";
 import { type ChildRecord } from "./types";
 import { formatDate, formatDateTime } from "../../lib/date-time";
+import { LECTURE_STATUS } from "../reporting/reporting.constants";
 
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -67,6 +68,14 @@ export function ChildDetailsDrawerContent({ child }: { child: ChildRecord }) {
                     <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-600">
                       <span>{item.present ? t("activityReportPresent") : t("activityReportAbsent")}</span>
                       <span>{item.homeworkDone ? t("activityReportHomeworkDone") : t("activityReportHomeworkNotDone")}</span>
+                      <span>
+                        {item.lecture.status === LECTURE_STATUS.COMPLETED
+                          ? t("activityReportStatusCompleted")
+                          : t("activityReportStatusDraft")}
+                      </span>
+                      {item.lecture.status === LECTURE_STATUS.COMPLETED && item.lecture.completedAt ? (
+                        <span>{t("activityReportCompletedAtShort", { date: formatDateTime(item.lecture.completedAt) })}</span>
+                      ) : null}
                     </div>
                     {item.comment ? <p className="mt-1 text-xs text-slate-700">{item.comment}</p> : null}
                   </div>

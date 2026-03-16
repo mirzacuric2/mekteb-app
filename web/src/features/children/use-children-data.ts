@@ -20,9 +20,10 @@ type ChildrenListParams = {
   search: string;
   page: number;
   pageSize: number;
+  mineOnly?: boolean;
 };
 
-export function useChildrenListQuery({ search, page, pageSize }: ChildrenListParams) {
+export function useChildrenListQuery({ search, page, pageSize, mineOnly }: ChildrenListParams) {
   return useAuthedQueryWithParams<ChildrenListResponse>(
     "children",
     "/children",
@@ -30,6 +31,7 @@ export function useChildrenListQuery({ search, page, pageSize }: ChildrenListPar
       page,
       pageSize,
       q: search.trim() || undefined,
+      mine: mineOnly ? 1 : undefined,
     },
     true
   );

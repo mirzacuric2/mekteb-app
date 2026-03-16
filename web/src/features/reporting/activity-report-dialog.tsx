@@ -15,6 +15,7 @@ import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER, LessonNivo } from "../lessons/con
 import { Lesson } from "../lessons/types";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { ActivityLecture } from "./types";
+import { LECTURE_STATUS } from "./reporting.constants";
 
 type ActivityReportDialogProps = {
   open: boolean;
@@ -24,27 +25,33 @@ type ActivityReportDialogProps = {
 };
 
 type ChildRowState = {
-  lessonId: string;
-  isAbsent: boolean;
-  homeworkDone: boolean;
+  present: boolean;
   comment: string;
-  lessonManuallyChanged: boolean;
 };
 
-type ChildRowErrors = Record<string, { lessonId?: string }>;
 const reportSchema = z.object({
   nivo: z.number().int().min(1).max(5),
+  defaultLessonId: z.string().trim().min(1, "Lesson is required."),
+  homeworkEnabled: z.boolean(),
+  homeworkTitle: z.string().trim(),
+  homeworkDescription: z.string().trim(),
   rows: z
     .array(
       z.object({
         childId: z.string(),
-        lessonId: z.string().trim().min(1, "Lesson is required."),
-        isAbsent: z.boolean(),
-        homeworkDone: z.boolean(),
+        present: z.boolean(),
         comment: z.string().trim(),
       })
     )
     .min(1, "At least one child is required."),
+}).superRefine((data, ctx) => {
+  if (data.homeworkEnabled && !data.homeworkTitle.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["homeworkTitle"],
+      message: "Homework title is required.",
+    });
+  }
 });
 
 export function ActivityReportDialog({ open, onOpenChange, editingActivity = null, onSaved }: ActivityReportDialogProps) {
@@ -63,9 +70,12 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
   });
   const lessonsQuery = useAuthedQuery<Lesson[]>("lessons", "/lessons", open);
   const [defaultLessonId, setDefaultLessonId] = useState("");
+  const [homeworkEnabled, setHomeworkEnabled] = useState(false);
+  const [homeworkTitle, setHomeworkTitle] = useState("");
+  const [homeworkDescription, setHomeworkDescription] = useState("");
+  const [markCompleted, setMarkCompleted] = useState(false);
   const [rows, setRows] = useState<Record<string, ChildRowState>>({});
-  const [fieldErrors, setFieldErrors] = useState<{ nivo?: string; rows?: string }>({});
-  const [rowErrors, setRowErrors] = useState<ChildRowErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<{ nivo?: string; defaultLessonId?: string; rows?: string; homeworkTitle?: string }>({});
 
   const activeChildrenForNivo = useMemo(() => childrenQuery.data || [], [childrenQuery.data]);
   const childrenForForm = useMemo(() => {
@@ -94,9 +104,12 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
   const resetForm = () => {
     setNivo("");
     setDefaultLessonId("");
+    setHomeworkEnabled(false);
+    setHomeworkTitle("");
+    setHomeworkDescription("");
+    setMarkCompleted(false);
     setRows({});
     setFieldErrors({});
-    setRowErrors({});
   };
 
   useEffect(() => {
@@ -106,9 +119,13 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
     }
     if (editingActivity) {
       setNivo(editingActivity.nivo || "");
-      setDefaultLessonId("");
+      setDefaultLessonId(editingActivity.attendance[0]?.lessonId || "");
+      const sampleHomework = editingActivity.attendance.find((entry) => Boolean(entry.homeworkTitle?.trim()));
+      setHomeworkEnabled(Boolean(sampleHomework));
+      setHomeworkTitle(sampleHomework?.homeworkTitle || "");
+      setHomeworkDescription(sampleHomework?.homeworkDescription || "");
+      setMarkCompleted(editingActivity.status === LECTURE_STATUS.COMPLETED);
       setFieldErrors({});
-      setRowErrors({});
     }
   }, [open, editingActivity]);
 
@@ -117,11 +134,8 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       const next: Record<string, ChildRowState> = {};
       for (const attendance of editingActivity.attendance) {
         next[attendance.childId] = {
-          lessonId: attendance.lessonId || defaultLessonId || "",
-          isAbsent: !attendance.present,
-          homeworkDone: attendance.homeworkDone || false,
+          present: attendance.present,
           comment: attendance.comment || "",
-          lessonManuallyChanged: false,
         };
       }
       setRows(next);
@@ -132,64 +146,42 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       for (const child of activeChildrenForNivo) {
         const existing = prev[child.id];
         next[child.id] = existing || {
-          lessonId: defaultLessonId,
-          isAbsent: false,
-          homeworkDone: false,
+          present: true,
           comment: "",
-          lessonManuallyChanged: false,
         };
       }
       return next;
     });
-  }, [activeChildrenForNivo, defaultLessonId, editingActivity]);
-
-  useEffect(() => {
-    if (editingActivity) return;
-    setRows((prev) => {
-      const next: Record<string, ChildRowState> = {};
-      for (const childId of Object.keys(prev)) {
-        const current = prev[childId];
-        next[childId] = current.lessonManuallyChanged
-          ? current
-          : {
-              ...current,
-              lessonId: defaultLessonId,
-            };
-      }
-      return next;
-    });
-  }, [defaultLessonId, editingActivity]);
+  }, [activeChildrenForNivo, editingActivity]);
 
   const saveActivityMutation = useMutation({
     mutationFn: async () => {
       const payloadRows = childrenForForm.map((child) => ({
         childId: child.id,
-        lessonId: rows[child.id]?.lessonId || "",
-        isAbsent: rows[child.id]?.isAbsent ?? false,
-        homeworkDone: rows[child.id]?.homeworkDone ?? false,
+        present: rows[child.id]?.present ?? true,
         comment: rows[child.id]?.comment || "",
       }));
       const parsed = reportSchema.safeParse({
         nivo: typeof nivo === "number" ? nivo : undefined,
+        defaultLessonId,
+        homeworkEnabled,
+        homeworkTitle,
+        homeworkDescription,
         rows: payloadRows,
       });
 
       if (!parsed.success) {
-        const nextFieldErrors: { nivo?: string; rows?: string } = {};
-        const nextRowErrors: ChildRowErrors = {};
+        const nextFieldErrors: { nivo?: string; defaultLessonId?: string; rows?: string; homeworkTitle?: string } = {};
         for (const issue of parsed.error.issues) {
-          const [field, index, nestedField] = issue.path;
+          const [field, index] = issue.path;
           if (field === "nivo") nextFieldErrors.nivo = t("activityReportNivoRequired");
-          if (field === "rows" && typeof index === "number" && nestedField === "lessonId") {
-            const childId = payloadRows[index]?.childId;
-            if (childId) nextRowErrors[childId] = { lessonId: issue.message };
-          }
+          if (field === "defaultLessonId") nextFieldErrors.defaultLessonId = t("activityReportLessonRequired");
+          if (field === "homeworkTitle") nextFieldErrors.homeworkTitle = t("activityReportHomeworkTitleRequired");
           if (field === "rows" && index === undefined) {
             nextFieldErrors.rows = issue.message;
           }
         }
         setFieldErrors(nextFieldErrors);
-        setRowErrors(nextRowErrors);
         throw new Error("validation_error");
       }
 
@@ -199,21 +191,25 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
               nivo: parsed.data.nivo,
               attendance: parsed.data.rows.map((row) => ({
                 childId: row.childId,
-                lessonId: row.lessonId,
-                present: !row.isAbsent,
-                homeworkDone: row.isAbsent ? false : row.homeworkDone,
+                lessonId: parsed.data.defaultLessonId,
+                present: row.present,
+                homeworkTitle: parsed.data.homeworkEnabled ? parsed.data.homeworkTitle.trim() : undefined,
+                homeworkDescription: parsed.data.homeworkEnabled ? parsed.data.homeworkDescription.trim() || undefined : undefined,
                 comment: row.comment.trim() || undefined,
               })),
+              markCompleted,
             })
           : api.post("/lectures", {
               nivo: parsed.data.nivo,
               attendance: parsed.data.rows.map((row) => ({
                 childId: row.childId,
-                lessonId: row.lessonId,
-                present: !row.isAbsent,
-                homeworkDone: row.isAbsent ? false : row.homeworkDone,
+                lessonId: parsed.data.defaultLessonId,
+                present: row.present,
+                homeworkTitle: parsed.data.homeworkEnabled ? parsed.data.homeworkTitle.trim() : undefined,
+                homeworkDescription: parsed.data.homeworkEnabled ? parsed.data.homeworkDescription.trim() || undefined : undefined,
                 comment: row.comment.trim() || undefined,
               })),
+              markCompleted,
             }))
       ).data;
     },
@@ -254,7 +250,7 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
           <DialogTitle>{isCreateMode ? t("activityReportCreateTitle") : t("activityReportEditTitle")}</DialogTitle>
         </DialogHeader>
         <DialogBody className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid md:grid-cols-2">
             <div>
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("childrenNivoLabel")}</p>
               <Select
@@ -264,8 +260,10 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
                   setNivo(selectedNivo);
                   setRows({});
                   setDefaultLessonId("");
-                  setFieldErrors((prev) => ({ ...prev, nivo: undefined }));
-                  setRowErrors({});
+                  setHomeworkEnabled(false);
+                  setHomeworkTitle("");
+                  setHomeworkDescription("");
+                  setFieldErrors((prev) => ({ ...prev, nivo: undefined, defaultLessonId: undefined }));
                 }}
               >
                 <option value="">{t("activityReportSelectNivo")}</option>
@@ -281,17 +279,50 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
           </div>
 
           <section className="rounded-md border border-border p-3">
-            <div className="min-w-[240px]">
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("activityReportDefaultLesson")}</p>
-              <Select value={defaultLessonId} onChange={(event) => setDefaultLessonId(event.target.value)} disabled={nivo === ""}>
-                <option value="">{t("activityReportSelectLesson")}</option>
-                {nivoLessons.map((lesson) => (
-                  <option key={lesson.id} value={lesson.id}>
-                    {lesson.title}
-                  </option>
-                ))}
-              </Select>
+            <div className="grid gap-3 md:grid-cols-2 md:items-center">
+              <div className="min-w-[240px]">
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("activityReportDefaultLesson")}</p>
+                <Select value={defaultLessonId} onChange={(event) => setDefaultLessonId(event.target.value)} disabled={nivo === ""}>
+                  <option value="">{t("activityReportSelectLesson")}</option>
+                  {nivoLessons.map((lesson) => (
+                    <option key={lesson.id} value={lesson.id}>
+                      {lesson.title}
+                    </option>
+                  ))}
+                </Select>
+                {fieldErrors.defaultLessonId ? <p className="mt-1 text-xs text-red-600">{fieldErrors.defaultLessonId}</p> : null}
+              </div>
+              <div className="flex items-center md:pt-6">
+                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                  <Switch checked={homeworkEnabled} onCheckedChange={(checked) => setHomeworkEnabled(checked === true)} />
+                  <span>{t("activityReportAssignHomeworkForLecture")}</span>
+                </label>
+              </div>
             </div>
+            {homeworkEnabled ? (
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-xs text-slate-500">{t("activityReportHomeworkTitle")}</p>
+                  <Input
+                    placeholder={t("activityReportHomeworkTitlePlaceholder")}
+                    value={homeworkTitle}
+                    onChange={(event) => {
+                      setHomeworkTitle(event.target.value);
+                      setFieldErrors((prev) => ({ ...prev, homeworkTitle: undefined }));
+                    }}
+                  />
+                  {fieldErrors.homeworkTitle ? <p className="mt-1 text-xs text-red-600">{fieldErrors.homeworkTitle}</p> : null}
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-slate-500">{t("activityReportHomeworkDescription")}</p>
+                  <Input
+                    placeholder={t("activityReportHomeworkDescriptionPlaceholder")}
+                    value={homeworkDescription}
+                    onChange={(event) => setHomeworkDescription(event.target.value)}
+                  />
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section className="space-y-2">
@@ -329,45 +360,11 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
                   return (
                     <div key={child.id} className="rounded-md border border-border p-3">
                       <div className="mb-2 text-sm font-medium text-slate-800">{`${child.firstName} ${child.lastName}`}</div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        <div>
-                          <p className="mb-1 text-xs text-slate-500">{t("activityReportLessonPerChild")}</p>
-                          <Select
-                            value={row?.lessonId || ""}
-                            onChange={(event) => {
-                              const nextLessonId = event.target.value;
-                              setRows((prev) => ({
-                                ...prev,
-                                [child.id]: {
-                                  ...(prev[child.id] || {
-                                    lessonId: "",
-                                    isAbsent: false,
-                                    homeworkDone: false,
-                                    comment: "",
-                                    lessonManuallyChanged: false,
-                                  }),
-                                  lessonId: nextLessonId,
-                                  lessonManuallyChanged: true,
-                                },
-                              }));
-                              setRowErrors((prev) => ({ ...prev, [child.id]: { lessonId: undefined } }));
-                            }}
-                          >
-                            <option value="">{t("activityReportSelectLesson")}</option>
-                            {nivoLessons.map((lesson) => (
-                              <option key={lesson.id} value={lesson.id}>
-                                {lesson.title}
-                              </option>
-                            ))}
-                          </Select>
-                          {rowErrors[child.id]?.lessonId ? (
-                            <p className="mt-1 text-xs text-red-600">{rowErrors[child.id]?.lessonId}</p>
-                          ) : null}
-                        </div>
-                        <div>
-                          <p className="mb-1 text-xs text-slate-500">{t("activityReportComment")}</p>
-                          <Input
-                            placeholder={t("activityReportCommentPlaceholder")}
+                      <div className="grid gap-2 md:grid-cols-3 md:items-start">
+                        <div className="md:col-span-2">
+                          <p className="mb-1 text-xs text-slate-500">{t("activityReportAttendanceComment")}</p>
+                          <textarea
+                            placeholder={t("activityReportAttendanceCommentPlaceholder")}
                             value={row?.comment || ""}
                             onChange={(event) => {
                               const nextComment = event.target.value;
@@ -375,66 +372,43 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
                                 ...prev,
                                 [child.id]: {
                                   ...(prev[child.id] || {
-                                    lessonId: "",
-                                    isAbsent: false,
-                                    homeworkDone: false,
+                                    present: true,
                                     comment: "",
-                                    lessonManuallyChanged: false,
                                   }),
                                   comment: nextComment,
                                 },
                               }));
                             }}
+                            rows={1}
+                            className="w-full resize-none overflow-y-auto rounded-md border border-input bg-white px-3 py-2 text-sm leading-5 outline-none ring-0 focus:border-ring min-h-[2.25rem] max-h-[6.25rem]"
                           />
                         </div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-4">
-                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                          <Switch
-                            checked={row?.isAbsent || false}
-                            onCheckedChange={(checked) => {
-                              const isChecked = checked === true;
-                              setRows((prev) => ({
-                                ...prev,
-                                [child.id]: {
-                                  ...(prev[child.id] || {
-                                    lessonId: "",
-                                    isAbsent: false,
-                                    homeworkDone: false,
-                                    comment: "",
-                                    lessonManuallyChanged: false,
-                                  }),
-                                  isAbsent: isChecked,
-                                  homeworkDone: isChecked ? false : prev[child.id]?.homeworkDone || false,
-                                },
-                              }));
-                            }}
-                          />
-                          <span>{t("activityReportAbsent")}</span>
-                        </label>
-                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                          <Switch
-                            checked={row?.homeworkDone || false}
-                            disabled={row?.isAbsent || false}
-                            onCheckedChange={(checked) => {
-                              const isChecked = checked === true;
-                              setRows((prev) => ({
-                                ...prev,
-                                [child.id]: {
-                                  ...(prev[child.id] || {
-                                    lessonId: "",
-                                    isAbsent: false,
-                                    homeworkDone: false,
-                                    comment: "",
-                                    lessonManuallyChanged: false,
-                                  }),
-                                  homeworkDone: isChecked,
-                                },
-                              }));
-                            }}
-                          />
-                          <span>{t("activityReportHomeworkDone")}</span>
-                        </label>
+                        <div className="md:col-span-1">
+                          <p className="mb-1 text-xs text-transparent hidden md:block" aria-hidden>
+                            {t("activityReportAttendanceComment")}
+                          </p>
+                          <div className="flex h-auto items-center md:h-10">
+                            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                              <Switch
+                                checked={row?.present ?? true}
+                                onCheckedChange={(checked) => {
+                                  const isChecked = checked === true;
+                                  setRows((prev) => ({
+                                    ...prev,
+                                    [child.id]: {
+                                      ...(prev[child.id] || {
+                                        present: true,
+                                        comment: "",
+                                      }),
+                                      present: isChecked,
+                                    },
+                                  }));
+                                }}
+                              />
+                              <span>{t("activityReportPresent")}</span>
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -443,17 +417,24 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
             )}
           </section>
         </DialogBody>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            {t("cancel")}
-          </Button>
-          <Button
-            type="button"
-            onClick={() => saveActivityMutation.mutate()}
-            disabled={saveDisabled}
-          >
-            {isCreateMode ? t("activityReportSubmit") : t("activityReportUpdate")}
-          </Button>
+        <DialogFooter className="flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700 sm:mr-auto">
+            <Switch checked={markCompleted} onCheckedChange={(checked) => setMarkCompleted(checked === true)} />
+            <span>{t("activityReportMarkCompletedOnSave")}</span>
+          </label>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full whitespace-nowrap sm:w-auto">
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => saveActivityMutation.mutate()}
+              disabled={saveDisabled}
+              className="w-full whitespace-nowrap sm:w-auto"
+            >
+              {isCreateMode ? t("activityReportSubmit") : t("activityReportUpdate")}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

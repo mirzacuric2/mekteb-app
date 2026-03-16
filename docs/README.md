@@ -84,6 +84,9 @@ This folder contains user-facing documentation for daily platform usage.
 - Users create/update form now follows the same modular pattern: schema module (`user-form-schema.ts`), form hook (`use-user-form.ts`), and dialog component (`user-form-dialog.tsx`) with `react-hook-form` submit flow.
 - `ADMIN` is scoped to own-community children for create/update/inactivate; `PARENT` sees only linked children and can edit child data except `community` and `nivo`.
 - Children listing is fail-closed for non-super-admin roles: if account has no community assignment, API returns `403` instead of widening scope.
+- `PARENT`/`USER` children listing is always parent-link scoped (`parents.some(parentId = currentUser)`), even when community assignment is missing; community-assignment `403` remains for non-parent-scoped roles.
+- Children list scope is role-enforced: `ADMIN`/`SUPER_ADMIN` keep management scope, while `BOARD_MEMBER`, `PARENT`, and `USER` always see only their linked children (`parents.some(parentId = currentUser)`), including UI list queries and backend route guards.
+- Sidebar children navigation is visible for `PARENT` and `BOARD_MEMBER` as well (in addition to admin roles) so family-linked users can open child lists directly.
 - In Users create/edit dialog, `ADMIN` can choose both `BOARD_MEMBER` and `PARENT` roles (while creating `ADMIN` remains super-admin only).
 - In Users create dialog, default selected role for `ADMIN` is `PARENT`.
 - Shared modal dialog layout is mobile-safe: dialogs render via portal to `document.body`, use flex + `margin: auto` centering (no percentage-based `min-h-full`), and constrain height with internal body scroll.
@@ -147,3 +150,33 @@ This folder contains user-facing documentation for daily platform usage.
 - Mobile header `Menu` trigger is slightly offset left for tighter visual proximity to the sidebar edge.
 - Mobile header `Menu` trigger follows the same horizontal content rail as the breadcrumb for cleaner alignment.
 - Sidebar container top padding is removed (`pt-0`) so the logo row aligns vertically with the sticky top header.
+- Parent dashboard now includes an initial progress overview card set (linked children, attendance rate, homework completion, latest activity) on the main dashboard landing section for `PARENT` users.
+- Progress overview cards are visible for child-following roles (`PARENT`, `USER`, `ADMIN`, and `BOARD_MEMBER`) so guardians and board-linked families can track lesson/homework progress.
+- Parent dashboard landing view is intentionally simplified for the first release to a compact 2-card overview: attendance percentage (based on a temporary 20-lesson target) and latest state (attendance, homework, comment), plus a small latest-state detail block.
+- Parent progress cards now include explicit child context labels (`Child` + `Lecture`) and state-aware visual cues: soft green when latest status is healthy, soft warning when latest status includes absence or homework not done.
+- Progress details card now renders a compact "latest status per child" list so all linked children are visible at once (including no-activity fallback per child).
+- Children overview dashboard now includes expanded KPI coverage (attendance %, homework completion %, overall state, and child-count/attention summary) plus per-child rows with lesson, attendance progress, homework status, and latest comment.
+- Progress overview cards use a parent-link scoped query mode (`GET /children?mine=1`) so users in broader roles (for example `ADMIN`) still see only their own linked children in this dashboard widget.
+- Homework persistence is split from attendance into dedicated `Homework` records keyed by `(childId, lessonId)` and now includes homework `title` and `description`. Activity reports still submit both `homeworkDone` and `comment`; comments remain per-attendance entry while homework state/details are stored per lesson-child and hydrated back into attendance responses for UI compatibility.
+- Activity report rows now separate attendance comment from homework metadata: `comment` stays attendance-scoped, while homework uses dedicated fields (`homeworkTitle`, `homeworkDescription`, `homeworkDone`) persisted in the `Homework` entity.
+- Parent progress metrics now aggregate across paginated child records (full linked-children scope) to improve accuracy for attendance/homework percentages.
+- Parent progress pagination respects backend query limits (`pageSize <= 100`) to avoid invalid query errors on `/children`.
+- Lectures now have explicit lifecycle status (`DRAFT`/`COMPLETED`) with `completedAt`; admins finalize reports via a dedicated "Complete lecture" action.
+- Reporting now includes a dedicated Homework Queue tab for follow-up, with role-scoped `/homework` list/update APIs and inline updates for `done`, `title`, and `description`.
+- Parent-facing progress/history surfaces lecture completion context and prioritizes completed lecture records for dashboard progress calculations.
+- Activity report modal now defaults attendance to present for all children, includes a bulk "mark all present" action, and supports optional lecture-level homework assignment (single homework title/description applied across the selected nivo report).
+- Homework follow-up flow is optimized for admins: in Activities > Homework queue, select `Nivo` and `Lecture`, then mark homework completion child-by-child.
+- Activity report UI is simplified: the attendance bulk-action strip is removed and the lecture-level homework switch is aligned inline with the default lesson section.
+- Homework queue filters now use the app-styled select controls and lecture selection includes both draft and completed lectures (status shown in option labels) to avoid empty-filter confusion.
+- Report modal now includes a `Save as completed report` checkbox, allowing admins to finalize directly on save (instead of always completing later from the Activities list).
+- Button component now renders a clearer visual disabled state (muted opacity + disabled hover) so disabled submit/actions are immediately recognizable.
+- Activity report modal mobile layout is refined: homework assignment row spacing is tighter and footer actions render in a balanced responsive layout (checkbox + clean cancel/save button grouping).
+- Activity report now uses one required main lesson selector for the whole report (per-child lesson selection removed) to keep reporting faster and less error-prone.
+- Activity report lesson label is clarified to `Lesson for this report` for a cleaner admin-facing form flow.
+- On desktop, each child row now places `Attendance comment` and `Present` controls on one line for faster scanning/editing.
+- Attendance comment field in activity report rows now uses a textarea to support longer notes.
+- Attendance comment layout is responsive: full width on mobile and ~2/3 width on desktop, with `Present` in the remaining column.
+- Attendance comment textarea is constrained for fast entry: minimum 1 line and maximum 3 visible lines (with internal scroll beyond that).
+- In desktop child rows, `Present` switch is vertically centered against the attendance comment textarea for cleaner alignment.
+- Activity report form vertical spacing is tightened (notably between `Nivo` and `Lesson for this report`) for a denser mobile-friendly layout.
+- Child-row mobile spacing is tightened further: `Present` switch sits directly under attendance comment without desktop-only spacer offsets.

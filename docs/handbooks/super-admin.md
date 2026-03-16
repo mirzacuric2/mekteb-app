@@ -16,6 +16,7 @@ SUPER_ADMIN has the highest access level across communities.
 - Reassign users to different communities.
 - Access all children, posts, messages, and notifications.
 - Create/update/delete lessons.
+- Use Activities workflows (reports, complete lecture, homework queue) across all communities when acting operationally.
 - Monitor platform-wide consistency for names, roles, and statuses.
 
 ## Recommended Workflow
@@ -24,7 +25,8 @@ SUPER_ADMIN has the highest access level across communities.
 2. Create community admins.
 3. Review user assignments and statuses.
 4. Maintain lesson definitions and naming consistency.
-5. Review notifications and support requests from admins.
+5. Review lecture completion and homework queue usage patterns in communities that need support.
+6. Review notifications and support requests from admins.
 
 ## Security and Governance
 

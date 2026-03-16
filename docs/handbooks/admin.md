@@ -27,8 +27,11 @@ ADMIN manages users and content within assigned community scope.
   - review all active children in that nivo,
   - preselect a default lesson and override per child when needed (default auto-applies; no extra apply button),
   - mark each child as absent/present,
-  - mark homework done and leave per-child comments (for warnings or progress notes).
-- Use the `Activities` page in sidebar to review saved reports in a table and trigger edit/delete actions.
+  - capture attendance comment separately from homework title/description/done state.
+- Use the `Activities` page in sidebar to review saved reports in a table and trigger edit/delete/complete actions.
+- Mark reports as `Completed` only when all attendance rows are final and each row has a lesson selected.
+- Use the `Homework queue` tab inside Activities for follow-up between lectures (bulk monitor pending homework and update done/title/description per child+lesson).
+- Homework queue follow-up is lecture-driven: select `Nivo` then `Lecture`, then mark homework done one child at a time.
 - Editing from the `Activities` page opens the report modal prefilled for update.
 - Submit one report to save attendance/progress details for all listed children in one action.
 - Send and receive messages.
@@ -46,9 +49,10 @@ ADMIN manages users and content within assigned community scope.
 
 1. Keep user records complete and active status correct.
 2. Keep children records and parent links up to date.
-3. Publish timely posts and bulk activity reports (attendance, lesson, homework, comments).
-4. Use messaging for direct parent communication.
-5. Review notifications and close pending communication loops.
+3. Save attendance reports as draft, then finalize with `Complete lecture` when ready.
+4. Use Homework queue daily to clear pending homework before the next lecture.
+5. Publish timely posts and use messaging for direct parent communication.
+6. Review notifications and close pending communication loops.
 
 ## Best Practices
 
@@ -59,7 +63,8 @@ ADMIN manages users and content within assigned community scope.
 ## Daily Checklist
 
 - Check new messages and reply to urgent questions.
-- Validate attendance updates before publishing.
+- Validate attendance updates before marking lecture completed.
+- Review pending rows in Homework queue and update done/title/description after parent/child follow-up.
 - Review warning comments after reporting and follow up with parents when needed.
 - Confirm new users are assigned to the correct community.
 - Review data for typos and missing required fields.
