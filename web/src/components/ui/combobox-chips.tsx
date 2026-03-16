@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -7,17 +7,19 @@ type ComboboxOption = {
   label: string;
 };
 
-type ComboboxChipsProps = {
-  options: ComboboxOption[];
+type ComboboxChipsProps<TOption extends ComboboxOption> = {
+  options: TOption[];
   values: string[];
   onChange: (nextValues: string[]) => void;
   placeholder?: string;
   emptyText?: string;
   multiple?: boolean;
   disabled?: boolean;
+  renderOption?: (option: TOption) => ReactNode;
+  renderSelectedOption?: (option: TOption) => ReactNode;
 };
 
-export function ComboboxChips({
+export function ComboboxChips<TOption extends ComboboxOption>({
   options,
   values,
   onChange,
@@ -25,7 +27,9 @@ export function ComboboxChips({
   emptyText = "No options found.",
   multiple = true,
   disabled = false,
-}: ComboboxChipsProps) {
+  renderOption,
+  renderSelectedOption,
+}: ComboboxChipsProps<TOption>) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -87,7 +91,7 @@ export function ComboboxChips({
               key={option.value}
               className="inline-flex items-center gap-1 rounded-full border border-border bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
             >
-              {option.label}
+              {renderSelectedOption ? renderSelectedOption(option) : option.label}
               <button
                 type="button"
                 className="text-slate-500 hover:text-slate-700"
@@ -123,7 +127,7 @@ export function ComboboxChips({
                       selected ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:bg-slate-50"
                     )}
                   >
-                    <span className="truncate">{option.label}</span>
+                    <span className="truncate">{renderOption ? renderOption(option) : option.label}</span>
                     {selected ? <Check className="h-4 w-4 text-primary" /> : null}
                   </button>
                 );

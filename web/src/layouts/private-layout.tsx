@@ -5,6 +5,7 @@ import {
   Bell,
   Building2,
   BookOpen,
+  ClipboardList,
   ClipboardPenLine,
   ChevronRight,
   CircleHelp,
@@ -21,9 +22,9 @@ import { DashboardSidebar } from "../components/layout/dashboard-sidebar";
 import { dashboardSections, isSectionKey, SectionKey } from "../features/dashboard/sections";
 import { useSession } from "../features/auth/session-context";
 import { Sidebar, SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "../components/ui/sidebar";
-import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { PrivateLayoutContext } from "./private-layout-context";
 import { ROLE } from "../types";
+import { ActivityReportDialog } from "../features/reporting/activity-report-dialog";
 
 function PrivateLayoutShell() {
   const { t, i18n } = useTranslation();
@@ -35,6 +36,7 @@ function PrivateLayoutShell() {
   const currentSegment = location.pathname.split("/").pop() || "posts";
   const canManageUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canReportActivities = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
+  const canManageActivities = canReportActivities;
   const canManageChildren =
     session?.user.role === ROLE.ADMIN ||
     session?.user.role === ROLE.SUPER_ADMIN ||
@@ -63,12 +65,16 @@ function PrivateLayoutShell() {
       navigate("/app/posts", { replace: true });
       return;
     }
+    if (currentSegment === "activities" && !canManageActivities) {
+      navigate("/app/posts", { replace: true });
+      return;
+    }
     if (currentSegment === "communities" && !canManageCommunities) {
       navigate("/app/posts", { replace: true });
       return;
     }
     setOpenMobile(false);
-  }, [canManageChildren, canManageCommunities, canManageUsers, currentSegment, navigate, setOpenMobile]);
+  }, [canManageActivities, canManageChildren, canManageCommunities, canManageUsers, currentSegment, navigate, setOpenMobile]);
 
   if (!session) return null;
 
@@ -81,6 +87,7 @@ function PrivateLayoutShell() {
     notifications: <Bell className="h-4 w-4 text-slate-500" />,
     users: <Users className="h-4 w-4 text-slate-500" />,
     children: <UserRound className="h-4 w-4 text-slate-500" />,
+    activities: <ClipboardList className="h-4 w-4 text-slate-500" />,
     lessons: <BookOpen className="h-4 w-4 text-slate-500" />,
     communities: <Building2 className="h-4 w-4 text-slate-500" />,
   }[activeKey];
@@ -91,6 +98,7 @@ function PrivateLayoutShell() {
       canManage,
       canManageUsers,
       canManageChildren,
+      canManageActivities,
       canPublishPosts,
       canCreateAdmin: session.user.role === ROLE.SUPER_ADMIN,
       canManageLessons: session.user.role === ROLE.SUPER_ADMIN,
@@ -98,7 +106,7 @@ function PrivateLayoutShell() {
       canCreateCommunities: session.user.role === ROLE.SUPER_ADMIN,
       canAssignCommunityAdmins: session.user.role === ROLE.SUPER_ADMIN,
     }),
-    [canManage, canManageChildren, canManageCommunities, canManageUsers, canPublishPosts, session.user.role]
+    [canManage, canManageActivities, canManageChildren, canManageCommunities, canManageUsers, canPublishPosts, session.user.role]
   );
 
   return (
@@ -111,6 +119,7 @@ function PrivateLayoutShell() {
             canManage={canManage}
             canManageUsers={canManageUsers}
             canManageChildren={canManageChildren}
+            canManageActivities={canManageActivities}
             canManageCommunities={canManageCommunities}
             initials={initials}
             fullName={`${session.user.firstName} ${session.user.lastName}`}
@@ -121,68 +130,68 @@ function PrivateLayoutShell() {
           />
         </Sidebar>
 
-        <SidebarInset className="h-full min-w-0 overflow-hidden px-3 pb-4 pt-0 md:px-6 md:pb-6 md:pt-0">
-          <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-[1120px] flex-col space-y-4">
-            <div className="sticky top-0 z-30 -mx-3 border-b border-border bg-white px-3 py-0 shadow-sm md:-mx-6 md:px-6 md:pl-3">
-              <div className="flex h-14 items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <SidebarTrigger className="md:hidden">Menu</SidebarTrigger>
+        <SidebarInset className="flex h-full min-w-0 flex-col overflow-hidden px-3 pb-4 pt-0 md:px-6 md:pb-6 md:pt-0">
+          <div className="sticky top-0 z-30 -mx-3 border-b border-border bg-white px-3 py-0 shadow-sm md:-mx-6 md:px-6 md:pl-3">
+            <div className="flex h-14 items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <SidebarTrigger className="md:hidden">Menu</SidebarTrigger>
+                <button
+                  type="button"
+                  aria-label="Toggle sidebar"
+                  className="hidden h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 md:ml-1 md:inline-flex"
+                  onClick={() => setOpen(!open)}
+                >
+                  <PanelLeft className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-2">
+                <div className="group relative">
                   <button
                     type="button"
-                    aria-label="Toggle sidebar"
-                    className="hidden h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 md:ml-1 md:inline-flex"
-                    onClick={() => setOpen(!open)}
+                    aria-label={t("notifications")}
+                    className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                    onClick={() => navigate("/app/notifications")}
                   >
-                    <PanelLeft className="h-5 w-5" />
+                    <Bell className="h-5 w-5" />
+                    <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                      3
+                    </span>
                   </button>
+                  <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    {t("notifications")}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 sm:gap-2">
-                  <div className="group relative">
-                    <button
-                      type="button"
-                      aria-label={t("notifications")}
-                      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                      onClick={() => navigate("/app/notifications")}
-                    >
-                      <Bell className="h-5 w-5" />
-                      <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
-                        3
-                      </span>
-                    </button>
-                    <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                      {t("notifications")}
+                <div className="group relative">
+                  <button
+                    type="button"
+                    aria-label={t("messages")}
+                    className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                    onClick={() => navigate("/app/messages")}
+                  >
+                    <Mail className="h-5 w-5" />
+                    <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                      5
                     </span>
-                  </div>
-                  <div className="group relative">
-                    <button
-                      type="button"
-                      aria-label={t("messages")}
-                      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                      onClick={() => navigate("/app/messages")}
-                    >
-                      <Mail className="h-5 w-5" />
-                      <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
-                        5
-                      </span>
-                    </button>
-                    <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                      {t("messages")}
-                    </span>
-                  </div>
-                  {canReportActivities ? (
-                    <Button
-                      type="button"
-                      className="ml-1 whitespace-nowrap"
-                      aria-label={t("reportActivities")}
-                      onClick={() => setIsQuickReportOpen(true)}
-                    >
-                      <ClipboardPenLine className="h-4 w-4" />
-                      <span className="hidden sm:inline">{t("reportActivities")}</span>
-                    </Button>
-                  ) : null}
+                  </button>
+                  <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    {t("messages")}
+                  </span>
                 </div>
+                {canReportActivities ? (
+                  <Button
+                    type="button"
+                    className="ml-1 whitespace-nowrap"
+                    aria-label={t("reportActivities")}
+                    onClick={() => setIsQuickReportOpen(true)}
+                  >
+                    <ClipboardPenLine className="h-4 w-4" />
+                    <span className="hidden sm:inline">{t("reportActivities")}</span>
+                  </Button>
+                ) : null}
               </div>
             </div>
+          </div>
+          <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[1120px] flex-1 flex-col space-y-4 pt-4">
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <House className="h-4 w-4 text-slate-500" />
               <button
@@ -208,23 +217,7 @@ function PrivateLayoutShell() {
           </div>
         </SidebarInset>
       </div>
-      <Dialog open={isQuickReportOpen} onOpenChange={setIsQuickReportOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Child progress reporting</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <p className="text-sm text-slate-600">
-              This modal will soon include reporting flows for child progress, comments, absences, and homeworks.
-            </p>
-          </DialogBody>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsQuickReportOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ActivityReportDialog open={isQuickReportOpen} onOpenChange={setIsQuickReportOpen} />
     </div>
   );
 }

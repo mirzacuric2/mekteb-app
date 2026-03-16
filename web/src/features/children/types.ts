@@ -36,6 +36,28 @@ export type ChildParent = {
   };
 };
 
+export type ChildAttendanceRecord = {
+  lectureId: string;
+  childId: string;
+  lessonId?: string | null;
+  present: boolean;
+  homeworkDone?: boolean | null;
+  comment?: string | null;
+  markedAt: string;
+  lecture: {
+    id: string;
+    topic: string;
+    nivo?: LessonNivo | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  lesson?: {
+    id: string;
+    title: string;
+    nivo: LessonNivo;
+  } | null;
+};
+
 export type ChildRecord = {
   id: string;
   firstName: string;
@@ -47,4 +69,12 @@ export type ChildRecord = {
   communityId: string;
   address?: ChildAddress | null;
   parents: ChildParent[];
+  attendance?: ChildAttendanceRecord[];
+};
+
+export type ChildrenListResponse = {
+  items: ChildRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
 };

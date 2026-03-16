@@ -2,6 +2,7 @@ export type PrivateLayoutContext = {
   canManage: boolean;
   canManageUsers: boolean;
   canManageChildren: boolean;
+  canManageActivities: boolean;
   canPublishPosts: boolean;
   canCreateAdmin: boolean;
   canManageLessons: boolean;

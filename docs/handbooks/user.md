@@ -14,6 +14,7 @@
 - View notifications related to your account.
 - Send messages to admin (depending on policy).
 - View your child-related data where available.
+- View child activity history entries with attendance (present/absent), lesson info, homework-done status, and admin comments.
 - Update your linked children details (for example name, SSN, birth date, address).
 - See child lifecycle state (`ACTIVE`, `COMPLETED`, `DISCONTINUED`, `INACTIVE`) in your children list.
 - Child edit modal validates entered values before save (for example valid birth date format and complete address fields when address is used).
@@ -32,7 +33,7 @@
 ## Recommended Workflow
 
 1. Check dashboard notifications regularly.
-2. Review recent posts and updates.
+2. Review recent posts and child activity updates.
 3. Use messages for questions to admin.
 4. Report account issues to admin quickly.
 5. Keep login credentials secure and updated.

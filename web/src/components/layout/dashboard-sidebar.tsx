@@ -1,6 +1,7 @@
 import { ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  ClipboardList,
   Bell,
   BookOpen,
   Building2,
@@ -33,6 +34,7 @@ type Props = {
   canManage: boolean;
   canManageUsers: boolean;
   canManageChildren: boolean;
+  canManageActivities: boolean;
   canManageCommunities: boolean;
   initials: string;
   fullName: string;
@@ -48,6 +50,7 @@ export function DashboardSidebar({
   canManage,
   canManageUsers,
   canManageChildren,
+  canManageActivities,
   canManageCommunities,
   initials,
   fullName,
@@ -71,6 +74,7 @@ export function DashboardSidebar({
     notifications: <Bell className="h-4 w-4 shrink-0" />,
     users: <Users className="h-4 w-4 shrink-0" />,
     children: <UserRound className="h-4 w-4 shrink-0" />,
+    activities: <ClipboardList className="h-4 w-4 shrink-0" />,
     lessons: <BookOpen className="h-4 w-4 shrink-0" />,
     communities: <Building2 className="h-4 w-4 shrink-0" />,
   };
@@ -132,6 +136,7 @@ export function DashboardSidebar({
                       section.group === "management" &&
                       ((section.key === "users" && canManageUsers) ||
                         (section.key === "children" && canManageChildren) ||
+                        (section.key === "activities" && canManageActivities) ||
                         (section.key === "communities" && canManageCommunities) ||
                         section.key === "lessons")
                   )
@@ -156,6 +161,7 @@ export function DashboardSidebar({
                     (section) =>
                       section.group === "management" &&
                       ((section.key === "children" && canManageChildren) ||
+                        (section.key === "activities" && canManageActivities) ||
                         (section.key === "communities" && canManageCommunities) ||
                         section.key === "lessons")
                   )

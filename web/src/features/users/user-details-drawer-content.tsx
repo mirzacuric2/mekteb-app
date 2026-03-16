@@ -4,6 +4,7 @@ import { Tabs } from "../../components/ui/tabs";
 import { NaValue } from "../common/components/na-value";
 import { UserAddressRecord, UserRecord } from "./users-table";
 import { LESSON_NIVO_LABEL, LessonNivo } from "../lessons/constants";
+import { formatDateTime } from "../../lib/date-time";
 
 type ChildSummary = {
   id: string;
@@ -80,10 +81,10 @@ export function UserDetailsDrawerContent({ user, communityName, children }: Prop
           <DetailRow label={t("community")} value={<NaValue value={communityName} />} />
           <DetailRow label={t("ssn")} value={<NaValue value={user.ssn} />} />
           {user.createdAt ? (
-            <DetailRow label={t("created")} value={new Date(user.createdAt).toLocaleString()} />
+            <DetailRow label={t("created")} value={formatDateTime(user.createdAt)} />
           ) : null}
           {user.updatedAt ? (
-            <DetailRow label={t("updated")} value={new Date(user.updatedAt).toLocaleString()} />
+            <DetailRow label={t("updated")} value={formatDateTime(user.updatedAt)} />
           ) : null}
         </Section>
       ) : null}

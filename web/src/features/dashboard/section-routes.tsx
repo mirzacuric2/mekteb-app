@@ -8,6 +8,7 @@ import { MessagesPanel } from "../messages/messages-panel";
 import { NotificationsPanel } from "../notifications/notifications-panel";
 import { HelpPanel } from "../help/help-panel";
 import { PrivateLayoutContext } from "../../layouts/private-layout-context";
+import { ActivitiesPanel } from "../reporting/activities-panel";
 
 export function PostsRoute() {
   const { canPublishPosts } = useOutletContext<PrivateLayoutContext>();
@@ -22,6 +23,11 @@ export function UsersRoute() {
 export function ChildrenRoute() {
   const { canManageChildren } = useOutletContext<PrivateLayoutContext>();
   return <ChildrenPanel canManage={canManageChildren} />;
+}
+
+export function ActivitiesRoute() {
+  const { canManageActivities } = useOutletContext<PrivateLayoutContext>();
+  return <ActivitiesPanel enabled={canManageActivities} />;
 }
 
 export function LessonsRoute() {

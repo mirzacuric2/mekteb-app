@@ -13,11 +13,14 @@ import { EntityDetailsDrawer } from "../common/components/entity-details-drawer"
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { EntityListToolbar } from "../common/components/entity-list-toolbar";
 import { StatusBadge } from "../common/components/status-badge";
-import { CommunityOption, UserFormDialog, UserFormValues } from "./user-form-dialog";
+import { CommunityOption, UserFormDialog } from "../users/user-form-dialog";
 import { UserDetailsDrawerContent } from "./user-details-drawer-content";
 import { UserRecord, UsersTable } from "./users-table";
 import { EditableRole, ROLE } from "../../types";
 import { LessonNivo } from "../lessons/constants";
+import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
+import { useUsersListQuery } from "./use-users-data";
+import { UserFormValues, UserStatus } from "./user-form-schema";
 
 type Props = { enabled: boolean; canCreateAdmin: boolean };
 
@@ -38,8 +41,6 @@ type UserAddressInput = {
   state?: string;
   country: string;
 };
-const PAGE_SIZE = 10;
-
 export function UsersPanel({ enabled, canCreateAdmin }: Props) {
   const { t } = useTranslation();
   const { session } = useSession();
@@ -51,7 +52,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserRecord | null>(null);
   const queryClient = useQueryClient();
-  const users = useAuthedQuery<UserRecord[]>("users", "/users", enabled);
+  const users = useUsersListQuery({ search, page, pageSize: DEFAULT_PAGE_SIZE }, enabled);
   const children = useAuthedQuery<ChildMetaRecord[]>("children-users-meta", "/children", enabled);
   const communities = useAuthedQuery<CommunityRecord[]>("communities-users", "/communities", enabled);
 
@@ -80,7 +81,8 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
       }
     }
 
-    return (users.data || []).map((user) => ({
+    const usersList = users.data?.items || [];
+    return usersList.map((user) => ({
       ...user,
       childrenCount: counts.get(user.id) || 0,
       communityName: user.communityId ? communityById.get(user.communityId) || null : null,
@@ -99,26 +101,8 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
     return lookup;
   }, [children.data]);
 
-  const filteredUsers = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return usersWithChildrenCount || [];
-
-    return (usersWithChildrenCount || []).filter((user) => {
-      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
-      return (
-        fullName.includes(term) ||
-        user.email.toLowerCase().includes(term) ||
-        user.role.toLowerCase().includes(term)
-      );
-    });
-  }, [search, usersWithChildrenCount]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedUsers = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredUsers.slice(start, start + PAGE_SIZE);
-  }, [currentPage, filteredUsers]);
+  const totalPages = Math.max(1, Math.ceil((users.data?.total || 0) / DEFAULT_PAGE_SIZE));
+  const currentPage = users.data?.page || page;
   const usersLoading = users.isLoading || children.isLoading || communities.isLoading;
 
   const getApiMessage = (error: unknown, fallback: string) => {
@@ -226,7 +210,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
       role: EditableRole;
       phoneNumber?: string;
       communityId?: string;
-      status: "ACTIVE" | "INACTIVE" | "PENDING";
+      status: UserStatus;
       address?: UserAddressInput;
     }) =>
       (
@@ -314,7 +298,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
           </div>
 
           <UsersTable
-            users={pagedUsers}
+            users={usersWithChildrenCount}
             isLoading={usersLoading}
             page={currentPage}
             totalPages={totalPages}
@@ -373,14 +357,14 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
                   }
                 : undefined
             }
-            onOpenChange={(open) => {
+            onOpenChange={(open: boolean) => {
               setFormOpen(open);
               if (!open) {
                 setEditingUser(null);
                 setFormApiError(null);
               }
             }}
-            onSubmit={(values) => {
+            onSubmit={(values: UserFormValues) => {
               if (editingUser) {
                 updateUser.mutate(
                   {

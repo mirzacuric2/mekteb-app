@@ -240,11 +240,12 @@ model Message {
 model Lecture {
   id        String   @id @default(uuid())
   topic     String
-  heldAt    DateTime
+  nivo      Int?
   note      String?
   adminId   String
   communityId String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   admin     User @relation(fields: [adminId], references: [id], onDelete: Cascade)
   community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
@@ -254,14 +255,19 @@ model Lecture {
 model Attendance {
   lectureId String
   childId   String
+  lessonId  String?
   present   Boolean
+  homeworkDone Boolean?
   comment   String?
   markedAt  DateTime @default(now())
 
   lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
   child   Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+  lesson  Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
 
   @@id([lectureId, childId])
+  @@index([childId, markedAt])
+  @@index([lessonId])
 }
 
 model Lesson {
@@ -270,6 +276,7 @@ model Lesson {
   nivo      Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  attendance Attendance[]
 
   @@unique([title, nivo])
 }

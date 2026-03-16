@@ -13,7 +13,6 @@ BOARD_MEMBER has elevated community access compared with parent/family roles.
 - View and manage your own community details (address/contact scope).
 - Manage community board members.
 - Create/update/delete posts in your community.
-- Create/update/delete lectures and attendance records.
 - Coordinate with admins on child updates and parent communication.
 
 ## What You Cannot Do
@@ -23,6 +22,7 @@ BOARD_MEMBER has elevated community access compared with parent/family roles.
 - Manage lessons catalog.
 - Perform cross-community privileged operations.
 - Create/update/inactivate children (admin-only workflow).
+- Create/update/delete lectures and attendance records (admin-only workflow).
 
 ## Recommended Workflow
 

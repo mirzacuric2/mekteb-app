@@ -377,7 +377,6 @@ async function main() {
     await prisma.lecture.create({
       data: {
         topic: seededLectureTopic,
-        heldAt: new Date(),
         note: "Good class focus.",
         adminId: admin.id,
         communityId: community.id,

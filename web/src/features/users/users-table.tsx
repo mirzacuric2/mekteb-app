@@ -6,6 +6,7 @@ import { StatusBadge } from "../common/components/status-badge";
 import { Loader } from "../common/components/loader";
 import { useTranslation } from "react-i18next";
 import { Role } from "../../types";
+import { UserStatus } from "./user-form-schema";
 
 type UserRole = Role;
 
@@ -29,7 +30,7 @@ export type UserRecord = {
   role: UserRole;
   communityId: string | null;
   communityName?: string | null;
-  status?: "ACTIVE" | "INACTIVE" | "PENDING";
+  status?: UserStatus;
   createdAt?: string;
   updatedAt?: string;
   childrenCount?: number;

@@ -30,12 +30,61 @@ export function usersRouter() {
   });
   const childSsnSchema = z.string().trim().min(10).max(20);
   const childNivoSchema = z.number().int().min(1).max(5);
+  const childListQuerySchema = z.object({
+    nivo: z.coerce.number().int().min(1).max(5).optional(),
+    status: z.nativeEnum(ChildStatus).optional(),
+    q: z.string().trim().min(1).optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  });
   const MANAGEABLE_USER_ROLES = [Role.ADMIN, Role.BOARD_MEMBER, Role.PARENT] as const;
   const manageableUserRoleSchema = z.enum(MANAGEABLE_USER_ROLES);
+  const usersListQuerySchema = z.object({
+    q: z.string().trim().min(1).optional(),
+    role: z.nativeEnum(Role).optional(),
+    status: z.nativeEnum(UserStatus).optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  });
 
   router.get("/users", requireAuth, requireRole(Role.ADMIN), async (req: AppRequest, res) => {
+    const query = usersListQuerySchema.safeParse(req.query);
+    if (!query.success) return res.status(400).json({ message: "Invalid query parameters" });
+    const shouldPaginate = query.data.page !== undefined || query.data.pageSize !== undefined;
+    const page = query.data.page ?? 1;
+    const pageSize = query.data.pageSize ?? 10;
+    const searchTerm = query.data.q?.trim();
+
+    const where = {
+      ...(req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId }),
+      ...(query.data.role ? { role: query.data.role } : {}),
+      ...(query.data.status ? { status: query.data.status } : {}),
+      ...(searchTerm
+        ? {
+            OR: [
+              { firstName: { contains: searchTerm, mode: "insensitive" as const } },
+              { lastName: { contains: searchTerm, mode: "insensitive" as const } },
+              { email: { contains: searchTerm, mode: "insensitive" as const } },
+              { ssn: { contains: searchTerm, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    if (shouldPaginate) {
+      const [total, items] = await prisma.$transaction([
+        prisma.user.count({ where }),
+        prisma.user.findMany({
+          where,
+          include: { address: true },
+          orderBy: { createdAt: "desc" },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ]);
+      return res.json({ items, total, page, pageSize });
+    }
     const users = await prisma.user.findMany({
-      where: req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId },
+      where,
       include: { address: true },
       orderBy: { createdAt: "desc" },
     });
@@ -288,38 +337,109 @@ export function usersRouter() {
   });
 
   router.get("/children", requireAuth, async (req: AppRequest, res) => {
-    if (req.user!.role === Role.USER || req.user!.role === Role.PARENT) {
-      const mine = await prisma.child.findMany({
-        where: { parents: { some: { parentId: req.user!.id } } },
-        include: {
-          address: true,
-          parents: {
-            include: {
-              parent: {
-                select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+    const query = childListQuerySchema.safeParse(req.query);
+    if (!query.success) return res.status(400).json({ message: "Invalid query parameters" });
+    const shouldPaginate = query.data.page !== undefined || query.data.pageSize !== undefined;
+    const page = query.data.page ?? 1;
+    const pageSize = query.data.pageSize ?? 10;
+    const searchTerm = query.data.q?.trim();
+    const isSuperAdmin = req.user!.role === Role.SUPER_ADMIN;
+    const requestorCommunityId = req.user!.communityId;
+    if (!isSuperAdmin && !requestorCommunityId) {
+      return res.status(403).json({ message: "Community assignment required" });
+    }
+    const whereFilters = {
+      ...(query.data.nivo !== undefined ? { nivo: query.data.nivo } : {}),
+      ...(query.data.status !== undefined ? { status: query.data.status } : {}),
+      ...(searchTerm
+        ? {
+            OR: [
+              { firstName: { contains: searchTerm, mode: "insensitive" as const } },
+              { lastName: { contains: searchTerm, mode: "insensitive" as const } },
+              { ssn: { contains: searchTerm, mode: "insensitive" as const } },
+              {
+                parents: {
+                  some: {
+                    parent: {
+                      OR: [
+                        { firstName: { contains: searchTerm, mode: "insensitive" as const } },
+                        { lastName: { contains: searchTerm, mode: "insensitive" as const } },
+                      ],
+                    },
+                  },
+                },
               },
-            },
+            ],
+          }
+        : {}),
+    };
+    const childrenInclude = {
+      address: true,
+      parents: {
+        include: {
+          parent: {
+            select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
           },
-          attendance: true,
         },
-        orderBy: [{ status: "asc" }, { firstName: "asc" }, { lastName: "asc" }],
+      },
+      attendance: {
+        include: {
+          lecture: {
+            select: { id: true, topic: true, nivo: true, createdAt: true, updatedAt: true },
+          },
+          lesson: {
+            select: { id: true, title: true, nivo: true },
+          },
+        },
+        orderBy: { markedAt: "desc" as const },
+      },
+    };
+    const childrenOrderBy = [{ status: "asc" as const }, { firstName: "asc" as const }, { lastName: "asc" as const }];
+
+    if (req.user!.role === Role.USER || req.user!.role === Role.PARENT) {
+      const scopedWhere = {
+        parents: { some: { parentId: req.user!.id } },
+        ...whereFilters,
+      };
+      if (shouldPaginate) {
+        const [total, items] = await prisma.$transaction([
+          prisma.child.count({ where: scopedWhere }),
+          prisma.child.findMany({
+            where: scopedWhere,
+            include: childrenInclude,
+            orderBy: childrenOrderBy,
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
+        ]);
+        return res.json({ items, total, page, pageSize });
+      }
+      const mine = await prisma.child.findMany({
+        where: scopedWhere,
+        include: childrenInclude,
+        orderBy: childrenOrderBy,
       });
       return res.json(mine);
     }
 
+    const scopedWhere = isSuperAdmin ? whereFilters : { communityId: requestorCommunityId!, ...whereFilters };
+    if (shouldPaginate) {
+      const [total, items] = await prisma.$transaction([
+        prisma.child.count({ where: scopedWhere }),
+        prisma.child.findMany({
+          where: scopedWhere,
+          include: childrenInclude,
+          orderBy: childrenOrderBy,
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ]);
+      return res.json({ items, total, page, pageSize });
+    }
     const items = await prisma.child.findMany({
-      where: req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId || undefined },
-      include: {
-        address: true,
-        parents: {
-          include: {
-            parent: {
-              select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
-            },
-          },
-        },
-      },
-      orderBy: [{ status: "asc" }, { firstName: "asc" }, { lastName: "asc" }],
+      where: scopedWhere,
+      include: childrenInclude,
+      orderBy: childrenOrderBy,
     });
     return res.json(items);
   });
@@ -360,11 +480,10 @@ export function usersRouter() {
     }
 
     const uniqueParentIds = [...new Set(payload.data.parentIds)];
-    const allowedParentRoles = [Role.PARENT, Role.USER];
     const parents = await prisma.user.findMany({
       where: {
         id: { in: uniqueParentIds },
-        role: { in: allowedParentRoles },
+        role: { not: Role.SUPER_ADMIN },
         communityId,
       },
       select: { id: true },
@@ -540,11 +659,10 @@ export function usersRouter() {
 
     if (!isParentScoped && payload.data.parentIds) {
       const uniqueParentIds = [...new Set(payload.data.parentIds)];
-      const allowedParentRoles = [Role.PARENT, Role.USER];
       const parents = await prisma.user.findMany({
         where: {
           id: { in: uniqueParentIds },
-          role: { in: allowedParentRoles },
+          role: { not: Role.SUPER_ADMIN },
           communityId: targetCommunityId,
         },
         select: { id: true },

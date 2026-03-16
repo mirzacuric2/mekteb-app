@@ -8,3 +8,19 @@ export function useAuthedQuery<T>(key: string, path: string, enabled: boolean) {
     enabled,
   });
 }
+
+type QueryParams = Record<string, string | number | boolean | undefined>;
+
+export function useAuthedQueryWithParams<T>(
+  key: string,
+  path: string,
+  params: QueryParams,
+  enabled: boolean
+) {
+  return useQuery<T>({
+    queryKey: [key, params],
+    queryFn: async () => (await api.get(path, { params })).data,
+    enabled,
+    placeholderData: (previousData) => previousData,
+  });
+}

@@ -64,11 +64,28 @@ This folder contains user-facing documentation for daily platform usage.
 - Parent assignment in child modal uses searchable multi-select combobox (scales for large parent lists).
 - Child address fields are grouped in a dedicated address card section inside the modal.
 - Child records support optional address, multi-parent links, and lifecycle statuses (`ACTIVE`, `COMPLETED`, `DISCONTINUED`, `INACTIVE`).
+- In child create/update modal, parent multi-select includes `PENDING`, `ACTIVE`, and `INACTIVE` parent accounts (status shown in option labels).
+- Parent status in child parent-selector is rendered using the shared status badge style (same badge pattern as other management views).
+- Child parent linking accepts all users except `SUPER_ADMIN` (including `ADMIN`, `BOARD_MEMBER`, `PARENT`, and `USER`).
 - Child creation defaults status to `ACTIVE`; completion is tracked separately from inactivation.
 - Child delete action uses soft-delete and sets status to `INACTIVE` (with confirmation dialog).
 - Child create/update actions now show user feedback toasts for success and API errors.
 - Child create/update modal uses Zod-based validation for full payload checks on submit attempt (required SSN, names, birth date format, required community/parents by role, and partial-address completion), with inline field errors.
+- Child create/update modal now uses `react-hook-form` (`useForm`) with semantic form submission (`<form onSubmit>`), keeping validation and save flow consistent through one submit handler.
+- Child role/access booleans in management views are centralized via shared auth hook (`web/src/features/auth/use-role-access.ts`) to avoid duplicated role checks.
+- List pagination math is centralized via shared hook (`web/src/features/common/use-pagination.ts`) and reused across children/users/activities panels.
+- Table pagination also shares a common default page size constant (`DEFAULT_PAGE_SIZE`) from the same pagination module.
+- Children listing now uses backend search + pagination (`GET /children` with `q`, `page`, `pageSize`) so filtering/scaling stays server-side and role-scoped.
+- Users listing now uses backend search + pagination (`GET /users` with `q`, `page`, `pageSize`) as the standard list contract.
+- Activities listing now uses backend search + pagination (`GET /lectures` with `q`, `page`, `pageSize`) as the same standard list contract.
+- Children feature now separates API concerns into dedicated hooks: data-fetch hooks (`use-children-data.ts`) and mutation hooks (`use-children-mutations.ts`).
+- Reusable query-param data hooks are now available for users/children fetch flows (`use-users-data.ts`, `use-children-data.ts`) to support shared list/options retrieval in forms.
+- Children create/update form is now split into reusable pieces: schema module (`child-form-schema.ts`), form hook (`use-child-form.ts`), and dialog component (`child-form-dialog.tsx`) to keep panel components small.
+- Users create/update form now follows the same modular pattern: schema module (`user-form-schema.ts`), form hook (`use-user-form.ts`), and dialog component (`user-form-dialog.tsx`) with `react-hook-form` submit flow.
 - `ADMIN` is scoped to own-community children for create/update/inactivate; `PARENT` sees only linked children and can edit child data except `community` and `nivo`.
+- Children listing is fail-closed for non-super-admin roles: if account has no community assignment, API returns `403` instead of widening scope.
+- In Users create/edit dialog, `ADMIN` can choose both `BOARD_MEMBER` and `PARENT` roles (while creating `ADMIN` remains super-admin only).
+- In Users create dialog, default selected role for `ADMIN` is `PARENT`.
 - Shared modal dialog layout is mobile-safe: dialogs render via portal to `document.body`, use flex + `margin: auto` centering (no percentage-based `min-h-full`), and constrain height with internal body scroll.
 - `Dialog` centering uses `display: flex` on the viewport overlay with `margin: auto` on `DialogContent`.
 - `Dialog` backdrop uses `position: fixed` (independent of the flex layout) so it always covers the full viewport.
@@ -110,6 +127,22 @@ This folder contains user-facing documentation for daily platform usage.
 - In collapsed sidebar mode, clicking the active-language badge opens a compact popover with other language options so users can switch language without expanding the sidebar.
 - Header actions are ordered with notifications/messages first and `Report activities` anchored as the rightmost action.
 - On mobile, the report button has extra separation from notification/message icons for clearer touch-friendly spacing.
+- `Report activities` now opens a full bulk-report dialog for `ADMIN`/`SUPER_ADMIN`: select `Nivo`, load active children, choose a default lesson, override lesson per child, mark absence, mark homework done, and add comments before saving one lecture report for all children.
+- In bulk report modal, children are fetched only after a `Nivo` is explicitly selected (no preloading before nivo choice).
+- A dedicated `Activities` management page is available in sidebar navigation for `ADMIN`/`SUPER_ADMIN`, showing report records in a table with search, pagination, and row actions.
+- Activity CRUD is split by intent: create/update uses the report modal, while list/delete/edit discovery lives on the `Activities` page.
+- `Activities` page no longer shows a create button; new reports are created only via header `Report activities`.
+- Activity report dialog titles are now localized with separate create/edit labels for `en`, `sv`, and `bs`.
+- Date/time rendering now uses shared web utility helpers (`web/src/lib/date-time.ts`) for consistent formatting across activities and detail drawers.
+- ISO date validation (`isValidIsoDateString`) is shared in `web/src/lib/date-time.ts` and reused by child form schema validation.
+- Editing an activity from the `Activities` page opens the report modal prefilled and updates stored lecture attendance rows (lesson, absence/presence, homework, comments) in one save.
+- Activity timestamps now follow standard audit fields (`createdAt`, `updatedAt`); `heldAt` is removed from lecture read/write flows.
+- Bulk report modal uses a streamlined flow: no report title/date/general note fields; backend auto-generates report topic and timestamp.
+- In report modal, every field except `Nivo` stays disabled until `Nivo` is selected.
+- Bulk activity reports persist per-child attendance details (`present/absent`, `homeworkDone`, `comment`, optional per-child `lessonId`) and are visible in each child details drawer under activity history.
+- Per-child `Absent` / `Homework done` inputs in the report dialog now use switch controls (shadcn-style UI component).
+- Lecture/activity-report mutations are now restricted to `ADMIN` and `SUPER_ADMIN` (board members are read-only for this flow).
+- Bulk report saves trigger parent notifications (`ATTENDANCE_UPDATED`) so families can follow progress and react early to warning comments.
 - Desktop collapse/expand sidebar icon in the header uses slight left offset (`ml`) while keeping icon centered inside its hover circle.
 - Mobile header `Menu` trigger is slightly offset left for tighter visual proximity to the sidebar edge.
 - Mobile header `Menu` trigger follows the same horizontal content rail as the breadcrumb for cleaner alignment.
