@@ -5,15 +5,11 @@ import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { useAuthedQuery } from "../common/use-authed-query";
-import { useRoleAccess } from "../auth/use-role-access";
-import { ProgressOverviewCards } from "../dashboard/progress-overview-cards";
 
 type Props = { canPublish: boolean };
 
 export function PostsPanel({ canPublish }: Props) {
   const posts = useAuthedQuery<any[]>("posts", "/posts", true);
-  const { isParent, isAdmin, isUser, isBoardMember } = useRoleAccess();
-  const canSeeProgressDashboard = isParent || isAdmin || isUser || isBoardMember;
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -54,7 +50,6 @@ export function PostsPanel({ canPublish }: Props) {
 
   return (
     <div className="space-y-4">
-      {canSeeProgressDashboard ? <ProgressOverviewCards enabled /> : null}
       <Card className="space-y-4">
         <h3 className="text-lg font-semibold">Posts</h3>
         {canPublish ? (

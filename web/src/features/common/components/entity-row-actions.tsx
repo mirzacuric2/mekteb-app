@@ -9,6 +9,7 @@ type EntityRowActionsProps = {
 
 export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
   const [open, setOpen] = useState(false);
+  const [mobileMenuDirection, setMobileMenuDirection] = useState<"up" | "down">("down");
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -56,6 +57,13 @@ export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
           aria-label="More actions"
           onClick={(event) => {
             event.stopPropagation();
+            if (!open && rootRef.current) {
+              const rect = rootRef.current.getBoundingClientRect();
+              const estimatedMenuHeight = 96;
+              const spaceAbove = rect.top;
+              const spaceBelow = window.innerHeight - rect.bottom;
+              setMobileMenuDirection(spaceBelow >= estimatedMenuHeight || spaceBelow >= spaceAbove ? "down" : "up");
+            }
             setOpen((prev) => !prev);
           }}
         >
@@ -63,7 +71,9 @@ export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
         </Button>
         {open ? (
           <div
-            className="absolute right-0 z-30 mt-1 min-w-[130px] rounded-md border border-border bg-white p-1 shadow-lg"
+            className={`absolute right-0 z-30 min-w-[130px] rounded-md border border-border bg-white p-1 shadow-lg ${
+              mobileMenuDirection === "up" ? "bottom-full mb-1" : "top-full mt-1"
+            }`}
             onClick={(event) => event.stopPropagation()}
           >
             <button

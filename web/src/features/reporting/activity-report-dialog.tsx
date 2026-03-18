@@ -14,7 +14,7 @@ import { CHILD_STATUS, ChildRecord } from "../children/types";
 import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER, LessonNivo } from "../lessons/constants";
 import { Lesson } from "../lessons/types";
 import { useAuthedQuery } from "../common/use-authed-query";
-import { ActivityLecture } from "./types";
+import { ActivitiesListResponse, ActivityLecture } from "./types";
 import { LECTURE_STATUS } from "./reporting.constants";
 
 type ActivityReportDialogProps = {
@@ -69,6 +69,21 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       ).data,
   });
   const lessonsQuery = useAuthedQuery<Lesson[]>("lessons", "/lessons", open);
+  const draftLecturesQuery = useQuery<ActivitiesListResponse>({
+    queryKey: ["activity-report-drafts", nivo],
+    enabled: open && !editingActivity && typeof nivo === "number",
+    queryFn: async () =>
+      (
+        await api.get("/lectures", {
+          params: {
+            nivo,
+            status: LECTURE_STATUS.DRAFT,
+            page: 1,
+            pageSize: 100,
+          },
+        })
+      ).data,
+  });
   const [defaultLessonId, setDefaultLessonId] = useState("");
   const [homeworkEnabled, setHomeworkEnabled] = useState(false);
   const [homeworkTitle, setHomeworkTitle] = useState("");
@@ -76,12 +91,25 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
   const [markCompleted, setMarkCompleted] = useState(false);
   const [rows, setRows] = useState<Record<string, ChildRowState>>({});
   const [fieldErrors, setFieldErrors] = useState<{ nivo?: string; defaultLessonId?: string; rows?: string; homeworkTitle?: string }>({});
+  const [autoDraftActivity, setAutoDraftActivity] = useState<ActivityLecture | null>(null);
+
+  const effectiveEditingActivity = editingActivity || autoDraftActivity;
+  const draftItems = draftLecturesQuery.data?.items || [];
+  const draftCountForNivo = draftItems.length;
+  const matchedDraftForLesson = useMemo(() => {
+    if (editingActivity || typeof nivo !== "number" || !defaultLessonId) return null;
+    return (
+      [...draftItems]
+        .filter((lecture) => lecture.attendance.some((entry) => entry.lessonId === defaultLessonId))
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] || null
+    );
+  }, [defaultLessonId, draftItems, editingActivity, nivo]);
 
   const activeChildrenForNivo = useMemo(() => childrenQuery.data || [], [childrenQuery.data]);
   const childrenForForm = useMemo(() => {
-    if (!editingActivity) return activeChildrenForNivo;
+    if (!effectiveEditingActivity) return activeChildrenForNivo;
     const unique = new Map<string, ChildRecord>();
-    for (const attendance of editingActivity.attendance) {
+    for (const attendance of effectiveEditingActivity.attendance) {
       unique.set(attendance.child.id, {
         id: attendance.child.id,
         firstName: attendance.child.firstName,
@@ -94,7 +122,7 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       });
     }
     return Array.from(unique.values());
-  }, [activeChildrenForNivo, editingActivity]);
+  }, [activeChildrenForNivo, effectiveEditingActivity]);
 
   const nivoLessons = useMemo(
     () => (nivo === "" ? [] : (lessonsQuery.data || []).filter((lesson) => lesson.nivo === nivo)),
@@ -110,6 +138,7 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
     setMarkCompleted(false);
     setRows({});
     setFieldErrors({});
+    setAutoDraftActivity(null);
   };
 
   useEffect(() => {
@@ -117,22 +146,22 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       resetForm();
       return;
     }
-    if (editingActivity) {
-      setNivo(editingActivity.nivo || "");
-      setDefaultLessonId(editingActivity.attendance[0]?.lessonId || "");
-      const sampleHomework = editingActivity.attendance.find((entry) => Boolean(entry.homeworkTitle?.trim()));
+    if (effectiveEditingActivity) {
+      setNivo(effectiveEditingActivity.nivo || "");
+      setDefaultLessonId(effectiveEditingActivity.attendance[0]?.lessonId || "");
+      const sampleHomework = effectiveEditingActivity.attendance.find((entry) => Boolean(entry.homeworkTitle?.trim()));
       setHomeworkEnabled(Boolean(sampleHomework));
       setHomeworkTitle(sampleHomework?.homeworkTitle || "");
       setHomeworkDescription(sampleHomework?.homeworkDescription || "");
-      setMarkCompleted(editingActivity.status === LECTURE_STATUS.COMPLETED);
+      setMarkCompleted(effectiveEditingActivity.status === LECTURE_STATUS.COMPLETED);
       setFieldErrors({});
     }
-  }, [open, editingActivity]);
+  }, [open, effectiveEditingActivity]);
 
   useEffect(() => {
-    if (editingActivity) {
+    if (effectiveEditingActivity) {
       const next: Record<string, ChildRowState> = {};
-      for (const attendance of editingActivity.attendance) {
+      for (const attendance of effectiveEditingActivity.attendance) {
         next[attendance.childId] = {
           present: attendance.present,
           comment: attendance.comment || "",
@@ -152,7 +181,12 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       }
       return next;
     });
-  }, [activeChildrenForNivo, editingActivity]);
+  }, [activeChildrenForNivo, effectiveEditingActivity]);
+
+  useEffect(() => {
+    if (editingActivity) return;
+    setAutoDraftActivity(matchedDraftForLesson);
+  }, [editingActivity, matchedDraftForLesson]);
 
   const saveActivityMutation = useMutation({
     mutationFn: async () => {
@@ -186,8 +220,8 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       }
 
       return (
-        await (editingActivity
-          ? api.patch(`/lectures/${editingActivity.id}`, {
+        await (effectiveEditingActivity
+          ? api.patch(`/lectures/${effectiveEditingActivity.id}`, {
               nivo: parsed.data.nivo,
               attendance: parsed.data.rows.map((row) => ({
                 childId: row.childId,
@@ -217,7 +251,7 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       await queryClient.invalidateQueries({ queryKey: ["children"] });
       await queryClient.invalidateQueries({ queryKey: ["activity-report-children"] });
       await queryClient.invalidateQueries({ queryKey: ["activities"] });
-      toast.success(editingActivity ? t("activityReportUpdated") : t("activityReportCreated"));
+      toast.success(effectiveEditingActivity ? t("activityReportUpdated") : t("activityReportCreated"));
       onSaved?.();
       onOpenChange(false);
     },
@@ -226,14 +260,14 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       const message =
         error instanceof AxiosError
           ? ((error.response?.data as { message?: string } | undefined)?.message ??
-            (editingActivity ? t("activityReportUpdateFailed") : t("activityReportCreateFailed")))
-          : editingActivity
+            (effectiveEditingActivity ? t("activityReportUpdateFailed") : t("activityReportCreateFailed")))
+          : effectiveEditingActivity
             ? t("activityReportUpdateFailed")
             : t("activityReportCreateFailed");
       toast.error(message);
     },
   });
-  const isCreateMode = !editingActivity;
+  const isCreateMode = !effectiveEditingActivity;
   const saveDisabled =
     saveActivityMutation.isPending ||
     nivo === "" ||
@@ -274,6 +308,9 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
                 ))}
               </Select>
               {fieldErrors.nivo ? <p className="mt-1 text-xs text-red-600">{fieldErrors.nivo}</p> : null}
+              {typeof nivo === "number" && draftCountForNivo > 0 ? (
+                <p className="mt-1 text-xs text-slate-500">{t("activityReportDraftCountForNivo", { count: draftCountForNivo })}</p>
+              ) : null}
             </div>
             <div />
           </div>
@@ -291,6 +328,9 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
                   ))}
                 </Select>
                 {fieldErrors.defaultLessonId ? <p className="mt-1 text-xs text-red-600">{fieldErrors.defaultLessonId}</p> : null}
+                {!editingActivity && matchedDraftForLesson ? (
+                  <p className="mt-1 text-xs text-amber-700">{t("activityReportUsingExistingDraftForLesson")}</p>
+                ) : null}
               </div>
               <div className="flex items-center md:pt-6">
                 <label className="inline-flex items-center gap-2 text-sm text-slate-700">

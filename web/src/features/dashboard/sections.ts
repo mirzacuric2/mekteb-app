@@ -1,4 +1,5 @@
 export type SectionKey =
+  | "dashboard"
   | "posts"
   | "users"
   | "children"
@@ -12,6 +13,7 @@ export type SectionKey =
 export type DashboardSection = {
   key: SectionKey;
   labelKey:
+    | "dashboard"
     | "posts"
     | "users"
     | "children"
@@ -25,6 +27,7 @@ export type DashboardSection = {
 };
 
 export const dashboardSections: DashboardSection[] = [
+  { key: "dashboard", labelKey: "dashboard", group: "general" },
   { key: "posts", labelKey: "posts", group: "general" },
   { key: "help", labelKey: "help", group: "support" },
   { key: "messages", labelKey: "messages", group: "general" },

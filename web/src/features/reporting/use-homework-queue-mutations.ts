@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { api } from "../../api";
 
 type UpdateHomeworkPayload = {
+  lectureId: string;
   childId: string;
-  lessonId: string;
   done?: boolean;
   title?: string;
   description?: string;
@@ -17,8 +17,8 @@ export function useUpdateHomeworkMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ childId, lessonId, ...payload }: UpdateHomeworkPayload) =>
-      (await api.patch(`/homework/${childId}/${lessonId}`, payload)).data,
+    mutationFn: async ({ lectureId, childId, ...payload }: UpdateHomeworkPayload) =>
+      (await api.patch(`/homework/${lectureId}/${childId}`, payload)).data,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["homework-queue"] });
       await queryClient.invalidateQueries({ queryKey: ["activities"] });

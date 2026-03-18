@@ -11,7 +11,7 @@ import { ActivityReportDialog } from "./activity-report-dialog";
 import { ActivitiesTable } from "./activities-table";
 import { HomeworkQueueTable } from "./homework-queue-table";
 import { HOMEWORK_QUEUE_STATUS_FILTER, LECTURE_STATUS } from "./reporting.constants";
-import { ActivityLecture } from "./types";
+import { ActivityLecture, HomeworkQueueItem } from "./types";
 import { EntityListToolbar } from "../common/components/entity-list-toolbar";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
@@ -19,6 +19,7 @@ import { useActivitiesQuery } from "./use-activities-data";
 import { useHomeworkQueueQuery } from "./use-homework-queue-data";
 import { useUpdateHomeworkMutation } from "./use-homework-queue-mutations";
 import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER } from "../lessons/constants";
+import { formatDate } from "../../lib/date-time";
 
 type ActivitiesPanelProps = {
   enabled: boolean;
@@ -30,16 +31,29 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
   const [activeTab, setActiveTab] = useState("activities");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [reportNivo, setReportNivo] = useState<number | undefined>(undefined);
+  const [reportStatus, setReportStatus] = useState<string | undefined>(LECTURE_STATUS.DRAFT);
   const [homeworkSearch, setHomeworkSearch] = useState("");
   const [homeworkPage, setHomeworkPage] = useState(1);
   const [homeworkNivo, setHomeworkNivo] = useState<number | undefined>(undefined);
   const [homeworkLectureId, setHomeworkLectureId] = useState<string>("");
   const [savingHomeworkKey, setSavingHomeworkKey] = useState<string | undefined>(undefined);
+  const [isBulkCompletingReports, setIsBulkCompletingReports] = useState(false);
+  const [isBulkUpdatingHomework, setIsBulkUpdatingHomework] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ActivityLecture | null>(null);
   const [deletingActivity, setDeletingActivity] = useState<ActivityLecture | null>(null);
 
-  const activities = useActivitiesQuery({ search, page, pageSize: DEFAULT_PAGE_SIZE }, enabled);
+  const activities = useActivitiesQuery(
+    {
+      search,
+      page,
+      pageSize: DEFAULT_PAGE_SIZE,
+      nivo: reportNivo,
+      status: reportStatus,
+    },
+    enabled
+  );
   const activityItems = activities.data?.items || [];
   const totalPages = Math.max(1, Math.ceil((activities.data?.total || 0) / DEFAULT_PAGE_SIZE));
   const currentPage = activities.data?.page || page;
@@ -98,9 +112,29 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
     },
   });
   const updateHomework = useUpdateHomeworkMutation();
+  const toCompactLectureTitle = (topic: string, nivoLabel: string) => {
+    const trimmedTopic = topic.trim();
+    const escapedNivoLabel = nivoLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const duplicateNivoPrefix = new RegExp(`^${escapedNivoLabel}\\s*[-:]?\\s*`, "i");
+    return trimmedTopic.replace(duplicateNivoPrefix, "").trim() || trimmedTopic;
+  };
+  const toLectureOptionLabel = (lecture: ActivityLecture) => {
+    const reportDate = lecture.completedAt || lecture.createdAt;
+    const lessonTitles = [...new Set((lecture.attendance || []).map((entry) => entry.lesson?.title?.trim()).filter(Boolean))];
+    const homeworkTitles = [
+      ...new Set((lecture.attendance || []).map((entry) => entry.homeworkTitle?.trim()).filter(Boolean)),
+    ];
+    const lectureTitle = lessonTitles[0] || lecture.topic;
+    const nivoLabel =
+      typeof lecture.nivo === "number"
+        ? LESSON_NIVO_LABEL[lecture.nivo as keyof typeof LESSON_NIVO_LABEL]
+        : "";
+    const primaryLabel = homeworkTitles[0] || toCompactLectureTitle(lectureTitle, nivoLabel);
+    return `${formatDate(reportDate)} - ${primaryLabel}`;
+  };
 
   return (
-    <Card className="min-w-0 flex flex-col gap-1 overflow-x-hidden p-5">
+    <Card className="min-w-0 flex flex-col gap-1 overflow-x-hidden p-4">
       {enabled ? (
         <>
           <Tabs
@@ -113,7 +147,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
           >
             {activeTab === "activities" ? (
               <>
-                <div className="shrink-0 space-y-6 pb-2">
+                <div className="grid gap-2 pb-1 md:grid-cols-3">
                   <EntityListToolbar
                     search={search}
                     onSearchChange={(value) => {
@@ -122,6 +156,33 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     }}
                     placeholder={t("activitiesSearchPlaceholder")}
                   />
+                  <Select
+                    value={reportNivo ? String(reportNivo) : ""}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setReportNivo(value ? Number(value) : undefined);
+                      setPage(1);
+                    }}
+                  >
+                    <option value="">{t("reportsFilterAllNivos")}</option>
+                    {LESSON_NIVO_ORDER.map((nivo) => (
+                      <option key={nivo} value={String(nivo)}>
+                        {LESSON_NIVO_LABEL[nivo]}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    value={reportStatus || ""}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setReportStatus(value || undefined);
+                      setPage(1);
+                    }}
+                  >
+                    <option value="">{t("reportsFilterAllStatuses")}</option>
+                    <option value={LECTURE_STATUS.DRAFT}>{t("reportsFilterStatusDraft")}</option>
+                    <option value={LECTURE_STATUS.COMPLETED}>{t("reportsFilterStatusCompleted")}</option>
+                  </Select>
                 </div>
 
                 <ActivitiesTable
@@ -137,11 +198,29 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   onDelete={(activity) => setDeletingActivity(activity)}
                   onComplete={(activity) => completeActivity.mutate(activity.id)}
                   completingId={completeActivity.variables}
+                  isBulkCompleting={isBulkCompletingReports}
+                  onBulkComplete={async (selectedActivities) => {
+                    if (!selectedActivities.length) return;
+                    setIsBulkCompletingReports(true);
+                    try {
+                      await Promise.all(selectedActivities.map((activity) => api.post(`/lectures/${activity.id}/complete`)));
+                      await queryClient.invalidateQueries({ queryKey: ["activities"] });
+                      toast.success(t("reportsBulkCompleted", { count: selectedActivities.length }));
+                    } catch (error) {
+                      const message =
+                        error instanceof AxiosError
+                          ? ((error.response?.data as { message?: string } | undefined)?.message ?? t("reportsBulkCompleteFailed"))
+                          : t("reportsBulkCompleteFailed");
+                      toast.error(message);
+                    } finally {
+                      setIsBulkCompletingReports(false);
+                    }
+                  }}
                 />
               </>
             ) : (
               <>
-                <div className="grid gap-3 pb-2 md:grid-cols-3">
+                <div className="grid gap-2 pb-1 md:grid-cols-3">
                   <EntityListToolbar
                     search={homeworkSearch}
                     onSearchChange={(value) => {
@@ -177,9 +256,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     <option value="">{t("homeworkQueueSelectLecture")}</option>
                     {(homeworkLectureOptions.data?.items || []).map((lecture) => (
                       <option key={lecture.id} value={lecture.id}>
-                        {lecture.status === LECTURE_STATUS.COMPLETED
-                          ? `${lecture.topic} (${t("activityReportStatusCompleted")})`
-                          : `${lecture.topic} (${t("activityReportStatusDraft")})`}
+                        {toLectureOptionLabel(lecture)}
                       </option>
                     ))}
                   </Select>
@@ -195,17 +272,44 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     page={homeworkCurrentPage}
                     totalPages={homeworkTotalPages}
                     savingKey={savingHomeworkKey}
+                    isBulkSaving={isBulkUpdatingHomework}
                     onPageChange={setHomeworkPage}
-                    onSave={async (item, values) => {
-                      setSavingHomeworkKey(`${item.childId}::${item.lessonId}`);
+                    onToggleDone={async (item, done) => {
+                      setSavingHomeworkKey(item.id);
                       try {
                         await updateHomework.mutateAsync({
+                          lectureId: item.lectureId,
                           childId: item.childId,
-                          lessonId: item.lessonId,
-                          done: values.done,
+                          done,
                         });
                       } finally {
                         setSavingHomeworkKey(undefined);
+                      }
+                    }}
+                    onBulkMarkDone={async (selectedItems: HomeworkQueueItem[]) => {
+                      if (!selectedItems.length) return;
+                      setIsBulkUpdatingHomework(true);
+                      try {
+                        await Promise.all(
+                          selectedItems.map((item) =>
+                            api.patch(`/homework/${item.lectureId}/${item.childId}`, {
+                              done: true,
+                            })
+                          )
+                        );
+                        await queryClient.invalidateQueries({ queryKey: ["homework-queue"] });
+                        await queryClient.invalidateQueries({ queryKey: ["activities"] });
+                        await queryClient.invalidateQueries({ queryKey: ["progress-overview-children"] });
+                        toast.success(t("homeworkQueueBulkUpdated", { count: selectedItems.length }));
+                      } catch (error) {
+                        const message =
+                          error instanceof AxiosError
+                            ? ((error.response?.data as { message?: string } | undefined)?.message ??
+                              t("homeworkQueueBulkUpdateFailed"))
+                            : t("homeworkQueueBulkUpdateFailed");
+                        toast.error(message);
+                      } finally {
+                        setIsBulkUpdatingHomework(false);
                       }
                     }}
                   />

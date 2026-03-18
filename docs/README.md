@@ -180,3 +180,52 @@ This folder contains user-facing documentation for daily platform usage.
 - In desktop child rows, `Present` switch is vertically centered against the attendance comment textarea for cleaner alignment.
 - Activity report form vertical spacing is tightened (notably between `Nivo` and `Lesson for this report`) for a denser mobile-friendly layout.
 - Child-row mobile spacing is tightened further: `Present` switch sits directly under attendance comment without desktop-only spacer offsets.
+- Parent-linked `Children` page now shows a report-activity based performance overview per child (multi-child aware): lecture completion %, current lecture status, latest attendance comment, and pending-homework indicators.
+- Parent overview on first dashboard surface is simplified to a clean 3-card layout (child performance, current lecture, homework left) plus one compact latest-comment block, replacing dense per-child detail rows.
+- Parent overview now keeps a 3-card layout and lists all linked children directly inside each card section (`performance`, `current lecture`, `homework`) with per-child status labels.
+- Parent card rows are clickable: selecting a child opens a side drawer with tabs for child details and a lecture-progress timeline (all lessons for the child's nivo, report-count aware for repeated reports, completion checks, attendance/homework ratios, and imam comments).
+- Lecture timeline status now distinguishes report completion from homework completion (for example: `Report completed, homework pending`) to avoid false "all done" interpretation.
+- In Activities > Homework queue, lecture dropdown options use a concise format (`date - Nivo - lecture`) to avoid repeated status labels and make report selection faster.
+- Homework queue lecture labels now also de-duplicate repeated nivo text in report titles (for example, avoids `Nivo 3 - Nivo 3 ...`).
+- Homework queue lecture labels are now scoped to the selected nivo and simplified to `date - lecture` (nivo text removed from each option label).
+- Homework queue lecture labels now prefer the report lesson title (fallback to report topic only when lesson is unavailable), so admins can quickly identify the correct lecture content.
+- Homework queue lecture labels now prioritize homework title (`date - homework`); lesson title is used only as fallback when homework title is missing.
+- Backend now enforces homework-title requirement whenever homework payload is submitted in activity report create/update (homework cannot be set without a title).
+- Parent progress overview now uses actionable aggregates: overall learning progress, children-on-track ratio, and homework completion (instead of placeholder per-child status), while keeping exactly three cards and showing per-child details directly inside each card for cleaner mobile UX.
+- Parent dashboard translations are refined for Bosnian/Swedish with proper locale characters (for example `č`, `ć`, `š`, `ž`, `å`, `ä`, `ö`) and count-aware singular/plural wording for homework/warning labels.
+- Parent dashboard cards now render without an extra local section title/subtitle above them, relying on breadcrumb/page context for a cleaner top area.
+- App now has a dedicated initial `Dashboard` route (`/app/dashboard`) for child overview + latest 3 Imam posts, while `Posts` remains a separate page focused on post publishing and management.
+- Sidebar primary section label is renamed from a generic "General" to a parent/family-oriented wording (`Family` / `Familj` / `Porodica`).
+- Dashboard route now hides the breadcrumb row for a cleaner landing view, and sidebar navigation uses a dedicated dashboard icon for clearer section scanning.
+- Dashboard overview cards now enforce a single-row desktop layout with equal-height cards, and the homework card removes the extra `Nivo` line for cleaner vertical alignment.
+- Dashboard KPI headers use a fixed-height top area to keep progress bars horizontally aligned, and homework summary helper now renders as two bullet lines (done-tracked + pending-linked).
+- Parent progress child-details drawer now follows the shared entity-drawer header pattern and uses an icon-only close action (`X`) instead of a text `Cancel` button.
+- Dashboard card copy is streamlined for quick scanning: less repeated wording in KPI helpers and child rows, compact lecture/homework labels, and shorter pending badges.
+- Homework badge text is now enforced as a compact pending label (`{{count}} pending` / localized equivalent) to avoid verbose repetition inside the homework card rows.
+- Homework KPI helper is further simplified to a single concise bullet (tracked done ratio), removing the extra pending/across-profiles sentence from the card header.
+- Dashboard KPI card headers are now minimal across all three cards (title + primary value + bar), with detailed context kept only in the per-child rows.
+- Dashboard home spacing is compacted (reduced paddings/gaps in KPI cards, child-row blocks, and recent-posts card) for a denser first-screen layout.
+- Homework queue table columns are tightened (fixed-layout widths, reduced cell padding, and truncation in text columns) so the table fits typical desktop widths without horizontal scrolling.
+- In Homework queue, redundant table columns are reduced for compactness: `Nivo` and `Homework title` are removed, while `Lesson` is kept for quick context alongside child + done toggle + save action.
+- Homework queue supports bulk completion updates: admins can select multiple rows and mark selected homework as done in one action.
+- Homework completion KPI now counts reported homework items (records with homework payload/title) so repeated reports without homework do not inflate `Done x/y`, while multiple homework entries for the same lesson are still represented.
+- Reporting terminology is now report-first in UI labels (`Reports`, `New report`) and the Reports table uses compact fixed-width columns so it fits the page without horizontal scroll on standard desktop widths.
+- Reports table columns are further simplified to focus on active decision fields: `Topic`, `Children`, `Status`, `Updated at`, and `Completed at` (removing redundant `Nivo` and `Created at` columns).
+- Reports > Homework queue spacing is refined: tighter filter-row/card paddings and a compact bordered bulk-action strip for better visual rhythm above the table.
+- Homework queue per-row flow is simplified: toggle switch now saves immediately (no per-row save button), while bulk selection remains available for multi-row completion updates.
+- On mobile, Reports and Homework queue tables now use explicit minimum widths with horizontal scrolling to prevent squeezed/overlapping columns while preserving compact desktop layout.
+- Mobile row-action dropdown now opens upward in tables, preventing the last-row action menu from being clipped near the bottom edge.
+- Reports list now includes quick filters (`Nivo`, `Status`) and a compact topic meta line (nivo + first lesson) to better distinguish recurring weekly reports with similar titles.
+- In Reports table, the completion action is moved into the `Completed` column for draft rows (instead of the actions column), and the header label is simplified from `Completed at` to `Completed`.
+- In report create flow, dialog now shows draft count for selected `Nivo` and auto-reuses an existing draft for the same `Nivo + Lesson` (save updates that draft instead of creating duplicates).
+- Reports tab now preselects `Draft` status on initial load so admins immediately see actionable pending reports.
+- Reports tab now supports bulk completion for draft reports with page-level row selection and one-click "mark selected as completed".
+- Child progress drawer now includes a dedicated `Homework progress` tab that shows homework-only cards from reported homework records (including multiple homework entries on the same lesson when reported in separate reports).
+- Child interactions now use one unified details drawer across dashboard and children list, so clicking any child opens the same consistent tabs (`Child details`, `Lecture progress`, `Homework progress`).
+- Child drawer details now use reusable shared detail components and a single table-style profile block for consistent drawer design.
+- Child details tab is now simplified to one clean profile table block (no duplicated nested cards, no status row in the grid, and no duplicate `Nivo` text above progress dots); child status remains shown as a header badge.
+- Parent dashboard KPI strip is simplified to two cards (`Overall learning progress` and `Homework completion`), removing the separate `Children on track` card for a cleaner first-glance view.
+- Homework state is now attendance/report-scoped (not lesson-global): creating a new report with homework no longer overwrites older same-lesson homework, and parent homework cards/drawer keep each reported homework entry (including description) visible.
+- Parent-facing dashboard copy now uses lecture-first wording for completed outcomes (for example "completed lectures"), while draft/in-progress states remain report-oriented.
+- In child drawer timeline (`Lecture progress`), the right-side "completed lectures out of reports" pill is removed for less clutter, and Imam comments now show up to two entries (with overflow hint) so comment count better matches visible content.
+- Missing-value rendering now uses the shared `NaValue` component in child details, with a lighter neutral tone for `N/A` to improve hierarchy and consistency.

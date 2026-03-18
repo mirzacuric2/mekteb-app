@@ -11,11 +11,9 @@ import { UserPlus } from "lucide-react";
 import { EntityListToolbar } from "../common/components/entity-list-toolbar";
 import { Loader } from "../common/components/loader";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
-import { EntityDetailsDrawer } from "../common/components/entity-details-drawer";
 import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { ChildrenTable } from "./children-table";
-import { ChildDetailsDrawerContent } from "./child-details-drawer-content";
-import { CHILD_STATUS, CHILD_STATUS_LABEL, type ChildRecord } from "./types";
+import { CHILD_STATUS, type ChildRecord } from "./types";
 import {
   useChildrenCommunityOptionsQuery,
   useChildrenListQuery,
@@ -24,6 +22,11 @@ import {
 import { useCreateChildMutation, useInactivateChildMutation, useUpdateChildMutation } from "./use-children-mutations";
 import { ChildFormDialog, ChildParentOption } from "./child-form-dialog";
 import { ChildFormValues } from "./child-form-schema";
+import { ProgressOverviewCards } from "../dashboard/progress-overview-cards";
+import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
+import { useAuthedQuery } from "../common/use-authed-query";
+import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
+import { Lesson } from "../lessons/types";
 
 type Props = { canManage: boolean };
 
@@ -42,6 +45,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     useRoleAccess();
   const searchTerm = search.trim();
   const mineOnly = isParent || isUser || isBoardMember;
+  const showProgressOverview = mineOnly;
   const children = useChildrenListQuery({
     search: searchTerm,
     page,
@@ -155,13 +159,18 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     }
   };
 
-  const statusLabel = CHILD_STATUS_LABEL;
   const totalPages = Math.max(1, Math.ceil((children.data?.total || 0) / DEFAULT_PAGE_SIZE));
   const currentPage = children.data?.page || page;
   const pagedChildren = children.data?.items || [];
+  const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, Boolean(selectedChild));
+  const selectedChildScheduledLessons = useMemo(() => {
+    if (!selectedChild) return 0;
+    return (lessonsQuery.data || []).filter((lesson) => lesson.nivo === selectedChild.nivo).length;
+  }, [lessonsQuery.data, selectedChild]);
 
   return (
     <Card className="min-w-0 space-y-4 overflow-x-hidden">
+      <ProgressOverviewCards enabled={showProgressOverview} />
       <EntityListToolbar
         search={search}
         onSearchChange={(value) => {
@@ -249,23 +258,15 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
           }
         }}
       />
-      <EntityDetailsDrawer
+      <ProgressChildDetailsDrawer
         open={!!selectedChild}
         onOpenChange={(open) => {
           if (!open) setSelectedChild(null);
         }}
-        title={selectedChild ? `${selectedChild.firstName} ${selectedChild.lastName}` : t("childrenDetails")}
-        headerMeta={
-          selectedChild ? (
-            <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
-              {t(statusLabel[selectedChild.status])}
-            </span>
-          ) : undefined
-        }
-        description={t("childrenDetails")}
-      >
-        {selectedChild ? <ChildDetailsDrawerContent child={selectedChild} /> : null}
-      </EntityDetailsDrawer>
+        child={selectedChild}
+        summary={null}
+        scheduledLessons={selectedChildScheduledLessons}
+      />
       <DeleteConfirmDialog
         open={!!deletingChild}
         onOpenChange={(open) => {

@@ -44,12 +44,22 @@ export type ActivitiesListResponse = {
 };
 
 export type HomeworkQueueItem = {
+  id: string;
+  lectureId: string;
   childId: string;
   lessonId: string;
   title: string;
   description?: string | null;
   done: boolean;
   updatedAt: string;
+  lecture: {
+    id: string;
+    topic: string;
+    status: LectureStatus;
+    completedAt?: string | null;
+    updatedAt: string;
+    createdAt: string;
+  };
   child: {
     id: string;
     firstName: string;

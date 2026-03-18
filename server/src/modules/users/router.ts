@@ -47,15 +47,24 @@ export function usersRouter() {
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
   });
-  const toHomeworkKey = (childId: string, lessonId: string) => `${childId}::${lessonId}`;
   const applyHomeworkStateToChildren = async <
-    T extends { attendance?: Array<{ childId: string; lessonId?: string | null }> },
+    T extends {
+      attendance?: Array<{
+        lectureId: string;
+        childId: string;
+        lessonId?: string | null;
+        homeworkDone?: boolean | null;
+        homeworkTitle?: string | null;
+        homeworkDescription?: string | null;
+      }>;
+    },
   >(
     children: T[]
   ): Promise<
     Array<
       T & {
         attendance?: Array<{
+          lectureId: string;
           childId: string;
           lessonId?: string | null;
           homeworkDone: boolean | null;
@@ -65,66 +74,14 @@ export function usersRouter() {
       }
     >
   > => {
-    const lessonPairs = children.flatMap((child) =>
-      (child.attendance || [])
-        .filter((item) => Boolean(item.lessonId))
-        .map((item) => ({ childId: item.childId, lessonId: item.lessonId as string }))
-    );
-
-    if (!lessonPairs.length) {
-      return children.map((child) => ({
-        ...child,
-        attendance: (child.attendance || []).map((item) => ({
-          ...item,
-          homeworkDone: null,
-          homeworkTitle: null,
-          homeworkDescription: null,
-        })),
-      }));
-    }
-
-    const childIds = [...new Set(lessonPairs.map((item) => item.childId))];
-    const lessonIds = [...new Set(lessonPairs.map((item) => item.lessonId))];
-    const homeworkRows = await prisma.homework.findMany({
-      where: {
-        childId: { in: childIds },
-        lessonId: { in: lessonIds },
-      },
-      select: {
-        childId: true,
-        lessonId: true,
-        done: true,
-        title: true,
-        description: true,
-      },
-    });
-
-    const homeworkMap = new Map<string, { done: boolean; title: string; description: string | null }>();
-    for (const row of homeworkRows) {
-      homeworkMap.set(toHomeworkKey(row.childId, row.lessonId), {
-        done: row.done,
-        title: row.title,
-        description: row.description,
-      });
-    }
-
     return children.map((child) => ({
       ...child,
       attendance: (child.attendance || []).map((item) => {
-        if (!item.lessonId) {
-          return {
-            ...item,
-            homeworkDone: null,
-            homeworkTitle: null,
-            homeworkDescription: null,
-          };
-        }
-        const homework = homeworkMap.get(toHomeworkKey(item.childId, item.lessonId));
         return {
           ...item,
-          homeworkDone: homework?.done ?? null,
-          homeworkTitle: homework?.title ?? null,
-          homeworkDescription: homework?.description ?? null,
+          homeworkDone: typeof item.homeworkDone === "boolean" ? item.homeworkDone : null,
+          homeworkTitle: item.homeworkTitle?.trim() || null,
+          homeworkDescription: item.homeworkDescription?.trim() || null,
         };
       }),
     }));

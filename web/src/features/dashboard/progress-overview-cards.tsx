@@ -1,15 +1,22 @@
-import { ReactNode } from "react";
-import { AlertTriangle, BookCheck, CalendarClock, Users } from "lucide-react";
+import { ReactNode, useMemo, useState } from "react";
+import { BookCheck, BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../../components/ui/card";
-import { formatDateTime } from "../../lib/date-time";
 import { HOMEWORK_STATUS } from "./progress-overview.constants";
 import { useProgressOverview } from "./use-progress-overview";
-import { LECTURE_STATUS } from "../reporting/reporting.constants";
+import { ProgressChildDetailsDrawer } from "./progress-child-details-drawer";
 
 type ProgressOverviewCardsProps = {
   enabled: boolean;
 };
+
+type ProgressTone = "orange" | "yellow" | "green";
+
+function toProgressTone(rate: number): ProgressTone {
+  if (rate >= 75) return "green";
+  if (rate >= 45) return "yellow";
+  return "orange";
+}
 
 function ProgressMetricCard({
   title,
@@ -18,49 +25,46 @@ function ProgressMetricCard({
   icon,
   tone,
   progress,
+  children,
 }: {
   title: string;
   value: string;
-  helper: string;
+  helper?: ReactNode;
   icon: ReactNode;
-  tone: "neutral" | "success" | "primary" | "warning";
+  tone: ProgressTone;
   progress?: number;
+  children?: ReactNode;
 }) {
   const toneClass = {
-    neutral: {
-      shell: "from-slate-50 to-white border-slate-200",
-      icon: "bg-slate-900/5 text-slate-700",
-      bar: "bg-slate-400",
-    },
-    success: {
+    green: {
       shell: "from-emerald-50 to-white border-emerald-200",
       icon: "bg-emerald-100 text-emerald-700",
       bar: "bg-emerald-500",
     },
-    primary: {
-      shell: "from-sky-50 to-white border-sky-200",
-      icon: "bg-sky-100 text-sky-700",
-      bar: "bg-sky-500",
-    },
-    warning: {
+    yellow: {
       shell: "from-amber-50 to-white border-amber-200",
       icon: "bg-amber-100 text-amber-700",
       bar: "bg-amber-500",
     },
+    orange: {
+      shell: "from-orange-50 to-white border-orange-200",
+      icon: "bg-orange-100 text-orange-700",
+      bar: "bg-orange-500",
+    },
   }[tone];
 
   return (
-    <Card className={`min-w-0 rounded-xl border bg-gradient-to-br p-4 shadow-sm ${toneClass.shell}`}>
-      <div className="flex items-start justify-between gap-3">
+    <Card className={`flex h-full min-w-0 flex-col rounded-xl border bg-gradient-to-br p-3 shadow-sm ${toneClass.shell}`}>
+      <div className="flex min-h-[64px] items-start justify-between gap-2">
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{title}</p>
           <p className="text-2xl font-semibold text-slate-900">{value}</p>
-          <p className="text-xs text-slate-500">{helper}</p>
+          {helper ? <div className="text-xs text-slate-500">{helper}</div> : null}
         </div>
         <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${toneClass.icon}`}>{icon}</span>
       </div>
       {typeof progress === "number" ? (
-        <div className="mt-3">
+        <div className="mt-2">
           <div className="h-1.5 w-full rounded-full bg-slate-200">
             <div
               className={`h-1.5 rounded-full transition-all ${toneClass.bar}`}
@@ -69,6 +73,7 @@ function ProgressMetricCard({
           </div>
         </div>
       ) : null}
+      {children ? <div className="mt-2 flex-1 border-t border-slate-200/70 pt-2">{children}</div> : null}
     </Card>
   );
 }
@@ -76,38 +81,20 @@ function ProgressMetricCard({
 export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
   const { t } = useTranslation();
   const metrics = useProgressOverview(enabled);
-  const latestState = metrics.latestState;
-  const attendanceRate = metrics.attendanceRate;
-  const homeworkCompletionRate = metrics.homeworkCompletionRate;
-  const presentInTrackedLessons = metrics.presentInTrackedLessons;
-  const trackedLessons = metrics.trackedLessons;
-  const attendanceScopeLabel = t("parentDashboardAllChildrenOption");
-  const hasWarningState = metrics.childrenWithWarnings > 0;
-  const hasHealthyState = !hasWarningState && metrics.activeChildrenCount > 0;
-  const cardTone: "success" | "warning" = hasWarningState ? "warning" : "success";
-  const cardAccentClasses = hasWarningState
-    ? "border-amber-200 bg-amber-50/30"
-    : "border-emerald-200 bg-emerald-50/30";
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const sortedChildSummaries = [...metrics.childSummaries].sort((a, b) => {
-    const aWarning =
-      a.latestState && (a.latestState.present === false || a.latestState.homeworkStatus === HOMEWORK_STATUS.PENDING)
-        ? 1
-        : 0;
-    const bWarning =
-      b.latestState && (b.latestState.present === false || b.latestState.homeworkStatus === HOMEWORK_STATUS.PENDING)
-        ? 1
-        : 0;
-    if (aWarning !== bWarning) return bWarning - aWarning;
-    return a.childName.localeCompare(b.childName);
+    if (a.pendingHomeworkCount !== b.pendingHomeworkCount) return b.pendingHomeworkCount - a.pendingHomeworkCount;
+    if (a.overallProgressRate !== b.overallProgressRate) return a.overallProgressRate - b.overallProgressRate;
+    return a.childName.localeCompare(b.childName, undefined, { sensitivity: "base" });
   });
-  const latestOverallStateLabel = metrics.childSummaries.some(
-    (summary) =>
-      summary.latestState?.present === false || summary.latestState?.homeworkStatus === HOMEWORK_STATUS.PENDING
-  )
-    ? t("parentDashboardStateNeedsAttention")
-    : hasHealthyState
-      ? t("parentDashboardStateOnTrack")
-      : t("parentDashboardNoActivityFallback");
+  const selectedChild = useMemo(
+    () => metrics.children.find((child) => child.id === selectedChildId) || null,
+    [metrics.children, selectedChildId]
+  );
+  const selectedSummary = useMemo(
+    () => metrics.childSummaries.find((summary) => summary.childId === selectedChildId) || null,
+    [metrics.childSummaries, selectedChildId]
+  );
 
   if (!enabled) return null;
 
@@ -119,128 +106,115 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
     return <p className="text-sm text-slate-500">{t("parentDashboardUnavailable")}</p>;
   }
 
-  return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">{t("parentDashboardTitle")}</h2>
-        <p className="text-sm text-slate-600">{t("parentDashboardSubtitle")}</p>
-      </div>
+  const progressTone = toProgressTone(metrics.overallProgressRate);
+  const homeworkTone = toProgressTone(metrics.homeworkCompletionRate);
+  const detailsFallback = (
+    <p className="rounded-md border border-slate-200 bg-white/70 px-3 py-2 text-xs text-slate-500">
+      {t("parentDashboardNoChildActivity")}
+    </p>
+  );
 
+  return (
+    <section className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
         <ProgressMetricCard
-          title={t("parentDashboardAttendanceCardTitle")}
-          value={`${attendanceRate}%`}
-          helper={t("parentDashboardAttendanceCardHelper", {
-            present: presentInTrackedLessons,
-            total: metrics.scheduledLessons,
-            tracked: trackedLessons,
-            child: attendanceScopeLabel,
-          })}
-          icon={<CalendarClock className="h-4 w-4" />}
-          tone={cardTone}
-          progress={attendanceRate}
-        />
+          title={t("parentDashboardOverallProgressCardTitle")}
+          value={`${metrics.overallProgressRate}%`}
+          icon={<BookOpen className="h-4 w-4" />}
+          tone={progressTone}
+          progress={metrics.overallProgressRate}
+        >
+          {sortedChildSummaries.length ? (
+            <div className="space-y-2">
+              {sortedChildSummaries.map((summary) => (
+                <button
+                  key={`overall-${summary.childId}`}
+                  type="button"
+                  className="w-full rounded-md border border-slate-200 bg-white/70 p-1.5 text-left transition-colors hover:bg-white"
+                  onClick={() => setSelectedChildId(summary.childId)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-slate-900">{summary.childName}</p>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                      {summary.overallProgressRate}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {t("parentDashboardChildPerformanceCompactLine", {
+                      attendance: summary.attendanceRate,
+                      completed: summary.completedLecturesCount,
+                      reported: summary.reportedLecturesCount,
+                    })}
+                  </p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            detailsFallback
+          )}
+        </ProgressMetricCard>
         <ProgressMetricCard
           title={t("parentDashboardHomeworkRateLabel")}
-          value={`${homeworkCompletionRate}%`}
-          helper={
-            t("parentDashboardHomeworkRateHelper", {
-              count: metrics.recentHomeworkRecords,
-            })
-          }
+          value={`${metrics.homeworkCompletionRate}%`}
           icon={<BookCheck className="h-4 w-4" />}
-          tone={cardTone}
-          progress={homeworkCompletionRate}
-        />
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <ProgressMetricCard
-          title={t("parentDashboardLatestStateCardTitle")}
-          value={latestOverallStateLabel}
-          helper={
-            latestState
-              ? t("parentDashboardLatestStateCardHelper", {
-                  child: latestState.childName,
-                  lecture: `${latestState.lectureTitle} (${latestState.lectureStatus === LECTURE_STATUS.COMPLETED ? t("activityReportStatusCompleted") : t("activityReportStatusDraft")})`,
-                })
-              : t("parentDashboardNoActivityFallback")
-          }
-          icon={<AlertTriangle className="h-4 w-4" />}
-          tone={cardTone}
-        />
-        <ProgressMetricCard
-          title={t("parentDashboardChildrenLabel")}
-          value={`${metrics.childrenCount}`}
-          helper={t("parentDashboardChildrenSummaryHelper", {
-            active: metrics.activeChildrenCount,
-            warnings: metrics.childrenWithWarnings,
-          })}
-          icon={<Users className="h-4 w-4" />}
-          tone={cardTone}
-        />
-      </div>
-
-      {metrics.childSummaries.length ? (
-        <Card
-          className={`min-w-0 rounded-xl border bg-white p-4 shadow-sm ${cardAccentClasses}`}
+          tone={homeworkTone}
+          progress={metrics.homeworkCompletionRate}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium text-slate-900">{t("parentDashboardLatestStateDetailsTitle")}</p>
-          </div>
-          <div className="mt-3 space-y-2">
-            {sortedChildSummaries.map((summary) => {
-              const childState = summary.latestState;
-              const childHomeworkLabel =
-                childState?.homeworkStatus === HOMEWORK_STATUS.DONE
-                  ? t("activityReportHomeworkDone")
-                  : childState?.homeworkStatus === HOMEWORK_STATUS.PENDING
-                    ? t("activityReportHomeworkNotDone")
-                    : t("parentDashboardHomeworkUnknown");
-              return (
-                <div key={summary.childId} className="rounded-lg border border-border/70 bg-white/80 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-slate-900">{t("parentDashboardChildLabel", { child: summary.childName })}</p>
-                    <p className="text-xs text-slate-500">
-                      {childState ? formatDateTime(childState.occurredAt) : t("parentDashboardNoActivityFallback")}
-                    </p>
-                  </div>
-                  {childState ? (
-                    <>
-                      <p className="mt-1 text-xs text-slate-500">{childState.lectureTitle}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {childState.lectureStatus === LECTURE_STATUS.COMPLETED
-                          ? t("activityReportStatusCompleted")
-                          : t("activityReportStatusDraft")}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {t("parentDashboardAttendanceChildHelper", {
-                          present: summary.presentInTrackedLessons,
-                          total: metrics.scheduledLessons,
-                          tracked: summary.trackedLessons,
-                        })}
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">
-                          {childState.present ? t("activityReportPresent") : t("activityReportAbsent")}
-                        </span>
-                        <span className="rounded-full bg-sky-100 px-2 py-1 text-sky-700">{childHomeworkLabel}</span>
-                      </div>
-                      {childState.comment ? (
-                        <p className="mt-2 text-sm text-slate-600">{`${t("activityReportComment")}: ${childState.comment}`}</p>
-                      ) : (
-                        <p className="mt-2 text-sm text-slate-500">{t("parentDashboardNoComment")}</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="mt-2 text-sm text-slate-500">{t("parentDashboardNoChildActivity")}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      ) : null}
+          {sortedChildSummaries.length ? (
+            <div className="space-y-2">
+              {sortedChildSummaries.map((summary) => {
+                const hasTrackedHomework = summary.knownHomeworkCount > 0;
+                const hasPendingHomework = summary.pendingHomeworkCount > 0;
+                const childHomeworkSubline = hasTrackedHomework
+                  ? t("parentDashboardChildHomeworkDoneCompactLine", {
+                      done: summary.homeworkDoneCount,
+                      known: summary.knownHomeworkCount,
+                    })
+                  : t("parentDashboardHomeworkUnknown");
+                return (
+                  <button
+                    key={`homework-${summary.childId}`}
+                    type="button"
+                    className="w-full rounded-md border border-slate-200 bg-white/70 p-1.5 text-left transition-colors hover:bg-white"
+                    onClick={() => setSelectedChildId(summary.childId)}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-slate-900">{summary.childName}</p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          !hasTrackedHomework
+                            ? "bg-slate-100 text-slate-700"
+                            : hasPendingHomework
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {!hasTrackedHomework
+                          ? t("parentDashboardNoRecordsLabel")
+                          : hasPendingHomework
+                          ? t("parentDashboardPendingCompactLabel", { count: summary.pendingHomeworkCount })
+                          : t("homeworkQueueDoneLabel")}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{childHomeworkSubline}</p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            detailsFallback
+          )}
+        </ProgressMetricCard>
+      </div>
+      <ProgressChildDetailsDrawer
+        open={Boolean(selectedChildId)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedChildId(null);
+        }}
+        child={selectedChild}
+        summary={selectedSummary}
+        scheduledLessons={metrics.scheduledLessons}
+      />
     </section>
   );
 }

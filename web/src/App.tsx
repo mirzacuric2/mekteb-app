@@ -4,6 +4,7 @@ import {
   ActivitiesRoute,
   ChildrenRoute,
   CommunitiesRoute,
+  DashboardRoute,
   HelpRoute,
   LessonsRoute,
   MessagesRoute,
@@ -23,7 +24,8 @@ export function App() {
         <Route path="/verify" element={<VerifyPage />} />
       </Route>
       <Route path="/app" element={<PrivateLayout />}>
-        <Route index element={<Navigate to="posts" replace />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardRoute />} />
         <Route path="posts" element={<PostsRoute />} />
         <Route path="help" element={<HelpRoute />} />
         <Route path="users" element={<UsersRoute />} />
@@ -34,7 +36,7 @@ export function App() {
         <Route path="messages" element={<MessagesRoute />} />
         <Route path="notifications" element={<NotificationsRoute />} />
       </Route>
-      <Route path="*" element={<Navigate to="/app/posts" replace />} />
+      <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
     </Routes>
   );
 }

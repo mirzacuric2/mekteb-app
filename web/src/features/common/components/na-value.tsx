@@ -18,7 +18,7 @@ export function NaValue({ value, className, naClassName }: Props) {
   const { t } = useTranslation();
 
   if (!hasValue(value)) {
-    return <span className={cn("text-slate-400", naClassName)}>{t("na")}</span>;
+    return <span className={cn("text-slate-300", naClassName)}>{t("na")}</span>;
   }
 
   return <span className={className}>{value}</span>;

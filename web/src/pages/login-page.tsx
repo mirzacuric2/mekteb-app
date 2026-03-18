@@ -5,7 +5,7 @@ import { useSession } from "../features/auth/session-context";
 export function LoginPage() {
   const { ready, session, login } = useSession();
   if (!ready) return null;
-  if (session) return <Navigate to="/app/posts" replace />;
+  if (session) return <Navigate to="/app/dashboard" replace />;
 
   return (
     <main className="mx-auto max-w-6xl p-6">

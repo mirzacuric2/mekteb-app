@@ -33,7 +33,7 @@ function PrivateLayoutShell() {
   const navigate = useNavigate();
   const { open, setOpen, setOpenMobile } = useSidebar();
   const [isQuickReportOpen, setIsQuickReportOpen] = useState(false);
-  const currentSegment = location.pathname.split("/").pop() || "posts";
+  const currentSegment = location.pathname.split("/").pop() || "dashboard";
   const canManageUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canReportActivities = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canManageActivities = canReportActivities;
@@ -55,23 +55,23 @@ function PrivateLayoutShell() {
 
   useEffect(() => {
     if (!isSectionKey(currentSegment)) {
-      navigate("/app/posts", { replace: true });
+      navigate("/app/dashboard", { replace: true });
       return;
     }
     if (currentSegment === "users" && !canManageUsers) {
-      navigate("/app/posts", { replace: true });
+      navigate("/app/dashboard", { replace: true });
       return;
     }
     if (currentSegment === "children" && !canManageChildren) {
-      navigate("/app/posts", { replace: true });
+      navigate("/app/dashboard", { replace: true });
       return;
     }
     if (currentSegment === "activities" && !canManageActivities) {
-      navigate("/app/posts", { replace: true });
+      navigate("/app/dashboard", { replace: true });
       return;
     }
     if (currentSegment === "communities" && !canManageCommunities) {
-      navigate("/app/posts", { replace: true });
+      navigate("/app/dashboard", { replace: true });
       return;
     }
     setOpenMobile(false);
@@ -79,9 +79,10 @@ function PrivateLayoutShell() {
 
   if (!session) return null;
 
-  const activeKey: SectionKey = isSectionKey(currentSegment) ? currentSegment : "posts";
+  const activeKey: SectionKey = isSectionKey(currentSegment) ? currentSegment : "dashboard";
   const selectedSection = dashboardSections.find((section) => section.key === activeKey) ?? dashboardSections[0];
   const breadcrumbIcon = {
+    dashboard: <House className="h-4 w-4 text-slate-500" />,
     posts: <Newspaper className="h-4 w-4 text-slate-500" />,
     help: <CircleHelp className="h-4 w-4 text-slate-500" />,
     messages: <MessageSquare className="h-4 w-4 text-slate-500" />,
@@ -193,25 +194,27 @@ function PrivateLayoutShell() {
             </div>
           </div>
           <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[1120px] flex-1 flex-col space-y-4 pt-4">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <House className="h-4 w-4 text-slate-500" />
-              <button
-                type="button"
-                className="transition-colors hover:text-slate-900"
-                onClick={() => navigate("/app/posts")}
-              >
-                {t("dashboard")}
-              </button>
-              <ChevronRight className="h-4 w-4 text-slate-400" />
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 font-medium text-primary transition-colors hover:bg-primary/15"
-                onClick={() => navigate(`/app/${activeKey}`)}
-              >
-                {breadcrumbIcon}
-                <span>{t(selectedSection.labelKey)}</span>
-              </button>
-            </div>
+            {activeKey !== "dashboard" ? (
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <House className="h-4 w-4 text-slate-500" />
+                <button
+                  type="button"
+                  className="transition-colors hover:text-slate-900"
+                  onClick={() => navigate("/app/dashboard")}
+                >
+                  {t("dashboard")}
+                </button>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 font-medium text-primary transition-colors hover:bg-primary/15"
+                  onClick={() => navigate(`/app/${activeKey}`)}
+                >
+                  {breadcrumbIcon}
+                  <span>{t(selectedSection.labelKey)}</span>
+                </button>
+              </div>
+            ) : null}
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden [overscroll-behavior-x:none]">
               <Outlet context={context} />
             </div>

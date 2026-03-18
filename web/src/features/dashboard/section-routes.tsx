@@ -9,6 +9,11 @@ import { NotificationsPanel } from "../notifications/notifications-panel";
 import { HelpPanel } from "../help/help-panel";
 import { PrivateLayoutContext } from "../../layouts/private-layout-context";
 import { ActivitiesPanel } from "../reporting/activities-panel";
+import { DashboardHomePanel } from "./dashboard-home-panel";
+
+export function DashboardRoute() {
+  return <DashboardHomePanel />;
+}
 
 export function PostsRoute() {
   const { canPublishPosts } = useOutletContext<PrivateLayoutContext>();

@@ -1,7 +1,8 @@
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Tabs } from "../../components/ui/tabs";
 import { NaValue } from "../common/components/na-value";
+import { EntityDetailItem, EntityDetailSection } from "../common/components/entity-detail-components";
 import { UserAddressRecord, UserRecord } from "./users-table";
 import { LESSON_NIVO_LABEL, LessonNivo } from "../lessons/constants";
 import { formatDateTime } from "../../lib/date-time";
@@ -18,30 +19,6 @@ type Props = {
   communityName?: string | null;
   children: ChildSummary[];
 };
-
-function DetailRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="space-y-1 py-2 text-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="rounded-lg border border-border bg-white p-4">
-      {title ? <h4 className="mb-3 text-sm font-semibold text-slate-800">{title}</h4> : null}
-      <div className="divide-y divide-border">{children}</div>
-    </section>
-  );
-}
 
 function formatAddress(address?: UserAddressRecord | null) {
   if (!address) return null;
@@ -74,19 +51,35 @@ export function UserDetailsDrawerContent({ user, communityName, children }: Prop
   return (
     <Tabs value={activeTab} onChange={setActiveTab} tabs={tabOptions}>
       {activeTab === "basic" ? (
-        <Section>
-          <DetailRow label={t("email")} value={user.email} />
-          <DetailRow label={t("role")} value={user.role} />
-          <DetailRow label={t("usersTablePhone")} value={<NaValue value={user.phoneNumber} />} />
-          <DetailRow label={t("community")} value={<NaValue value={communityName} />} />
-          <DetailRow label={t("ssn")} value={<NaValue value={user.ssn} />} />
-          {user.createdAt ? (
-            <DetailRow label={t("created")} value={formatDateTime(user.createdAt)} />
-          ) : null}
-          {user.updatedAt ? (
-            <DetailRow label={t("updated")} value={formatDateTime(user.updatedAt)} />
-          ) : null}
-        </Section>
+        <EntityDetailSection>
+          <div className="divide-y divide-border">
+            <div className="py-2">
+              <EntityDetailItem label={t("email")} value={user.email} />
+            </div>
+            <div className="py-2">
+              <EntityDetailItem label={t("role")} value={user.role} />
+            </div>
+            <div className="py-2">
+              <EntityDetailItem label={t("usersTablePhone")} value={<NaValue value={user.phoneNumber} />} />
+            </div>
+            <div className="py-2">
+              <EntityDetailItem label={t("community")} value={<NaValue value={communityName} />} />
+            </div>
+            <div className="py-2">
+              <EntityDetailItem label={t("ssn")} value={<NaValue value={user.ssn} />} />
+            </div>
+            {user.createdAt ? (
+              <div className="py-2">
+                <EntityDetailItem label={t("created")} value={formatDateTime(user.createdAt)} />
+              </div>
+            ) : null}
+            {user.updatedAt ? (
+              <div className="py-2">
+                <EntityDetailItem label={t("updated")} value={formatDateTime(user.updatedAt)} />
+              </div>
+            ) : null}
+          </div>
+        </EntityDetailSection>
       ) : null}
 
       {activeTab === "children" ? (
@@ -95,16 +88,22 @@ export function UserDetailsDrawerContent({ user, communityName, children }: Prop
             children.map((child, index) => {
               const childName = `${child.firstName || ""} ${child.lastName || ""}`.trim();
               return (
-                <Section key={child.id} title={`Child ${index + 1}`}>
-                  <DetailRow label="Name" value={<NaValue value={childName} />} />
-                  <DetailRow label="Nivo" value={<NaValue value={child.nivo ? LESSON_NIVO_LABEL[child.nivo] : undefined} />} />
-                </Section>
+                <EntityDetailSection key={child.id} title={`Child ${index + 1}`}>
+                  <div className="divide-y divide-border">
+                    <div className="py-2">
+                      <EntityDetailItem label="Name" value={<NaValue value={childName} />} />
+                    </div>
+                    <div className="py-2">
+                      <EntityDetailItem label="Nivo" value={<NaValue value={child.nivo ? LESSON_NIVO_LABEL[child.nivo] : undefined} />} />
+                    </div>
+                  </div>
+                </EntityDetailSection>
               );
             })
           ) : (
-            <Section>
-              <DetailRow label="Status" value="No children assigned." />
-            </Section>
+            <EntityDetailSection>
+              <EntityDetailItem label="Status" value="No children assigned." />
+            </EntityDetailSection>
           )}
         </div>
       ) : null}
@@ -112,17 +111,29 @@ export function UserDetailsDrawerContent({ user, communityName, children }: Prop
       {activeTab === "address" ? (
         <div className="space-y-3">
           {addressLines ? (
-            <Section>
-              <DetailRow label="Street line 1" value={<NaValue value={addressLines.streetLine1} />} />
-              <DetailRow label="Street line 2" value={<NaValue value={addressLines.streetLine2} />} />
-              <DetailRow label="City / Postal" value={<NaValue value={addressLines.cityLine} />} />
-              <DetailRow label="State" value={<NaValue value={addressLines.state} />} />
-              <DetailRow label="Country" value={<NaValue value={addressLines.country} />} />
-            </Section>
+            <EntityDetailSection>
+              <div className="divide-y divide-border">
+                <div className="py-2">
+                  <EntityDetailItem label="Street line 1" value={<NaValue value={addressLines.streetLine1} />} />
+                </div>
+                <div className="py-2">
+                  <EntityDetailItem label="Street line 2" value={<NaValue value={addressLines.streetLine2} />} />
+                </div>
+                <div className="py-2">
+                  <EntityDetailItem label="City / Postal" value={<NaValue value={addressLines.cityLine} />} />
+                </div>
+                <div className="py-2">
+                  <EntityDetailItem label="State" value={<NaValue value={addressLines.state} />} />
+                </div>
+                <div className="py-2">
+                  <EntityDetailItem label="Country" value={<NaValue value={addressLines.country} />} />
+                </div>
+              </div>
+            </EntityDetailSection>
           ) : (
-            <Section>
-              <DetailRow label="Status" value={<NaValue />} />
-            </Section>
+            <EntityDetailSection>
+              <EntityDetailItem label="Status" value={<NaValue />} />
+            </EntityDetailSection>
           )}
         </div>
       ) : null}

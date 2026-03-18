@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Newspaper,
   LogOut,
+  LayoutDashboard,
   User,
   UserRound,
   Users,
@@ -68,6 +69,7 @@ export function DashboardSidebar({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const roleLabel = useMemo(() => role.replace("_", " "), [role]);
   const sectionIcons: Record<SectionKey, ReactNode> = {
+    dashboard: <LayoutDashboard className="h-4 w-4 shrink-0" />,
     posts: <Newspaper className="h-4 w-4 shrink-0" />,
     help: <CircleHelp className="h-4 w-4 shrink-0" />,
     messages: <MessageSquare className="h-4 w-4 shrink-0" />,
@@ -91,7 +93,7 @@ export function DashboardSidebar({
                 "inline-flex items-center rounded-md transition-opacity hover:opacity-90",
                 shouldUseCompactLogo ? "justify-center" : "justify-center px-1 py-1"
               )}
-              onClick={() => onNavigate("posts")}
+              onClick={() => onNavigate("dashboard")}
             >
               <img
                 src={shouldUseCompactLogo ? compactLogoSrc : fullLogoSrc}
