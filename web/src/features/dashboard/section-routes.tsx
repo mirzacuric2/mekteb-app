@@ -4,7 +4,6 @@ import { UsersPanel } from "../users/users-panel";
 import { ChildrenPanel } from "../children/children-panel";
 import { LessonsPanel } from "../lessons/lessons-panel";
 import { CommunitiesPanel } from "../communities/communities-panel";
-import { MessagesPanel } from "../messages/messages-panel";
 import { NotificationsPanel } from "../notifications/notifications-panel";
 import { HelpPanel } from "../help/help-panel";
 import { PrivateLayoutContext } from "../../layouts/private-layout-context";
@@ -50,10 +49,6 @@ export function CommunitiesRoute() {
       canAssignAdmins={canAssignCommunityAdmins}
     />
   );
-}
-
-export function MessagesRoute() {
-  return <MessagesPanel />;
 }
 
 export function NotificationsRoute() {

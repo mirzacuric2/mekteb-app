@@ -35,6 +35,8 @@ ADMIN manages users and content within assigned community scope.
 - Editing from the `Activities` page opens the report modal prefilled for update.
 - Submit one report to save attendance/progress details for all listed children in one action.
 - Send and receive messages.
+- Reply to parent context threads (homework and lecture comments) directly from the global chat dock.
+- Lock a conversation thread with the explicit `Lock thread` action (type `CLOSE` to confirm) when communication is complete; closed threads remain visible for audit/history.
 - Keep parent-facing information timely and accurate.
 
 ## What You Cannot Do
@@ -52,7 +54,7 @@ ADMIN manages users and content within assigned community scope.
 3. Save attendance reports as draft, then finalize with `Complete lecture` when ready.
 4. Use Homework queue daily to clear pending homework before the next lecture.
 5. Publish timely posts and use messaging for direct parent communication.
-6. Review notifications and close pending communication loops.
+6. Review notifications, respond in active threads, and close completed threads.
 
 ## Best Practices
 

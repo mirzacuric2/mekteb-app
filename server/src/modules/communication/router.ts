@@ -1,4 +1,13 @@
-import { ChildStatus, LectureStatus, NotificationType, Role } from "@prisma/client";
+import {
+  ChildStatus,
+  LectureStatus,
+  MessageContextType,
+  MessageKind,
+  MessageThreadStatus,
+  NotificationType,
+  Role,
+} from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
@@ -57,6 +66,25 @@ export function communicationRouter() {
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
   });
+  const messageContextSchema = z.object({
+    type: z.nativeEnum(MessageContextType).optional(),
+    childId: z.string().uuid().optional(),
+    lectureId: z.string().uuid().optional(),
+    label: z.string().trim().min(1).max(180).optional(),
+    preview: z.string().trim().min(1).max(500).optional(),
+  });
+  const messagePayloadSchema = z.object({
+    receiverId: z.string().uuid(),
+    content: z.string().trim().min(1).max(2000),
+    threadId: z.string().uuid().optional(),
+    context: messageContextSchema.optional(),
+  });
+  const closeMessageThreadPayloadSchema = z.object({
+    note: z.string().trim().min(1).max(180).optional(),
+  });
+  const limitedMessagingRoles = new Set<Role>([Role.USER, Role.PARENT, Role.BOARD_MEMBER]);
+  const isLimitedMessagingRole = (role: Role) => limitedMessagingRoles.has(role);
+
   const applyHomeworkStateToLecture = async <
     T extends {
       attendance: Array<{
@@ -287,35 +315,181 @@ export function communicationRouter() {
     const messages = await prisma.message.findMany({
       where: { OR: [{ senderId: req.user!.id }, { receiverId: req.user!.id }] },
       orderBy: { createdAt: "desc" },
+      include: {
+        sender: { select: { id: true, firstName: true, lastName: true, role: true } },
+        receiver: { select: { id: true, firstName: true, lastName: true, role: true } },
+      },
     });
     return res.json(messages);
   });
 
+  router.get("/message-threads", requireAuth, async (req: AppRequest, res) => {
+    const messages = await prisma.message.findMany({
+      where: { OR: [{ senderId: req.user!.id }, { receiverId: req.user!.id }] },
+      orderBy: { createdAt: "desc" },
+      include: {
+        sender: { select: { id: true, firstName: true, lastName: true, role: true } },
+        receiver: { select: { id: true, firstName: true, lastName: true, role: true } },
+      },
+    });
+    const threadMap = new Map<string, (typeof messages)[number]>();
+    for (const message of messages) {
+      if (threadMap.has(message.threadId)) continue;
+      threadMap.set(message.threadId, message);
+    }
+    const threads = [...threadMap.values()].map((message) => {
+      const counterpart = message.senderId === req.user!.id ? message.receiver : message.sender;
+      const canWrite = message.threadStatus !== MessageThreadStatus.CLOSED;
+      return {
+        threadId: message.threadId,
+        updatedAt: message.createdAt,
+        lastMessageId: message.id,
+        lastMessage: message.content,
+        lastMessageKind: message.kind,
+        threadStatus: message.threadStatus,
+        contextType: message.contextType,
+        contextChildId: message.contextChildId,
+        contextLectureId: message.contextLectureId,
+        contextLabel: message.contextLabel,
+        contextPreview: message.contextPreview,
+        canWrite,
+        counterpart,
+      };
+    });
+    return res.json(threads);
+  });
+
+  router.get("/message-threads/:threadId/messages", requireAuth, async (req: AppRequest, res) => {
+    const userScope = { OR: [{ senderId: req.user!.id }, { receiverId: req.user!.id }] };
+    const threadId = req.params.threadId;
+    const hasAccess = await prisma.message.findFirst({
+      where: { threadId, ...userScope },
+      select: { id: true },
+    });
+    if (!hasAccess) return res.status(404).json({ message: "Thread not found" });
+
+    const messages = await prisma.message.findMany({
+      where: { threadId, ...userScope },
+      orderBy: { createdAt: "asc" },
+      include: {
+        sender: { select: { id: true, firstName: true, lastName: true, role: true } },
+        receiver: { select: { id: true, firstName: true, lastName: true, role: true } },
+      },
+    });
+    const latestMessage = messages[messages.length - 1];
+    const canWrite = latestMessage?.threadStatus !== MessageThreadStatus.CLOSED;
+    return res.json({
+      threadId,
+      threadStatus: latestMessage?.threadStatus || MessageThreadStatus.OPEN,
+      canWrite,
+      contextType: latestMessage?.contextType || MessageContextType.GENERAL,
+      contextChildId: latestMessage?.contextChildId || null,
+      contextLectureId: latestMessage?.contextLectureId || null,
+      contextLabel: latestMessage?.contextLabel || null,
+      contextPreview: latestMessage?.contextPreview || null,
+      messages,
+    });
+  });
+
   router.post("/messages", requireAuth, async (req: AppRequest, res) => {
-    const payload = z.object({ receiverId: z.string(), content: z.string().min(1) }).safeParse(req.body);
+    const payload = messagePayloadSchema.safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+
     const receiver = await prisma.user.findUnique({ where: { id: payload.data.receiverId } });
     if (!receiver) return res.status(404).json({ message: "Receiver not found" });
-    if (
-      (req.user!.role === Role.USER || req.user!.role === Role.PARENT || req.user!.role === Role.BOARD_MEMBER) &&
-      receiver.role !== Role.ADMIN
-    ) {
+    if (isLimitedMessagingRole(req.user!.role) && receiver.role !== Role.ADMIN) {
       return res.status(403).json({ message: "User can only message admin" });
+    }
+    let existingThreadMessage: {
+      threadId: string;
+      senderId: string;
+      receiverId: string;
+      threadStatus: MessageThreadStatus;
+      contextType: MessageContextType;
+      contextChildId: string | null;
+      contextLectureId: string | null;
+      contextLabel: string | null;
+      contextPreview: string | null;
+    } | null = null;
+    if (payload.data.threadId) {
+      existingThreadMessage = await prisma.message.findFirst({
+        where: { threadId: payload.data.threadId },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!existingThreadMessage) return res.status(404).json({ message: "Thread not found" });
+      const participantIds = [existingThreadMessage.senderId, existingThreadMessage.receiverId];
+      if (!participantIds.includes(req.user!.id) || !participantIds.includes(payload.data.receiverId)) {
+        return res.status(403).json({ message: "Forbidden thread access" });
+      }
+      if (existingThreadMessage.threadStatus === MessageThreadStatus.CLOSED) {
+        return res.status(403).json({ message: "Thread is closed. Start a new thread." });
+      }
     }
 
     const message = await prisma.message.create({
-      data: { senderId: req.user!.id, receiverId: payload.data.receiverId, content: payload.data.content },
-    });
-    await prisma.notification.create({
       data: {
-        userId: payload.data.receiverId,
-        type: NotificationType.MESSAGE_RECEIVED,
-        title: "New message",
-        body: payload.data.content.slice(0, 80),
+        senderId: req.user!.id,
+        receiverId: payload.data.receiverId,
+        content: payload.data.content.trim(),
+        threadId: payload.data.threadId || randomUUID(),
+        kind: MessageKind.USER,
+        threadStatus: MessageThreadStatus.OPEN,
+        contextType: payload.data.context?.type || existingThreadMessage?.contextType || MessageContextType.GENERAL,
+        contextChildId: payload.data.context?.childId || existingThreadMessage?.contextChildId || null,
+        contextLectureId: payload.data.context?.lectureId || existingThreadMessage?.contextLectureId || null,
+        contextLabel: payload.data.context?.label?.trim() || existingThreadMessage?.contextLabel || null,
+        contextPreview: payload.data.context?.preview?.trim() || existingThreadMessage?.contextPreview || null,
+      },
+      include: {
+        sender: { select: { id: true, firstName: true, lastName: true, role: true } },
+        receiver: { select: { id: true, firstName: true, lastName: true, role: true } },
       },
     });
     return res.status(201).json(message);
   });
+
+  router.post(
+    "/message-threads/:threadId/close",
+    requireAuth,
+    requireAnyRole(Role.ADMIN, Role.SUPER_ADMIN),
+    async (req: AppRequest, res) => {
+      const payload = closeMessageThreadPayloadSchema.safeParse(req.body ?? {});
+      if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+
+      const threadId = req.params.threadId;
+      const latestInThread = await prisma.message.findFirst({
+        where: { threadId, OR: [{ senderId: req.user!.id }, { receiverId: req.user!.id }] },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!latestInThread) return res.status(404).json({ message: "Thread not found" });
+      if (latestInThread.threadStatus === MessageThreadStatus.CLOSED) {
+        return res.json({ threadId, threadStatus: MessageThreadStatus.CLOSED });
+      }
+
+      const closer = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: { firstName: true, lastName: true },
+      });
+      const closerName = [closer?.firstName?.trim() || "", closer?.lastName?.trim() || ""].filter(Boolean).join(" ").trim();
+      const receiverId = latestInThread.senderId === req.user!.id ? latestInThread.receiverId : latestInThread.senderId;
+      const closeMessage = await prisma.message.create({
+        data: {
+          threadId,
+          senderId: req.user!.id,
+          receiverId,
+          kind: MessageKind.SYSTEM,
+          threadStatus: MessageThreadStatus.CLOSED,
+          content: payload.data.note || (closerName ? `Conversation closed by ${closerName}.` : "Conversation closed."),
+          contextType: latestInThread.contextType,
+          contextChildId: latestInThread.contextChildId,
+          contextLectureId: latestInThread.contextLectureId,
+          contextLabel: latestInThread.contextLabel,
+          contextPreview: latestInThread.contextPreview,
+        },
+      });
+      return res.json(closeMessage);
+    }
+  );
 
   router.delete("/messages/:id", requireAuth, async (req: AppRequest, res) => {
     const existing = await prisma.message.findUnique({ where: { id: req.params.id } });

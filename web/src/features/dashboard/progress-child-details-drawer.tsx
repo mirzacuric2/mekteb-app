@@ -21,11 +21,15 @@ import { ChildProgressSummary } from "./use-progress-overview";
 import { LECTURE_STATUS } from "../reporting/reporting.constants";
 import { formatDate, formatDateTime } from "../../lib/date-time";
 import { EntityDetailTable, EntityDetailTableRow } from "../common/components/entity-detail-components";
+import { Button } from "../../components/ui/button";
 import {
   HOMEWORK_PROGRESS_STATUS,
   HomeworkProgressItem,
   ProgressHomeworkTimeline,
 } from "./progress-homework-timeline";
+import { useOpenImamChat } from "../messages/use-open-imam-chat";
+import { MESSAGE_CONTEXT_TYPE } from "../messages/types";
+import { useRoleAccess } from "../auth/use-role-access";
 
 type ProgressChildDetailsDrawerProps = {
   open: boolean;
@@ -61,6 +65,9 @@ export function ProgressChildDetailsDrawer({
 }: ProgressChildDetailsDrawerProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("details");
+  const { openImamChat } = useOpenImamChat();
+  const { isParent, isUser, isBoardMember } = useRoleAccess();
+  const canMessageImam = isParent || isUser || isBoardMember;
   const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, open && Boolean(child));
   const effectiveSummary = useMemo(() => {
     if (summary) return summary;
@@ -315,6 +322,25 @@ export function ProgressChildDetailsDrawer({
                                       </p>
                                     ) : null}
                                   </div>
+                                  {canMessageImam ? (
+                                    <div className="mt-2">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="h-8 px-2 py-1 text-xs"
+                                        onClick={() =>
+                                          openImamChat({
+                                            type: MESSAGE_CONTEXT_TYPE.LECTURE_COMMENT,
+                                            childId: child.id,
+                                            label: `${child.firstName} ${child.lastName} - ${item.title}`,
+                                            preview: item.comments[0] || undefined,
+                                          })
+                                        }
+                                      >
+                                        Message imam
+                                      </Button>
+                                    </div>
+                                  ) : null}
                                 </div>
                               ) : (
                                 <p className="mt-1 text-xs text-slate-500">{t("parentDashboardNoComment")}</p>
@@ -334,7 +360,21 @@ export function ProgressChildDetailsDrawer({
                   })}
                 </div>
               ) : (
-                <ProgressHomeworkTimeline items={homeworkProgressItems} />
+                <ProgressHomeworkTimeline
+                  items={homeworkProgressItems}
+                  onMessageImam={
+                    canMessageImam
+                      ? (item) =>
+                          openImamChat({
+                            type: MESSAGE_CONTEXT_TYPE.HOMEWORK,
+                            childId: child.id,
+                            lectureId: item.key,
+                            label: `${child.firstName} ${child.lastName} - ${item.title}`,
+                            preview: item.homeworkDescription || undefined,
+                          })
+                      : undefined
+                  }
+                />
               )}
             </Tabs>
           )}

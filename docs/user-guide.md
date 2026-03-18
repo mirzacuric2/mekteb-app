@@ -15,7 +15,7 @@ This guide explains how to use the Mekteb App interface and core features.
 - Use the breadcrumb at the top to confirm your current page.
 - The top dashboard header stays visible while you scroll page content.
 - Use the header report action to open the reporting modal entry point (progress/comments/absence/homework flow placeholder); desktop shows label + icon, mobile shows icon-only.
-- Use the header notification bell and message envelope icons for quick access to `Notifications` and `Messages`; badges show unread counters.
+- Use the header notification bell icon for quick access to `Notifications`; messages are handled from the docked chat launcher.
 - Use language selector in the sidebar footer when needed.
 - Use the Help icon near your profile avatar for quick role-based guidance.
 
@@ -36,7 +36,15 @@ This guide explains how to use the Mekteb App interface and core features.
 
 ## 5) Messaging and Notifications
 
-- Messages are available in the Messages section.
+- Messages are available through the global bottom-right chat dock.
+- Use the docked launcher button to open chat quickly from any page.
+- Message badge/dot on the chat launcher shows unread direct messages (auto-refresh every 30 seconds).
+- Message badge is based on chat activity/last-seen, not notification items.
+- Parents can open context chat directly from child progress/homework/lecture-comment areas; Imam/Admin is auto-selected for these flows.
+- Chat supports free messages and context-tied threads (`HOMEWORK`, `LECTURE_COMMENT`).
+- Use `New message` in the chat header to start a fresh thread; unread marks are shown on thread rows for quick scanning.
+- Imam/Admin can close a thread. Closed threads stay visible as history, but no new messages can be posted in that thread.
+- If a thread is closed, parent must start a new thread to continue communication.
 - Notifications show platform events relevant to your account.
 - Mark notifications as read from the notifications view.
 - For communication issues, check if the receiver or role scope is valid.

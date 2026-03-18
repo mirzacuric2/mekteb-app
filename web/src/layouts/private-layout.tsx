@@ -10,8 +10,6 @@ import {
   ChevronRight,
   CircleHelp,
   House,
-  Mail,
-  MessageSquare,
   Newspaper,
   PanelLeft,
   UserRound,
@@ -25,6 +23,9 @@ import { Sidebar, SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } fr
 import { PrivateLayoutContext } from "./private-layout-context";
 import { ROLE } from "../types";
 import { ActivityReportDialog } from "../features/reporting/activity-report-dialog";
+import { DockedChatPanel } from "../features/messages/docked-chat-panel";
+import { ChatControllerProvider } from "../features/messages/chat-controller";
+import { useAuthedQuery } from "../features/common/use-authed-query";
 
 function PrivateLayoutShell() {
   const { t, i18n } = useTranslation();
@@ -33,6 +34,11 @@ function PrivateLayoutShell() {
   const navigate = useNavigate();
   const { open, setOpen, setOpenMobile } = useSidebar();
   const [isQuickReportOpen, setIsQuickReportOpen] = useState(false);
+  const notifications = useAuthedQuery<Array<{ isRead: boolean }>>("notifications", "/notifications", Boolean(session));
+  const unreadNotificationsCount = useMemo(
+    () => (notifications.data || []).filter((item) => !item.isRead).length,
+    [notifications.data]
+  );
   const currentSegment = location.pathname.split("/").pop() || "dashboard";
   const canManageUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canReportActivities = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
@@ -82,7 +88,6 @@ function PrivateLayoutShell() {
     dashboard: <House className="h-4 w-4 text-slate-500" />,
     posts: <Newspaper className="h-4 w-4 text-slate-500" />,
     help: <CircleHelp className="h-4 w-4 text-slate-500" />,
-    messages: <MessageSquare className="h-4 w-4 text-slate-500" />,
     notifications: <Bell className="h-4 w-4 text-slate-500" />,
     users: <Users className="h-4 w-4 text-slate-500" />,
     children: <UserRound className="h-4 w-4 text-slate-500" />,
@@ -154,28 +159,14 @@ function PrivateLayoutShell() {
                     onClick={() => navigate("/app/notifications")}
                   >
                     <Bell className="h-5 w-5" />
-                    <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
-                      3
-                    </span>
+                    {unreadNotificationsCount > 0 ? (
+                      <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                        {unreadNotificationsCount}
+                      </span>
+                    ) : null}
                   </button>
                   <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                     {t("notifications")}
-                  </span>
-                </div>
-                <div className="group relative">
-                  <button
-                    type="button"
-                    aria-label={t("messages")}
-                    className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                    onClick={() => navigate("/app/messages")}
-                  >
-                    <Mail className="h-5 w-5" />
-                    <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
-                      5
-                    </span>
-                  </button>
-                  <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                    {t("messages")}
                   </span>
                 </div>
                 {canReportActivities ? (
@@ -221,6 +212,7 @@ function PrivateLayoutShell() {
         </SidebarInset>
       </div>
       <ActivityReportDialog open={isQuickReportOpen} onOpenChange={setIsQuickReportOpen} />
+      <DockedChatPanel />
     </div>
   );
 }
@@ -234,7 +226,9 @@ export function PrivateLayout() {
 
   return (
     <SidebarProvider>
-      <PrivateLayoutShell />
+      <ChatControllerProvider>
+        <PrivateLayoutShell />
+      </ChatControllerProvider>
     </SidebarProvider>
   );
 }

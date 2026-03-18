@@ -7,7 +7,6 @@ import {
   DashboardRoute,
   HelpRoute,
   LessonsRoute,
-  MessagesRoute,
   NotificationsRoute,
   PostsRoute,
   UsersRoute,
@@ -33,7 +32,6 @@ export function App() {
         <Route path="activities" element={<ActivitiesRoute />} />
         <Route path="lessons" element={<LessonsRoute />} />
         <Route path="communities" element={<CommunitiesRoute />} />
-        <Route path="messages" element={<MessagesRoute />} />
         <Route path="notifications" element={<NotificationsRoute />} />
       </Route>
       <Route path="*" element={<Navigate to="/app/dashboard" replace />} />

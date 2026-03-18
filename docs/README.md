@@ -32,6 +32,17 @@ This folder contains user-facing documentation for daily platform usage.
 
 ## Feature Notes (Latest)
 
+- Messaging is upgraded to a global bottom-right chat dock with 30-second auto-refresh for recent threads and unread-message badge updates.
+- Chat launcher label (`Chat`) is visible on all devices for clearer discoverability.
+- Standalone `/app/messages` page is removed; messaging is dock-only for a single consistent flow.
+- Message badge/new-state is chat-driven (thread activity + local last-seen), independent from the notifications module.
+- Thread list unread state is shown with a compact dot indicator in each unread thread row.
+- Thread-row header keeps unread dot + counterpart name on a single line; timestamp truncates when horizontal space is limited.
+- Docked chat launcher unread badge uses live thread activity + last-seen state (no hardcoded values).
+- Parent chat supports both free messages and context-tied thread starts from child homework/lecture-comment surfaces, with Imam/Admin auto-selected for parent-scoped flows.
+- Message threads support a persisted `OPEN/CLOSED` state; Imam/Admin can lock threads via an explicit `Lock thread` destructive action with typed confirmation (`CLOSE`), and closed threads remain visible as read-only history.
+- After thread closure, parent cannot post new messages in that thread and must start a new thread for follow-up communication.
+- Chat header includes a `New message` action (next to close) so users can start a fresh thread without closing the chat dock first.
 - Posts now have a full community-scoped CRUD flow: only `ADMIN` can create posts, parents can react/comment and edit their own comments, and admins can moderate/delete unsuitable comments.
 - Posts are currently text-only (`title` + `content`) by design, while keeping API/UI structure ready for future attachment expansion.
 - Dashboard landing view now reads recent posts directly from the posts API with a `limit=3` query, so users always see the latest three community-scoped posts.
@@ -110,7 +121,7 @@ This folder contains user-facing documentation for daily platform usage.
 - Shared table wrappers clamp width (`min-w-0/max-w-full`) so large table min-width stays inside local x-scroll areas and never expands page width.
 - Users/Children panel cards are `min-w-0` to prevent flex-item min-content width from leaking into document layout on small screens.
 - While dialog is open, body overflow and overscroll are explicitly locked to avoid page drift behind modals.
-- Private dashboard now has a dedicated sticky top header with a primary reporting action and quick-access notifications/messages icons with unread badges.
+- Private dashboard now has a dedicated sticky top header with a primary reporting action and quick-access notifications icon with unread badge.
 - Header action is responsive: desktop shows icon + text, while mobile uses icon-only for compact spacing.
 - Sidebar branding now uses full logo in expanded desktop state and compact logo mark for collapsed/mobile state.
 - Sidebar branding assets are now hosted under `web/public/branding` (`izbus-logo.png`, `logo-small.svg`) so `mekteb-app` does not depend on sibling project asset paths.

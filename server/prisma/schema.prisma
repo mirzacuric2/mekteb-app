@@ -22,6 +22,23 @@ enum NotificationType {
   ATTENDANCE_UPDATED
 }
 
+enum MessageContextType {
+  GENERAL
+  HOMEWORK
+  LECTURE_COMMENT
+  ABSENCE_COMMENT
+}
+
+enum MessageKind {
+  USER
+  SYSTEM
+}
+
+enum MessageThreadStatus {
+  OPEN
+  CLOSED
+}
+
 enum BoardMemberRole {
   CHAIRPERSON
   SECRETARY
@@ -233,14 +250,26 @@ model Reaction {
 }
 
 model Message {
-  id         String   @id @default(uuid())
-  content    String
-  senderId   String
-  receiverId String
-  createdAt  DateTime @default(now())
+  id               String              @id @default(uuid())
+  threadId         String
+  content          String
+  senderId         String
+  receiverId       String
+  kind             MessageKind         @default(USER)
+  contextType      MessageContextType  @default(GENERAL)
+  contextChildId   String?
+  contextLectureId String?
+  contextLabel     String?
+  contextPreview   String?
+  threadStatus     MessageThreadStatus @default(OPEN)
+  createdAt        DateTime            @default(now())
 
   sender   User @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([senderId, createdAt])
+  @@index([receiverId, createdAt])
 }
 
 model Lecture {

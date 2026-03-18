@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
+import { MessageSquare } from "lucide-react";
 import { Card } from "../../components/ui/card";
 import { formatDateTime } from "../../lib/date-time";
+import { Button } from "../../components/ui/button";
 
 export const HOMEWORK_PROGRESS_STATUS = {
   DONE: "DONE",
@@ -22,9 +24,10 @@ export type HomeworkProgressItem = {
 
 type ProgressHomeworkTimelineProps = {
   items: HomeworkProgressItem[];
+  onMessageImam?: (item: HomeworkProgressItem) => void;
 };
 
-export function ProgressHomeworkTimeline({ items }: ProgressHomeworkTimelineProps) {
+export function ProgressHomeworkTimeline({ items, onMessageImam }: ProgressHomeworkTimelineProps) {
   const { t } = useTranslation();
 
   if (!items.length) {
@@ -67,6 +70,19 @@ export function ProgressHomeworkTimeline({ items }: ProgressHomeworkTimelineProp
               <p className="mt-1 text-xs text-slate-500">
                 {t("parentDashboardLastReportAt", { date: formatDateTime(item.lastReportedAt) })}
               </p>
+            ) : null}
+            {onMessageImam ? (
+              <div className="mt-2 border-t border-border/70 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 px-2 py-1 text-xs"
+                  onClick={() => onMessageImam(item)}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Message imam
+                </Button>
+              </div>
             ) : null}
           </Card>
         );
