@@ -345,6 +345,29 @@ export function communitiesRouter() {
         role: member.role,
       }));
 
+      if (req.user!.role === Role.BOARD_MEMBER) {
+        const activeSelfAssignments = await prisma.communityBoardMember.findMany({
+          where: { communityId: existing.id, isActive: true, userId: req.user!.id },
+          select: { userId: true, role: true },
+        });
+        const activeSelfKeys = new Set(
+          activeSelfAssignments.map((assignment) =>
+            boardAssignmentKey({ userId: assignment.userId || "", role: assignment.role })
+          )
+        );
+        const requestedSelfKeys = new Set(
+          requestedAssignments
+            .filter((assignment) => assignment.userId === req.user!.id)
+            .map((assignment) => boardAssignmentKey(assignment))
+        );
+        if (
+          activeSelfKeys.size !== requestedSelfKeys.size ||
+          [...activeSelfKeys].some((key) => !requestedSelfKeys.has(key))
+        ) {
+          return res.status(403).json({ message: "Board members cannot update their own board-member assignment" });
+        }
+      }
+
       for (const boardMember of payload.data.boardMembers) {
         const uniqueKey = boardAssignmentKey({ userId: boardMember.userId, role: boardMember.role });
         if (seen.has(uniqueKey)) {
@@ -499,6 +522,10 @@ export function communitiesRouter() {
       return res.status(404).json({ message: "Community not found" });
     }
 
+    if (req.user!.role === Role.BOARD_MEMBER && payload.data.userId === req.user!.id) {
+      return res.status(403).json({ message: "Board members cannot update their own board-member assignment" });
+    }
+
     let linkedUserId: string | undefined;
     let firstName = payload.data.firstName?.trim() || undefined;
     let lastName = payload.data.lastName?.trim() || undefined;
@@ -575,6 +602,9 @@ export function communitiesRouter() {
       }
       if (!existing.isActive) {
         return res.status(404).json({ message: "Board member not found" });
+      }
+      if (req.user!.role === Role.BOARD_MEMBER && existing.userId === req.user!.id) {
+        return res.status(403).json({ message: "Board members cannot update their own board-member assignment" });
       }
 
       let linkedUserId = existing.userId || undefined;
@@ -683,6 +713,9 @@ export function communitiesRouter() {
       }
       if (!existing.isActive) {
         return res.status(404).json({ message: "Board member not found" });
+      }
+      if (req.user!.role === Role.BOARD_MEMBER && existing.userId === req.user!.id) {
+        return res.status(403).json({ message: "Board members cannot update their own board-member assignment" });
       }
       await prisma.communityBoardMember.update({
         where: { id: existing.id },

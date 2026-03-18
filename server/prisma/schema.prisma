@@ -17,9 +17,13 @@ enum Role {
 
 enum NotificationType {
   POST_PUBLISHED
+  POST_CREATED
   COMMENT_ADDED
+  REACTION_ADDED
   MESSAGE_RECEIVED
   ATTENDANCE_UPDATED
+  ABSENCE_COMMENT_ADDED
+  HOMEWORK_COMPLETED
 }
 
 enum MessageContextType {
@@ -347,6 +351,7 @@ model Notification {
   type      NotificationType
   title     String
   body      String
+  targetPath String?
   isRead    Boolean @default(false)
   createdAt DateTime @default(now())
 

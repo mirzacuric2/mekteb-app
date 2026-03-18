@@ -33,6 +33,15 @@ This folder contains user-facing documentation for daily platform usage.
 ## Feature Notes (Latest)
 
 - Messaging is upgraded to a global bottom-right chat dock with 30-second auto-refresh for recent threads and unread-message badge updates.
+- Notifications now include event-based alerts for new posts, imam absence comments, and homework completion, with 30-second polling, a bell dropdown showing the latest 5 items, and a dedicated `/app/notifications` page reachable via `See all` (sidebar notification entry removed).
+- Status badges are now centralized through a reusable shared component (`StatusBadge`) and reused across users, children, reports, communities, and child progress surfaces for consistent color semantics.
+- Parent overall progress KPI now excludes children without completed/tracked performance records; draft/in-progress reports no longer count as `0%` in aggregate performance.
+- Post engagement notifications now fan out to users who already reacted/commented on a post: new comments trigger `COMMENT_ADDED` notifications and first-time likes trigger `REACTION_ADDED` notifications (actor excluded).
+- Notification items now deep-link to relevant pages via `targetPath` (for example: post-related notifications open `/app/posts`, homework-completed notifications can open children view with child drawer preselected).
+- Children details drawer state is now URL-shareable via `?childId=<uuid>` on `/app/children`; opening a child updates the URL, and opening that URL restores the same drawer.
+- Attendance notifications now deep-link to the specific child drawer (`/app/children?childId=...`) so parent users land directly on the updated child context.
+- Children page remains table-first; progress KPI cards are shown on the dashboard, not above the children list.
+- `Lessons` navigation visibility and route access are now restricted to `SUPER_ADMIN` only (for example `BOARD_MEMBER` no longer sees/open lessons).
 - Chat launcher label (`Chat`) is visible on all devices for clearer discoverability.
 - Standalone `/app/messages` page is removed; messaging is dock-only for a single consistent flow.
 - Message badge/new-state is chat-driven (thread activity + local last-seen), independent from the notifications module.
@@ -54,6 +63,11 @@ This folder contains user-facing documentation for daily platform usage.
 - Community form supports a clearer create/update flow.
 - Imam assignment is super-admin restricted (editable only by `SUPER_ADMIN`, read-only for others).
 - Board-member assignments are managed directly in the community create/update modal by selecting users and board roles.
+- Community edit now preserves and displays already-assigned board-member users as preselected values in the board-member dropdown rows, even when those users are missing from the default directory option list.
+- Board-member user picker now lists only users with access role `BOARD_MEMBER` (community-scoped), while existing assignments still render as selected values.
+- `BOARD_MEMBER` can update community board-member assignments for their community, but cannot change/remove their own board-member assignment (enforced in both UI and API).
+- Communities list search input is shown only for `SUPER_ADMIN`; community-scoped roles (`ADMIN`/`BOARD_MEMBER`) no longer see this global search control.
+- Shared community access checks now explicitly allow `BOARD_MEMBER` to access own-community endpoints that rely on `canAccessCommunity` (for example community board-members read/list routes).
 - Board-member assignments keep full history with `active/inactive` status and mandate dates (`mandateStartDate`, `mandateEndDate`).
 - Multiple admins (Imams) can be assigned to the same community.
 - Deleting a community now inactivates it (soft delete) instead of removing related records.

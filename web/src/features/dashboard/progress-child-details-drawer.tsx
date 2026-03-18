@@ -12,6 +12,7 @@ import {
 import { Card } from "../../components/ui/card";
 import { Tabs } from "../../components/ui/tabs";
 import { NaValue } from "../common/components/na-value";
+import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { LESSON_NIVO_LABEL, LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
 import { Lesson } from "../lessons/types";
@@ -196,9 +197,7 @@ export function ProgressChildDetailsDrawer({
           <div>
             <DrawerTitle>{child ? `${child.firstName} ${child.lastName}` : t("childrenDetails")}</DrawerTitle>
             {child ? (
-              <span className="mt-2 inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
-                {t(child.status.toLowerCase())}
-              </span>
+              <StatusBadge status={child.status} className="mt-2" />
             ) : null}
             <DrawerDescription>{t("parentDashboardChildDetailsDrawerDescription")}</DrawerDescription>
           </div>

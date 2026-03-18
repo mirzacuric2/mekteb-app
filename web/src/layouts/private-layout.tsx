@@ -10,6 +10,7 @@ import {
   ChevronRight,
   CircleHelp,
   House,
+  Mail,
   Newspaper,
   PanelLeft,
   UserRound,
@@ -24,25 +25,24 @@ import { PrivateLayoutContext } from "./private-layout-context";
 import { ROLE } from "../types";
 import { ActivityReportDialog } from "../features/reporting/activity-report-dialog";
 import { DockedChatPanel } from "../features/messages/docked-chat-panel";
-import { ChatControllerProvider } from "../features/messages/chat-controller";
-import { useAuthedQuery } from "../features/common/use-authed-query";
+import { ChatControllerProvider, useChatController } from "../features/messages/chat-controller";
+import { NotificationBellMenu } from "../features/notifications/notification-bell-menu";
+import { useMessageNewIndicator } from "../features/messages/use-message-new-indicator";
 
 function PrivateLayoutShell() {
   const { t, i18n } = useTranslation();
   const { session, logout } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
+  const { openChat } = useChatController();
   const { open, setOpen, setOpenMobile } = useSidebar();
   const [isQuickReportOpen, setIsQuickReportOpen] = useState(false);
-  const notifications = useAuthedQuery<Array<{ isRead: boolean }>>("notifications", "/notifications", Boolean(session));
-  const unreadNotificationsCount = useMemo(
-    () => (notifications.data || []).filter((item) => !item.isRead).length,
-    [notifications.data]
-  );
+  const messageIndicator = useMessageNewIndicator(Boolean(session));
   const currentSegment = location.pathname.split("/").pop() || "dashboard";
   const canManageUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canReportActivities = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canManageActivities = canReportActivities;
+  const canManageLessons = session?.user.role === ROLE.SUPER_ADMIN;
   const canManageChildren =
     session?.user.role === ROLE.ADMIN ||
     session?.user.role === ROLE.SUPER_ADMIN ||
@@ -77,8 +77,12 @@ function PrivateLayoutShell() {
       navigate("/app/dashboard", { replace: true });
       return;
     }
+    if (currentSegment === "lessons" && !canManageLessons) {
+      navigate("/app/dashboard", { replace: true });
+      return;
+    }
     setOpenMobile(false);
-  }, [canManageActivities, canManageChildren, canManageCommunities, canManageUsers, currentSegment, navigate, setOpenMobile]);
+  }, [canManageActivities, canManageChildren, canManageCommunities, canManageLessons, canManageUsers, currentSegment, navigate, setOpenMobile]);
 
   if (!session) return null;
 
@@ -105,12 +109,12 @@ function PrivateLayoutShell() {
       canManageActivities,
       canPublishPosts,
       canCreateAdmin: session.user.role === ROLE.SUPER_ADMIN,
-      canManageLessons: session.user.role === ROLE.SUPER_ADMIN,
+      canManageLessons,
       canManageCommunities,
       canCreateCommunities: session.user.role === ROLE.SUPER_ADMIN,
       canAssignCommunityAdmins: session.user.role === ROLE.SUPER_ADMIN,
     }),
-    [canManage, canManageActivities, canManageChildren, canManageCommunities, canManageUsers, canPublishPosts, session.user.role]
+    [canManage, canManageActivities, canManageChildren, canManageCommunities, canManageLessons, canManageUsers, canPublishPosts, session.user.role]
   );
 
   return (
@@ -124,6 +128,7 @@ function PrivateLayoutShell() {
             canManageUsers={canManageUsers}
             canManageChildren={canManageChildren}
             canManageActivities={canManageActivities}
+            canManageLessons={canManageLessons}
             canManageCommunities={canManageCommunities}
             initials={initials}
             fullName={`${session.user.firstName} ${session.user.lastName}`}
@@ -154,21 +159,22 @@ function PrivateLayoutShell() {
                 <div className="group relative">
                   <button
                     type="button"
-                    aria-label={t("notifications")}
+                    aria-label={t("messages")}
                     className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                    onClick={() => navigate("/app/notifications")}
+                    onClick={() => openChat()}
                   >
-                    <Bell className="h-5 w-5" />
-                    {unreadNotificationsCount > 0 ? (
+                    <Mail className="h-5 w-5" />
+                    {messageIndicator.unreadThreadCount > 0 ? (
                       <span className="absolute -right-0.5 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
-                        {unreadNotificationsCount}
+                        {messageIndicator.unreadThreadCount}
                       </span>
                     ) : null}
                   </button>
                   <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                    {t("notifications")}
+                    {t("messages")}
                   </span>
                 </div>
+                <NotificationBellMenu />
                 {canReportActivities ? (
                   <Button
                     type="button"

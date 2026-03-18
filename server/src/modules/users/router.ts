@@ -31,6 +31,7 @@ export function usersRouter() {
   const childSsnSchema = z.string().trim().min(10).max(20);
   const childNivoSchema = z.number().int().min(1).max(5);
   const childListQuerySchema = z.object({
+    childId: z.string().uuid().optional(),
     nivo: z.coerce.number().int().min(1).max(5).optional(),
     status: z.nativeEnum(ChildStatus).optional(),
     q: z.string().trim().min(1).optional(),
@@ -395,6 +396,7 @@ export function usersRouter() {
       return res.status(403).json({ message: "Community assignment required" });
     }
     const whereFilters = {
+      ...(query.data.childId ? { id: query.data.childId } : {}),
       ...(query.data.nivo !== undefined ? { nivo: query.data.nivo } : {}),
       ...(query.data.status !== undefined ? { status: query.data.status } : {}),
       ...(searchTerm

@@ -3,6 +3,7 @@ import { MessageSquare } from "lucide-react";
 import { Card } from "../../components/ui/card";
 import { formatDateTime } from "../../lib/date-time";
 import { Button } from "../../components/ui/button";
+import { StatusBadge } from "../common/components/status-badge";
 
 export const HOMEWORK_PROGRESS_STATUS = {
   DONE: "DONE",
@@ -49,17 +50,7 @@ export function ProgressHomeworkTimeline({ items, onMessageImam }: ProgressHomew
           <Card key={item.key} className="rounded-lg border border-border/70 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-medium text-slate-900">{item.title}</p>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
-                  isDone
-                    ? "bg-emerald-100 text-emerald-700"
-                    : isPending
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-slate-100 text-slate-700"
-                }`}
-              >
-                {statusLabel}
-              </span>
+              <StatusBadge status={item.status} label={statusLabel} className="px-2 py-0.5" />
             </div>
             {item.lessonTitle ? <p className="mt-1 text-xs text-slate-600">{item.lessonTitle}</p> : null}
             {item.homeworkTitle && item.title !== item.homeworkTitle ? (

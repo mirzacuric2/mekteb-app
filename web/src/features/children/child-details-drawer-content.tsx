@@ -4,6 +4,7 @@ import { NivoProgress } from "./nivo-progress";
 import { type ChildRecord } from "./types";
 import { formatDate, formatDateTime } from "../../lib/date-time";
 import { LECTURE_STATUS } from "../reporting/reporting.constants";
+import { StatusBadge } from "../common/components/status-badge";
 
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -51,7 +52,7 @@ export function ChildDetailsDrawerContent({ child }: { child: ChildRecord }) {
             </div>
           }
         />
-        <DetailRow label={t("status")} value={t(child.status.toLowerCase())} />
+        <DetailRow label={t("status")} value={<StatusBadge status={child.status} />} />
         <DetailRow label={t("childrenParentsLabel")} value={parentsText} />
         <DetailRow label={t("address")} value={addressText} />
         <DetailRow

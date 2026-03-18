@@ -82,8 +82,20 @@ export function communicationRouter() {
   const closeMessageThreadPayloadSchema = z.object({
     note: z.string().trim().min(1).max(180).optional(),
   });
+  const notificationListQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    unreadOnly: z.coerce.number().int().min(0).max(1).optional(),
+  });
+  const updateNotificationPayloadSchema = z.object({
+    isRead: z.boolean(),
+  });
   const limitedMessagingRoles = new Set<Role>([Role.USER, Role.PARENT, Role.BOARD_MEMBER]);
   const isLimitedMessagingRole = (role: Role) => limitedMessagingRoles.has(role);
+  const formatFullName = (firstName?: string | null, lastName?: string | null) =>
+    [firstName?.trim() || "", lastName?.trim() || ""].filter(Boolean).join(" ").trim();
+  type NotificationClient = Pick<typeof prisma, "parentChild" | "notification">;
 
   const applyHomeworkStateToLecture = async <
     T extends {
@@ -117,6 +129,82 @@ export function communicationRouter() {
   >(
     lectures: T[]
   ): Promise<T[]> => Promise.all(lectures.map((lecture) => applyHomeworkStateToLecture(lecture)));
+  const createAbsenceCommentNotifications = async (
+    tx: NotificationClient,
+    rows: Array<{ childId: string; childName: string; present: boolean; comment?: string | null }>,
+    actorId: string
+  ) => {
+    const absentRows = rows
+      .map((row) => ({
+        ...row,
+        comment: row.comment?.trim() || "",
+      }))
+      .filter((row) => !row.present && Boolean(row.comment));
+    if (absentRows.length === 0) return;
+
+    const childIds = [...new Set(absentRows.map((row) => row.childId))];
+    const parentLinks = await tx.parentChild.findMany({
+      where: { childId: { in: childIds } },
+      select: { parentId: true, childId: true },
+    });
+    if (parentLinks.length === 0) return;
+
+    const parentIdsByChildId = parentLinks.reduce<Record<string, string[]>>((acc, row) => {
+      acc[row.childId] = acc[row.childId] || [];
+      acc[row.childId].push(row.parentId);
+      return acc;
+    }, {});
+
+    const data: Array<{ userId: string; type: NotificationType; title: string; body: string; targetPath?: string }> = [];
+    for (const row of absentRows) {
+      const linkedParentIds = parentIdsByChildId[row.childId] || [];
+      for (const parentId of linkedParentIds) {
+        if (parentId === actorId) continue;
+        data.push({
+          userId: parentId,
+          type: NotificationType.ABSENCE_COMMENT_ADDED,
+          title: "Absence comment",
+          body: `${row.childName}: ${row.comment}`,
+          targetPath: `/app/children?childId=${row.childId}`,
+        });
+      }
+    }
+    if (data.length > 0) {
+      await tx.notification.createMany({ data });
+    }
+  };
+  const createPostEngagementNotifications = async (params: {
+    postId: string;
+    actorId: string;
+    type: NotificationType;
+    title: string;
+    body: string;
+    targetPath?: string;
+  }) => {
+    const [reactions, comments] = await Promise.all([
+      prisma.reaction.findMany({
+        where: { postId: params.postId },
+        select: { userId: true },
+      }),
+      prisma.comment.findMany({
+        where: { postId: params.postId },
+        select: { authorId: true },
+      }),
+    ]);
+    const recipientIds = [
+      ...new Set([...reactions.map((reaction) => reaction.userId), ...comments.map((comment) => comment.authorId)]),
+    ].filter((userId) => userId !== params.actorId);
+    if (recipientIds.length === 0) return;
+    await prisma.notification.createMany({
+      data: recipientIds.map((userId) => ({
+        userId,
+        type: params.type,
+        title: params.title,
+        body: params.body,
+        targetPath: params.targetPath,
+      })),
+    });
+  };
 
   router.get("/posts", requireAuth, async (req: AppRequest, res) => {
     const query = postListQuerySchema.safeParse(req.query);
@@ -175,9 +263,10 @@ export function communicationRouter() {
       await prisma.notification.createMany({
         data: users.map((u) => ({
           userId: u.id,
-          type: NotificationType.POST_PUBLISHED,
+          type: NotificationType.POST_CREATED,
           title: "New post",
           body: payload.data.title,
+          targetPath: "/app/posts",
         })),
       });
     }
@@ -216,7 +305,10 @@ export function communicationRouter() {
   router.post("/posts/:postId/comments", requireAuth, async (req: AppRequest, res) => {
     const payload = postCommentPayloadSchema.safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
-    const post = await prisma.post.findUnique({ where: { id: req.params.postId }, select: { id: true, communityId: true } });
+    const post = await prisma.post.findUnique({
+      where: { id: req.params.postId },
+      select: { id: true, communityId: true, title: true },
+    });
     if (!post) return res.status(404).json({ message: "Post not found" });
     if (!canReadPostCommunity(req, post.communityId)) return res.status(403).json({ message: "Forbidden community" });
 
@@ -227,6 +319,14 @@ export function communicationRouter() {
           select: { id: true, firstName: true, lastName: true, role: true },
         },
       },
+    });
+    await createPostEngagementNotifications({
+      postId: post.id,
+      actorId: req.user!.id,
+      type: NotificationType.COMMENT_ADDED,
+      title: "New comment on followed post",
+      body: post.title,
+      targetPath: "/app/posts",
     });
     return res.status(201).json(comment);
   });
@@ -276,7 +376,7 @@ export function communicationRouter() {
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
     const post = await prisma.post.findUnique({
       where: { id: req.params.postId },
-      select: { id: true, communityId: true, authorId: true },
+      select: { id: true, communityId: true, authorId: true, title: true },
     });
     if (!post) return res.status(404).json({ message: "Post not found" });
     if (!canReadPostCommunity(req, post.communityId)) return res.status(403).json({ message: "Forbidden community" });
@@ -284,20 +384,69 @@ export function communicationRouter() {
       return res.status(403).json({ message: "Admin cannot react to own post" });
     }
 
-    const reaction = await prisma.reaction.upsert({
+    const existingReaction = await prisma.reaction.findUnique({
       where: { postId_userId: { postId: req.params.postId, userId: req.user!.id } },
-      create: { postId: post.id, userId: req.user!.id, kind: payload.data.kind },
-      update: { kind: payload.data.kind },
+      select: { id: true },
     });
+    const reaction = existingReaction
+      ? await prisma.reaction.update({
+          where: { postId_userId: { postId: req.params.postId, userId: req.user!.id } },
+          data: { kind: payload.data.kind },
+        })
+      : await prisma.reaction.create({
+          data: { postId: post.id, userId: req.user!.id, kind: payload.data.kind },
+        });
+    if (!existingReaction) {
+      await createPostEngagementNotifications({
+        postId: post.id,
+        actorId: req.user!.id,
+        type: NotificationType.REACTION_ADDED,
+        title: "New like on followed post",
+        body: post.title,
+        targetPath: "/app/posts",
+      });
+    }
     return res.json(reaction);
   });
 
   router.get("/notifications", requireAuth, async (req: AppRequest, res) => {
+    const query = notificationListQuerySchema.safeParse(req.query);
+    if (!query.success) return res.status(400).json({ message: "Invalid query parameters" });
+
+    const where = {
+      userId: req.user!.id,
+      ...(query.data.unreadOnly === 1 ? { isRead: false } : {}),
+    };
+    const shouldPaginate = query.data.page !== undefined || query.data.pageSize !== undefined;
+    const page = query.data.page ?? 1;
+    const pageSize = query.data.pageSize ?? query.data.limit ?? 20;
+    if (shouldPaginate) {
+      const [total, items] = await prisma.$transaction([
+        prisma.notification.count({ where }),
+        prisma.notification.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ]);
+      return res.json({ items, total, page, pageSize });
+    }
+
     const notifications = await prisma.notification.findMany({
-      where: { userId: req.user!.id },
+      where,
       orderBy: { createdAt: "desc" },
+      ...(query.data.limit ? { take: query.data.limit } : {}),
     });
     return res.json(notifications);
+  });
+
+  router.patch("/notifications/read-all", requireAuth, async (req: AppRequest, res) => {
+    const result = await prisma.notification.updateMany({
+      where: { userId: req.user!.id, isRead: false },
+      data: { isRead: true },
+    });
+    return res.json({ updatedCount: result.count });
   });
 
   router.patch("/notifications/:id/read", requireAuth, async (req: AppRequest, res) => {
@@ -309,6 +458,33 @@ export function communicationRouter() {
       data: { isRead: true },
     });
     return res.json(updated);
+  });
+  router.get("/notifications/:id", requireAuth, async (req: AppRequest, res) => {
+    const notification = await prisma.notification.findUnique({ where: { id: req.params.id } });
+    if (!notification) return res.status(404).json({ message: "Notification not found" });
+    if (notification.userId !== req.user!.id) return res.status(403).json({ message: "Forbidden" });
+    return res.json(notification);
+  });
+
+  router.patch("/notifications/:id", requireAuth, async (req: AppRequest, res) => {
+    const payload = updateNotificationPayloadSchema.safeParse(req.body);
+    if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+    const existing = await prisma.notification.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Notification not found" });
+    if (existing.userId !== req.user!.id) return res.status(403).json({ message: "Forbidden" });
+    const updated = await prisma.notification.update({
+      where: { id: req.params.id },
+      data: { isRead: payload.data.isRead },
+    });
+    return res.json(updated);
+  });
+
+  router.delete("/notifications/:id", requireAuth, async (req: AppRequest, res) => {
+    const existing = await prisma.notification.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Notification not found" });
+    if (existing.userId !== req.user!.id) return res.status(403).json({ message: "Forbidden" });
+    await prisma.notification.delete({ where: { id: req.params.id } });
+    return res.status(204).send();
   });
 
   router.get("/messages", requireAuth, async (req: AppRequest, res) => {
@@ -625,7 +801,7 @@ export function communicationRouter() {
         status: ChildStatus.ACTIVE,
         nivo: payload.data.nivo,
       },
-      select: { id: true },
+      select: { id: true, firstName: true, lastName: true },
     });
     if (children.length !== childIds.length) {
       return res.status(400).json({
@@ -690,19 +866,34 @@ export function communicationRouter() {
       return createdLecture;
     });
 
-    const parents = await prisma.parentChild.findMany({
+    const childNameById = new Map(
+      children.map((child) => [child.id, formatFullName(child.firstName, child.lastName) || "Child"])
+    );
+    const parentLinks = await prisma.parentChild.findMany({
       where: { childId: { in: childIds } },
-      select: { parentId: true },
+      select: { parentId: true, childId: true },
     });
-    const uniqueParentIds = [...new Set(parents.map((parent) => parent.parentId))];
-    await prisma.notification.createMany({
-      data: uniqueParentIds.map((parentId) => ({
-        userId: parentId,
-        type: NotificationType.ATTENDANCE_UPDATED,
-        title: "Attendance updated",
-        body: `Lecture: ${resolvedTopic}`,
+    if (parentLinks.length > 0) {
+      await prisma.notification.createMany({
+        data: parentLinks.map((link) => ({
+          userId: link.parentId,
+          type: NotificationType.ATTENDANCE_UPDATED,
+          title: "Attendance updated",
+          body: `${childNameById.get(link.childId) || "Child"}: ${resolvedTopic}`,
+          targetPath: `/app/children?childId=${link.childId}`,
+        })),
+      });
+    }
+    await createAbsenceCommentNotifications(
+      prisma,
+      payload.data.attendance.map((row) => ({
+        childId: row.childId,
+        childName: childNameById.get(row.childId) || "Child",
+        present: row.present,
+        comment: row.comment,
       })),
-    });
+      req.user!.id
+    );
 
       const lectureWithHomework = await applyHomeworkStateToLecture(lecture);
       return res.status(201).json(lectureWithHomework);
@@ -776,7 +967,7 @@ export function communicationRouter() {
           communityId: existing.communityId,
           nivo: resolvedNivo!,
         },
-        select: { id: true },
+        select: { id: true, firstName: true, lastName: true },
       });
       if (children.length !== childIds.length) {
         return res.status(400).json({
@@ -840,21 +1031,38 @@ export function communicationRouter() {
         });
 
         const childIds = [...new Set(payload.data.attendance.map((x) => x.childId))];
-        const parents = await tx.parentChild.findMany({
-          where: { childId: { in: childIds } },
-          select: { parentId: true },
+        const childrenForRows = await tx.child.findMany({
+          where: { id: { in: childIds } },
+          select: { id: true, firstName: true, lastName: true },
         });
-        const uniqueParentIds = [...new Set(parents.map((parent) => parent.parentId))];
-        if (uniqueParentIds.length > 0) {
+        const childNameById = new Map(
+          childrenForRows.map((child) => [child.id, formatFullName(child.firstName, child.lastName) || "Child"])
+        );
+        const parentLinks = await tx.parentChild.findMany({
+          where: { childId: { in: childIds } },
+          select: { parentId: true, childId: true },
+        });
+        if (parentLinks.length > 0) {
           await tx.notification.createMany({
-            data: uniqueParentIds.map((parentId) => ({
-              userId: parentId,
+            data: parentLinks.map((link) => ({
+              userId: link.parentId,
               type: NotificationType.ATTENDANCE_UPDATED,
               title: "Attendance updated",
-              body: `Lecture: ${lecture.topic}`,
+              body: `${childNameById.get(link.childId) || "Child"}: ${lecture.topic}`,
+              targetPath: `/app/children?childId=${link.childId}`,
             })),
           });
         }
+        await createAbsenceCommentNotifications(
+          tx,
+          payload.data.attendance.map((row) => ({
+            childId: row.childId,
+            childName: childNameById.get(row.childId) || "Child",
+            present: row.present,
+            comment: row.comment,
+          })),
+          req.user!.id
+        );
       }
 
       return tx.lecture.findUnique({
@@ -1091,6 +1299,37 @@ export function communicationRouter() {
         lesson: { select: { id: true, title: true, nivo: true } },
       },
     });
+    const wasHomeworkDone = existingAttendance.homeworkDone === true;
+    const isHomeworkDone = updated.homeworkDone === true;
+    if (!wasHomeworkDone && isHomeworkDone) {
+      const parentLinks = await prisma.parentChild.findMany({
+        where: { childId: existingAttendance.childId },
+        select: { parentId: true },
+      });
+      const admins = await prisma.user.findMany({
+        where: {
+          role: Role.ADMIN,
+          communityId: existingAttendance.child.communityId,
+        },
+        select: { id: true },
+      });
+      const recipientIds = [...new Set([...parentLinks.map((row) => row.parentId), ...admins.map((row) => row.id)])].filter(
+        (id) => id !== req.user!.id
+      );
+      if (recipientIds.length > 0) {
+        const childName = formatFullName(existingAttendance.child.firstName, existingAttendance.child.lastName) || "Child";
+        const homeworkTitle = updated.homeworkTitle?.trim() || updated.lesson?.title || "Homework";
+        await prisma.notification.createMany({
+          data: recipientIds.map((recipientId) => ({
+            userId: recipientId,
+            type: NotificationType.HOMEWORK_COMPLETED,
+            title: "Homework done",
+            body: `${childName}: ${homeworkTitle}`,
+            targetPath: `/app/children?childId=${existingAttendance.childId}`,
+          })),
+        });
+      }
+    }
 
     return res.json({
       id: `${updated.lectureId}:${updated.childId}`,

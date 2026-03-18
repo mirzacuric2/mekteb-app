@@ -35,6 +35,7 @@ type Props = {
   canManageUsers: boolean;
   canManageChildren: boolean;
   canManageActivities: boolean;
+  canManageLessons: boolean;
   canManageCommunities: boolean;
   initials: string;
   fullName: string;
@@ -51,6 +52,7 @@ export function DashboardSidebar({
   canManageUsers,
   canManageChildren,
   canManageActivities,
+  canManageLessons,
   canManageCommunities,
   initials,
   fullName,
@@ -111,7 +113,7 @@ export function DashboardSidebar({
           <SidebarGroupLabel>{t("general")}</SidebarGroupLabel>
           <SidebarMenu>
             {dashboardSections
-              .filter((section) => section.group === "general")
+              .filter((section) => section.group === "general" && section.key !== "notifications")
               .map((section) => (
                 <SidebarMenuItem key={section.key}>
                   <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
@@ -138,7 +140,7 @@ export function DashboardSidebar({
                         (section.key === "children" && canManageChildren) ||
                         (section.key === "activities" && canManageActivities) ||
                         (section.key === "communities" && canManageCommunities) ||
-                        section.key === "lessons")
+                        (section.key === "lessons" && canManageLessons))
                   )
                   .map((section) => (
                     <SidebarMenuItem key={section.key}>
@@ -163,7 +165,7 @@ export function DashboardSidebar({
                       ((section.key === "children" && canManageChildren) ||
                         (section.key === "activities" && canManageActivities) ||
                         (section.key === "communities" && canManageCommunities) ||
-                        section.key === "lessons")
+                        (section.key === "lessons" && canManageLessons))
                   )
                   .map((section) => (
                     <SidebarMenuItem key={section.key}>

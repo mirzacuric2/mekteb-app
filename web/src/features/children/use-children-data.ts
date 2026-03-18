@@ -1,5 +1,5 @@
 import { useAuthedQuery, useAuthedQueryWithParams } from "../common/use-authed-query";
-import { ChildrenListResponse } from "./types";
+import { ChildRecord, ChildrenListResponse } from "./types";
 import { useUsersQuery } from "../users/use-users-data";
 
 export type ChildrenParentOption = {
@@ -35,6 +35,25 @@ export function useChildrenListQuery({ search, page, pageSize, mineOnly }: Child
     },
     true
   );
+}
+
+export function useChildByIdQuery(childId: string | undefined, mineOnly?: boolean) {
+  const query = useAuthedQueryWithParams<ChildrenListResponse>(
+    "children-by-id",
+    "/children",
+    {
+      childId,
+      page: 1,
+      pageSize: 1,
+      mine: mineOnly ? 1 : undefined,
+    },
+    Boolean(childId)
+  );
+
+  return {
+    ...query,
+    data: query.data?.items?.[0] as ChildRecord | undefined,
+  };
 }
 
 export function useChildrenParentOptionsQuery(enabled: boolean) {

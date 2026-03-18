@@ -2,11 +2,12 @@ import { DataTable } from "../common/components/data-table";
 import { EntityRowActions } from "../common/components/entity-row-actions";
 import { PaginationControls } from "../common/components/pagination-controls";
 import { Loader } from "../common/components/loader";
+import { StatusBadge } from "../common/components/status-badge";
 import { Button } from "../../components/ui/button";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NivoProgress } from "./nivo-progress";
-import { CHILD_STATUS, type ChildRecord, type ChildStatus } from "./types";
+import { type ChildRecord } from "./types";
 
 type ChildrenTableProps = {
   children: ChildRecord[];
@@ -20,35 +21,6 @@ type ChildrenTableProps = {
   canEdit: boolean;
   canDelete: boolean;
 };
-
-function childStatusBadge(status: ChildStatus, t: (key: string) => string) {
-  if (status === CHILD_STATUS.ACTIVE) {
-    return (
-      <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
-        {t("active")}
-      </span>
-    );
-  }
-  if (status === CHILD_STATUS.COMPLETED) {
-    return (
-      <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
-        {t("completed")}
-      </span>
-    );
-  }
-  if (status === CHILD_STATUS.DISCONTINUED) {
-    return (
-      <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
-        {t("discontinued")}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
-      {t("inactive")}
-    </span>
-  );
-}
 
 export function ChildrenTable({
   children,
@@ -99,7 +71,9 @@ export function ChildrenTable({
                 .filter(Boolean)
                 .join(", ") || t("na")}
             </td>
-            <td className="whitespace-nowrap px-5 py-3.5">{childStatusBadge(child.status, t)}</td>
+            <td className="whitespace-nowrap px-5 py-3.5">
+              <StatusBadge status={child.status} />
+            </td>
             <td className="w-[140px] whitespace-nowrap px-5 py-3.5 text-right align-middle">
               {canEdit && canDelete ? (
                 <EntityRowActions

@@ -83,6 +83,7 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
   const metrics = useProgressOverview(enabled);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const sortedChildSummaries = [...metrics.childSummaries].sort((a, b) => {
+    if (a.hasPerformanceRecords !== b.hasPerformanceRecords) return a.hasPerformanceRecords ? -1 : 1;
     if (a.pendingHomeworkCount !== b.pendingHomeworkCount) return b.pendingHomeworkCount - a.pendingHomeworkCount;
     if (a.overallProgressRate !== b.overallProgressRate) return a.overallProgressRate - b.overallProgressRate;
     return a.childName.localeCompare(b.childName, undefined, { sensitivity: "base" });
@@ -136,15 +137,17 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-slate-900">{summary.childName}</p>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                      {summary.overallProgressRate}%
+                      {summary.hasPerformanceRecords ? `${summary.overallProgressRate}%` : t("parentDashboardNoRecordsLabel")}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-600">
-                    {t("parentDashboardChildPerformanceCompactLine", {
-                      attendance: summary.attendanceRate,
-                      completed: summary.completedLecturesCount,
-                      reported: summary.reportedLecturesCount,
-                    })}
+                    {summary.hasPerformanceRecords
+                      ? t("parentDashboardChildPerformanceCompactLine", {
+                          attendance: summary.attendanceRate,
+                          completed: summary.completedLecturesCount,
+                          reported: summary.reportedLecturesCount,
+                        })
+                      : t("parentDashboardNoActivityFallback")}
                   </p>
                 </button>
               ))}

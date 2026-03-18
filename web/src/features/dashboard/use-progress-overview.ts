@@ -41,6 +41,7 @@ export type ChildProgressSummary = {
   currentLectureStatus: LectureStatus | null;
   pendingHomeworkCount: number;
   overallProgressRate: number;
+  hasPerformanceRecords: boolean;
   latestState: LatestProgressState | null;
 };
 
@@ -117,7 +118,7 @@ export function useProgressOverview(enabled: boolean) {
     const children = query.data?.items || [];
     const attendance = children.flatMap((child) => child.attendance || []);
     const completedAttendance = attendance.filter((entry) => entry.lecture.status === LECTURE_STATUS.COMPLETED);
-    const attendanceForMetrics = completedAttendance.length ? completedAttendance : attendance;
+    const attendanceForMetrics = completedAttendance;
     const recentAttendance = [...attendanceForMetrics].sort(byLatestAttendance).slice(0, PROGRESS_OVERVIEW_SCHEDULED_LESSONS);
     const presentInRecentLessons = recentAttendance.filter((entry) => entry.present).length;
     const attendanceRate = toPercent(presentInRecentLessons, recentAttendance.length);
@@ -156,13 +157,13 @@ export function useProgressOverview(enabled: boolean) {
       const childKnownHomeworkEntries = childHomeworkEntries.filter((entry) => typeof entry.homeworkDone === "boolean");
       const childHomeworkDoneEntries = childKnownHomeworkEntries.filter((entry) => entry.homeworkDone === true);
       const childHomeworkCompletionRate = toPercent(childHomeworkDoneEntries.length, childKnownHomeworkEntries.length);
-      const childOverallProgressRate = toAverage(
-        [
-          childLectureCompletionRate,
-          childAttendanceRate,
-          childKnownHomeworkEntries.length ? childHomeworkCompletionRate : null,
-        ].filter((value): value is number => typeof value === "number")
-      );
+      const childProgressMetrics = [
+        childRecentAttendance.length ? childLectureCompletionRate : null,
+        childRecentAttendance.length ? childAttendanceRate : null,
+        childKnownHomeworkEntries.length ? childHomeworkCompletionRate : null,
+      ].filter((value): value is number => typeof value === "number");
+      const childOverallProgressRate = toAverage(childProgressMetrics);
+      const hasPerformanceRecords = childProgressMetrics.length > 0;
 
       const latestChildState: LatestProgressState | null = latestChildRecord
         ? {
@@ -197,6 +198,7 @@ export function useProgressOverview(enabled: boolean) {
         currentLectureStatus: currentLectureRecord?.lecture.status || null,
         pendingHomeworkCount,
         overallProgressRate: childOverallProgressRate,
+        hasPerformanceRecords,
         latestState: latestChildState,
       };
     });
@@ -225,8 +227,9 @@ export function useProgressOverview(enabled: boolean) {
     const homeworkDoneRecords = childSummaries.reduce((sum, summary) => sum + summary.homeworkDoneCount, 0);
     const recentHomeworkRecords = childSummaries.reduce((sum, summary) => sum + summary.knownHomeworkCount, 0);
     const homeworkCompletionRate = toPercent(homeworkDoneRecords, recentHomeworkRecords);
-    const overallProgressRate = toAverage(childSummaries.map((summary) => summary.overallProgressRate));
-    const childrenOnTrackRate = toPercent(childrenOnTrack, childSummaries.length);
+    const childSummariesWithRecords = childSummaries.filter((summary) => summary.hasPerformanceRecords);
+    const overallProgressRate = toAverage(childSummariesWithRecords.map((summary) => summary.overallProgressRate));
+    const childrenOnTrackRate = toPercent(childrenOnTrack, childSummariesWithRecords.length);
 
     return {
       childrenCount: children.length,

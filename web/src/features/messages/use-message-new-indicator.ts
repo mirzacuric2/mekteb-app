@@ -3,6 +3,7 @@ import { MessageThreadSummary } from "./types";
 import { useMessageThreadsQuery } from "./use-message-data";
 
 const THREAD_LAST_SEEN_STORAGE_KEY = "message-thread-last-seen";
+const THREAD_LAST_SEEN_EVENT = "message-thread-last-seen-updated";
 
 function readThreadLastSeenMap() {
   if (typeof window === "undefined") return {};
@@ -19,6 +20,11 @@ function readThreadLastSeenMap() {
 function persistThreadLastSeenMap(value: Record<string, number>) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(THREAD_LAST_SEEN_STORAGE_KEY, JSON.stringify(value));
+  // Defer cross-component sync to next tick to avoid React
+  // "setState while rendering another component" warnings.
+  window.setTimeout(() => {
+    window.dispatchEvent(new Event(THREAD_LAST_SEEN_EVENT));
+  }, 0);
 }
 
 function toTimestamp(value: string) {
@@ -53,6 +59,25 @@ export function useMessageNewIndicator(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     setThreadLastSeenMap(readThreadLastSeenMap());
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+    const syncFromStorage = () => {
+      window.setTimeout(() => {
+        setThreadLastSeenMap(readThreadLastSeenMap());
+      }, 0);
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== THREAD_LAST_SEEN_STORAGE_KEY) return;
+      syncFromStorage();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(THREAD_LAST_SEEN_EVENT, syncFromStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(THREAD_LAST_SEEN_EVENT, syncFromStorage);
+    };
   }, [enabled]);
 
   useEffect(() => {

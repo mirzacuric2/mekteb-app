@@ -12,9 +12,14 @@ import { useSession } from "../auth/session-context";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { EntityListToolbar } from "../common/components/entity-list-toolbar";
 import { Loader } from "../common/components/loader";
+import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { COMMUNITIES_API_PATH, COMMUNITIES_QUERY_KEY } from "./constants";
-import { AdminOption, CommunityFormDialog, CommunityFormValues } from "./community-form-dialog";
+import {
+  AdminOption,
+  CommunityFormDialog,
+  CommunityFormValues,
+} from "./community-form-dialog";
 import { CommunityRecord } from "./types";
 
 type Props = {
@@ -124,19 +129,68 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
     [users.data]
   );
 
-  const boardMemberUserOptions = useMemo(
+  const boardMemberUserOptions = useMemo(() => {
+    const targetCommunityId = editingCommunity?.id;
+    const baseOptions = (directoryUsers.data || [])
+      .filter((user) => {
+        if (user.role !== ROLE.BOARD_MEMBER) return false;
+        if (!targetCommunityId) return true;
+        return !user.communityId || user.communityId === targetCommunityId;
+      })
+      .map((user) => ({
+        id: user.id,
+        label: formatUserOptionLabel(user),
+      }));
+
+    const optionMap = new Map(baseOptions.map((option) => [option.id, option]));
+    for (const member of editingCommunityDetails.data?.boardMembers || []) {
+      const linkedUserId = (member.userId || member.user?.id || "").trim();
+      if (!linkedUserId || optionMap.has(linkedUserId)) continue;
+      optionMap.set(linkedUserId, {
+        id: linkedUserId,
+        label: member.user ? formatUserOptionLabel(member.user) : linkedUserId,
+      });
+    }
+
+    return Array.from(optionMap.values());
+  }, [directoryUsers.data, editingCommunity?.id, editingCommunityDetails.data?.boardMembers]);
+
+  const assignedAdminOptions = useMemo(
     () =>
-      (directoryUsers.data || [])
-        .filter((user) => {
-          const targetCommunityId = editingCommunity?.id;
-          if (!targetCommunityId) return true;
-          return !user.communityId || user.communityId === targetCommunityId;
-        })
-        .map((user) => ({
-          id: user.id,
-          label: formatUserOptionLabel(user),
-        })),
-    [directoryUsers.data, editingCommunity?.id]
+      (editingCommunityDetails.data?.users || editingCommunity?.users || []).map((admin) => ({
+        id: admin.id,
+        label: formatUserOptionLabel(admin),
+      })),
+    [editingCommunity?.users, editingCommunityDetails.data?.users]
+  );
+
+  const communityInitialValues = useMemo<Partial<CommunityFormValues> | undefined>(
+    () =>
+      editingCommunity
+        ? {
+            name: editingCommunity.name,
+            description: editingCommunity.description || "",
+            contactEmail: editingCommunity.contactEmail || "",
+            contactPhone: editingCommunity.contactPhone || "",
+            address: {
+              streetLine1: editingCommunity.address?.streetLine1 || "",
+              streetLine2: editingCommunity.address?.streetLine2 || "",
+              postalCode: editingCommunity.address?.postalCode || "",
+              city: editingCommunity.address?.city || "",
+              state: editingCommunity.address?.state || "",
+              country: editingCommunity.address?.country || "",
+            },
+            adminUserIds: editingCommunity.users?.map((admin) => admin.id) || [],
+            boardMembers:
+              editingCommunityDetails.data?.boardMembers
+                ?.filter((member) => Boolean((member.userId || member.user?.id || "").trim()))
+                .map((member) => ({
+                  userId: (member.userId || member.user?.id || "").trim(),
+                  role: member.role,
+                })) || [],
+          }
+        : undefined,
+    [editingCommunity, editingCommunityDetails.data?.boardMembers]
   );
 
   const createCommunity = useMutation({
@@ -215,25 +269,27 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
 
   return (
     <Card className="space-y-4">
-      <EntityListToolbar
-        search={search}
-        onSearchChange={setSearch}
-        placeholder={t("communitiesSearchPlaceholder")}
-        actions={
-          canCreate ? (
-            <Button
-              className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
-              onClick={() => {
-                setEditingCommunity(null);
-                setFormOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden md:inline">{t("communitiesCreate")}</span>
-            </Button>
-          ) : undefined
-        }
-      />
+      {canAssignAdmins ? (
+        <EntityListToolbar
+          search={search}
+          onSearchChange={setSearch}
+          placeholder={t("communitiesSearchPlaceholder")}
+          actions={
+            canCreate ? (
+              <Button
+                className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
+                onClick={() => {
+                  setEditingCommunity(null);
+                  setFormOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden md:inline">{t("communitiesCreate")}</span>
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : null}
 
       <div className="space-y-2">
         {communities.isLoading ? (
@@ -268,9 +324,7 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{community.name}</p>
                     {community.status === "INACTIVE" ? (
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                        {t("inactive")}
-                      </span>
+                      <StatusBadge status="INACTIVE" className="px-2 py-0.5 text-[11px]" />
                     ) : null}
                   </div>
                   <p className="text-xs text-slate-500">
@@ -308,40 +362,12 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
         mode={editingCommunity ? "edit" : "create"}
         submitting={createCommunity.isPending || updateCommunity.isPending}
         canAssignAdmins={canAssignAdmins}
-        assignedAdmins={
-          editingCommunity?.users?.map((admin) => ({
-            id: admin.id,
-            label: formatUserOptionLabel(admin),
-          })) || []
-        }
+        currentUserId={session?.user.id || ""}
+        restrictOwnBoardMemberAssignmentEdit={session?.user.role === ROLE.BOARD_MEMBER}
+        assignedAdmins={assignedAdminOptions}
         adminOptions={adminOptions}
         boardMemberUserOptions={boardMemberUserOptions}
-        initialValues={
-          editingCommunity
-            ? {
-                name: editingCommunity.name,
-                description: editingCommunity.description || "",
-                contactEmail: editingCommunity.contactEmail || "",
-                contactPhone: editingCommunity.contactPhone || "",
-                address: {
-                  streetLine1: editingCommunity.address?.streetLine1 || "",
-                  streetLine2: editingCommunity.address?.streetLine2 || "",
-                  postalCode: editingCommunity.address?.postalCode || "",
-                  city: editingCommunity.address?.city || "",
-                  state: editingCommunity.address?.state || "",
-                  country: editingCommunity.address?.country || "",
-                },
-                adminUserIds: editingCommunity.users?.map((admin) => admin.id) || [],
-                boardMembers:
-                  editingCommunityDetails.data?.boardMembers
-                    ?.filter((member) => Boolean(member.userId))
-                    .map((member) => ({
-                      userId: member.userId || "",
-                      role: member.role,
-                    })) || [],
-              }
-            : undefined
-        }
+        initialValues={communityInitialValues}
         onOpenChange={(open) => {
           setFormOpen(open);
           if (!open) setEditingCommunity(null);

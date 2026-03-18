@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Building2, Info, PencilLine, Plus, Save, Trash2, Users, X } from "lucide-react";
@@ -65,6 +65,8 @@ type CommunityFormDialogProps = {
   mode: "create" | "edit";
   submitting: boolean;
   canAssignAdmins: boolean;
+  currentUserId: string;
+  restrictOwnBoardMemberAssignmentEdit: boolean;
   assignedAdmins: AdminOption[];
   adminOptions: AdminOption[];
   boardMemberUserOptions: BoardMemberUserOption[];
@@ -78,6 +80,8 @@ export function CommunityFormDialog({
   mode,
   submitting,
   canAssignAdmins,
+  currentUserId,
+  restrictOwnBoardMemberAssignmentEdit,
   assignedAdmins,
   adminOptions,
   boardMemberUserOptions,
@@ -123,6 +127,11 @@ export function CommunityFormDialog({
     name: "boardMembers",
   });
   const selectedAdminIds = watch("adminUserIds");
+  const selectedBoardMembers = watch("boardMembers");
+  const boardMemberOptionMap = useMemo(
+    () => new Map(boardMemberUserOptions.map((option) => [option.id, option.label])),
+    [boardMemberUserOptions]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -336,27 +345,70 @@ export function CommunityFormDialog({
                     {fields.length ? (
                       <div className="space-y-2">
                         {fields.map((field, index) => (
-                          <div key={field.id} className="grid gap-2 rounded-md border border-border p-2 md:grid-cols-[2fr_1fr_auto]">
-                            <Select {...register(`boardMembers.${index}.userId`)}>
-                              <option value="">{t("communitiesSelectUserPlaceholder")}</option>
-                              {boardMemberUserOptions.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </Select>
-                            <Select {...register(`boardMembers.${index}.role`)}>
-                              {BOARD_MEMBER_ROLE_ORDER.map((role) => (
-                                <option key={role} value={role}>
-                                  {BOARD_MEMBER_ROLE_LABEL[role]}
-                                </option>
-                              ))}
-                            </Select>
-                            <Button type="button" variant="outline" onClick={() => setPendingRemoveIndex(index)}>
-                              <Trash2 className="h-4 w-4" />
-                              {t("remove")}
-                            </Button>
-                          </div>
+                          (() => {
+                            const selectedUserId = selectedBoardMembers?.[index]?.userId?.trim() || "";
+                            const selectedRole = (selectedBoardMembers?.[index]?.role || "MEMBER") as BoardMemberRole;
+                            const isOwnBoardMemberAssignment =
+                              restrictOwnBoardMemberAssignmentEdit && selectedUserId === currentUserId;
+                            const rowUserOptions = boardMemberUserOptions.filter((option) => {
+                              if (!restrictOwnBoardMemberAssignmentEdit) return true;
+                              if (option.id !== currentUserId) return true;
+                              return selectedUserId === currentUserId;
+                            });
+                            const shouldRenderFallbackOption =
+                              Boolean(selectedUserId) && !boardMemberOptionMap.has(selectedUserId);
+                            return (
+                              <div key={field.id} className="grid gap-2 rounded-md border border-border p-2 md:grid-cols-[2fr_1fr_auto]">
+                                <Select
+                                  name={`boardMembers.${index}.userId`}
+                                  value={selectedUserId}
+                                  disabled={isOwnBoardMemberAssignment}
+                                  onChange={(event) =>
+                                    setValue(`boardMembers.${index}.userId`, event.target.value, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    })
+                                  }
+                                >
+                                  <option value="">{t("communitiesSelectUserPlaceholder")}</option>
+                                  {shouldRenderFallbackOption ? (
+                                    <option value={selectedUserId}>{selectedUserId}</option>
+                                  ) : null}
+                                  {rowUserOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                                <Select
+                                  name={`boardMembers.${index}.role`}
+                                  value={selectedRole}
+                                  disabled={isOwnBoardMemberAssignment}
+                                  onChange={(event) =>
+                                    setValue(`boardMembers.${index}.role`, event.target.value as BoardMemberRole, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    })
+                                  }
+                                >
+                                  {BOARD_MEMBER_ROLE_ORDER.map((role) => (
+                                    <option key={role} value={role}>
+                                      {BOARD_MEMBER_ROLE_LABEL[role]}
+                                    </option>
+                                  ))}
+                                </Select>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  disabled={isOwnBoardMemberAssignment}
+                                  onClick={() => setPendingRemoveIndex(index)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  {t("remove")}
+                                </Button>
+                              </div>
+                            );
+                          })()
                         ))}
                       </div>
                     ) : (

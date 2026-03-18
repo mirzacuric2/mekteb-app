@@ -1,8 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ROLE } from "../../types";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -15,6 +16,7 @@ import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { ChildrenTable } from "./children-table";
 import { CHILD_STATUS, type ChildRecord } from "./types";
 import {
+  useChildByIdQuery,
   useChildrenCommunityOptionsQuery,
   useChildrenListQuery,
   useChildrenParentOptionsQuery,
@@ -22,7 +24,6 @@ import {
 import { useCreateChildMutation, useInactivateChildMutation, useUpdateChildMutation } from "./use-children-mutations";
 import { ChildFormDialog, ChildParentOption } from "./child-form-dialog";
 import { ChildFormValues } from "./child-form-schema";
-import { ProgressOverviewCards } from "../dashboard/progress-overview-cards";
 import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
@@ -32,6 +33,9 @@ type Props = { canManage: boolean };
 
 export function ChildrenPanel({ canManage: _canManage }: Props) {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const childIdFromQuery = useMemo(() => new URLSearchParams(location.search).get("childId") || undefined, [location.search]);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingChild, setEditingChild] = useState<ChildRecord | null>(null);
@@ -40,18 +44,19 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   const [selectedChild, setSelectedChild] = useState<ChildRecord | null>(null);
   const [formApiError, setFormApiError] = useState<{ field?: string; message: string } | null>(null);
   const [page, setPage] = useState(1);
+  const suppressQueryOpenRef = useRef(false);
   const queryClient = useQueryClient();
   const { canAdminManage, canEditChildren, canInactivate, canChooseCommunity, isParent, isUser, isBoardMember } =
     useRoleAccess();
   const searchTerm = search.trim();
   const mineOnly = isParent || isUser || isBoardMember;
-  const showProgressOverview = mineOnly;
   const children = useChildrenListQuery({
     search: searchTerm,
     page,
     pageSize: DEFAULT_PAGE_SIZE,
     mineOnly,
   });
+  const childById = useChildByIdQuery(childIdFromQuery, mineOnly);
   const users = useChildrenParentOptionsQuery(canAdminManage);
   const communities = useChildrenCommunityOptionsQuery(canChooseCommunity);
   const parentOptions: ChildParentOption[] = (users.data || [])
@@ -168,9 +173,38 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     return (lessonsQuery.data || []).filter((lesson) => lesson.nivo === selectedChild.nivo).length;
   }, [lessonsQuery.data, selectedChild]);
 
+  useEffect(() => {
+    if (!childIdFromQuery) {
+      suppressQueryOpenRef.current = false;
+      return;
+    }
+    if (suppressQueryOpenRef.current) return;
+    if (selectedChild?.id === childIdFromQuery) return;
+    const targetChild = (children.data?.items || []).find((child) => child.id === childIdFromQuery) || childById.data || null;
+    if (!targetChild) return;
+    setSelectedChild(targetChild);
+  }, [childById.data, childIdFromQuery, children.data?.items, selectedChild?.id]);
+
+  useEffect(() => {
+    const selectedChildId = selectedChild?.id;
+    if (selectedChildId === childIdFromQuery) return;
+    const nextParams = new URLSearchParams(location.search);
+    if (selectedChildId) {
+      nextParams.set("childId", selectedChildId);
+    } else {
+      nextParams.delete("childId");
+    }
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextParams.toString() ? `?${nextParams.toString()}` : "",
+      },
+      { replace: true }
+    );
+  }, [childIdFromQuery, location.pathname, location.search, navigate, selectedChild?.id]);
+
   return (
     <Card className="min-w-0 space-y-4 overflow-x-hidden">
-      <ProgressOverviewCards enabled={showProgressOverview} />
       <EntityListToolbar
         search={search}
         onSearchChange={(value) => {
@@ -261,7 +295,21 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
       <ProgressChildDetailsDrawer
         open={!!selectedChild}
         onOpenChange={(open) => {
-          if (!open) setSelectedChild(null);
+          if (!open) {
+            suppressQueryOpenRef.current = true;
+            setSelectedChild(null);
+            if (childIdFromQuery) {
+              const nextParams = new URLSearchParams(location.search);
+              nextParams.delete("childId");
+              navigate(
+                {
+                  pathname: location.pathname,
+                  search: nextParams.toString() ? `?${nextParams.toString()}` : "",
+                },
+                { replace: true }
+              );
+            }
+          }
         }}
         child={selectedChild}
         summary={null}

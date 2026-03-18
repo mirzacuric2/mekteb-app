@@ -7,6 +7,7 @@ import { DataTable } from "../common/components/data-table";
 import { EntityRowActions } from "../common/components/entity-row-actions";
 import { Loader } from "../common/components/loader";
 import { PaginationControls } from "../common/components/pagination-controls";
+import { StatusBadge } from "../common/components/status-badge";
 import { LESSON_NIVO_LABEL } from "../lessons/constants";
 import { LECTURE_STATUS } from "./reporting.constants";
 import { ActivityLecture } from "./types";
@@ -138,15 +139,14 @@ export function ActivitiesTable({
             </td>
             <td className="px-3 py-2.5">{activity.attendance.length}</td>
             <td className="px-3 py-2.5">
-              <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+              <StatusBadge
+                status={activity.status}
+                labelKey={
                   activity.status === LECTURE_STATUS.COMPLETED
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-amber-100 text-amber-800"
-                }`}
-              >
-                {activity.status === LECTURE_STATUS.COMPLETED ? t("activityReportStatusCompleted") : t("activityReportStatusDraft")}
-              </span>
+                    ? "activityReportStatusCompleted"
+                    : "activityReportStatusDraft"
+                }
+              />
             </td>
             <td className="whitespace-nowrap px-3 py-2.5">
               <span className="block truncate" title={formatDateTime(activity.updatedAt)}>
