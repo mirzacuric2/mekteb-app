@@ -52,7 +52,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserRecord | null>(null);
   const queryClient = useQueryClient();
-  const users = useUsersListQuery({ search, page, pageSize: DEFAULT_PAGE_SIZE }, enabled);
+  const users = useUsersListQuery({ search, page, pageSize: DEFAULT_PAGE_SIZE, excludeMe: true }, enabled);
   const children = useAuthedQuery<ChildMetaRecord[]>("children-users-meta", "/children", enabled);
   const communities = useAuthedQuery<CommunityRecord[]>("communities-users", "/communities", enabled);
 
@@ -270,7 +270,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
   };
 
   return (
-    <Card className="min-w-0 flex flex-col gap-1 overflow-x-hidden p-5">
+    <Card className="min-w-0 flex h-full min-h-0 flex-col gap-1 overflow-hidden p-5">
       {enabled ? (
         <>
           <div className="shrink-0 space-y-6 pb-2">
@@ -302,6 +302,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
             isLoading={usersLoading}
             page={currentPage}
             totalPages={totalPages}
+            showCommunityColumn={session?.user.role === ROLE.SUPER_ADMIN}
             onPageChange={setPage}
             onRowClick={setSelectedUser}
             onEdit={(user) => {

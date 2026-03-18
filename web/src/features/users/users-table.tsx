@@ -41,6 +41,7 @@ type UsersTableProps = {
   isLoading: boolean;
   page: number;
   totalPages: number;
+  showCommunityColumn?: boolean;
   onPageChange: (page: number) => void;
   onRowClick: (user: UserRecord) => void;
   onEdit: (user: UserRecord) => void;
@@ -52,79 +53,101 @@ export function UsersTable({
   isLoading,
   page,
   totalPages,
+  showCommunityColumn = true,
   onPageChange,
   onRowClick,
   onEdit,
   onDelete,
 }: UsersTableProps) {
   const { t } = useTranslation();
+  const tableColSpan = showCommunityColumn ? 8 : 7;
 
   return (
-    <>
-      <DataTable
-        className="overflow-hidden"
-        scrollClassName="overflow-x-auto !overflow-y-hidden"
-        tableClassName="min-w-[980px] border-collapse text-sm"
-        headers={
-          <>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableName")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableEmail")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTablePhone")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableRole")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableCommunity")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableChildren")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableStatus")}</th>
-            <th className="w-[140px] whitespace-nowrap border-b border-border px-5 py-3.5 font-medium text-right">
-              <span className="sr-only">{t("usersTableActions")}</span>
-            </th>
-          </>
-        }
-      >
-        {users.map((user) => (
-          <tr
-            key={user.id}
-            className="cursor-pointer border-b border-border transition-colors hover:bg-slate-50"
-            onClick={() => onRowClick(user)}
-          >
-            <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-900">
-              {user.firstName} {user.lastName}
-            </td>
-            <td className="whitespace-nowrap px-5 py-3.5">{user.email}</td>
-            <td className="whitespace-nowrap px-5 py-3.5">
-              <NaValue value={user.phoneNumber} />
-            </td>
-            <td className="whitespace-nowrap px-5 py-3.5">{user.role}</td>
-            <td className="whitespace-nowrap px-5 py-3.5">
-              <NaValue value={user.communityName} />
-            </td>
-            <td className="whitespace-nowrap px-5 py-3.5">{user.childrenCount || 0}</td>
-            <td className="whitespace-nowrap px-5 py-3.5">
-              <StatusBadge status={user.status || "INACTIVE"} />
-            </td>
-            <td className="w-[140px] whitespace-nowrap px-5 py-3.5 text-right align-middle">
-              <EntityRowActions onEdit={() => onEdit(user)} onDelete={() => onDelete(user)} />
-            </td>
-          </tr>
-        ))}
-        {isLoading ? (
-          <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={8}>
-              <Loader size="lg" text={t("loadingUsers")} className="justify-center" />
-            </td>
-          </tr>
-        ) : null}
-        {!users.length && !isLoading ? (
-          <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={8}>
-              {t("noUsersFound")}
-            </td>
-          </tr>
-        ) : null}
-      </DataTable>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <DataTable
+          className="overflow-hidden"
+          scrollClassName="overflow-x-auto !overflow-y-hidden"
+          tableClassName="w-full min-w-[900px] border-collapse text-sm"
+          headers={
+            <>
+              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableName")}</th>
+              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableEmail")}</th>
+              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTablePhone")}</th>
+              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableRole")}</th>
+              {showCommunityColumn ? (
+                <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">
+                  {t("usersTableCommunity")}
+                </th>
+              ) : null}
+              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableChildren")}</th>
+              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableStatus")}</th>
+              <th className="w-[140px] whitespace-nowrap border-b border-border px-4 py-3.5 font-medium text-right">
+                <span className="sr-only">{t("usersTableActions")}</span>
+              </th>
+            </>
+          }
+        >
+          {users.map((user) => (
+            <tr
+              key={user.id}
+              className="cursor-pointer border-b border-border transition-colors hover:bg-slate-50"
+              onClick={() => onRowClick(user)}
+            >
+              <td className="px-4 py-3.5 font-medium text-slate-900">
+                <span className="block truncate" title={`${user.firstName} ${user.lastName}`}>
+                  {user.firstName} {user.lastName}
+                </span>
+              </td>
+              <td className="px-4 py-3.5">
+                <span className="block truncate" title={user.email}>
+                  {user.email}
+                </span>
+              </td>
+              <td className="px-4 py-3.5">
+                <NaValue value={user.phoneNumber} />
+              </td>
+              <td className="px-4 py-3.5">
+                <span className="block truncate" title={user.role}>
+                  {user.role}
+                </span>
+              </td>
+              {showCommunityColumn ? (
+                <td className="px-4 py-3.5">
+                  <span className="block truncate" title={user.communityName || ""}>
+                    <NaValue value={user.communityName} />
+                  </span>
+                </td>
+              ) : null}
+              <td className="whitespace-nowrap px-4 py-3.5">{user.childrenCount || 0}</td>
+              <td className="px-4 py-3.5">
+                <StatusBadge status={user.status || "INACTIVE"} />
+              </td>
+              <td className="w-[140px] whitespace-nowrap px-4 py-3.5 text-right align-middle">
+                <EntityRowActions onEdit={() => onEdit(user)} onDelete={() => onDelete(user)} />
+              </td>
+            </tr>
+          ))}
+          {isLoading ? (
+            <tr>
+              <td className="px-4 py-10 text-center text-slate-500" colSpan={tableColSpan}>
+                <Loader size="lg" text={t("loadingUsers")} className="justify-center" />
+              </td>
+            </tr>
+          ) : null}
+          {!users.length && !isLoading ? (
+            <tr>
+              <td className="px-4 py-10 text-center text-slate-500" colSpan={tableColSpan}>
+                {t("noUsersFound")}
+              </td>
+            </tr>
+          ) : null}
+        </DataTable>
+      </div>
 
       <div className="shrink-0 pt-5">
         <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
       </div>
-    </>
+    </div>
   );
 }

@@ -32,6 +32,10 @@ This folder contains user-facing documentation for daily platform usage.
 
 ## Feature Notes (Latest)
 
+- Posts now have a full community-scoped CRUD flow: only `ADMIN` can create posts, parents can react/comment and edit their own comments, and admins can moderate/delete unsuitable comments.
+- Posts are currently text-only (`title` + `content`) by design, while keeping API/UI structure ready for future attachment expansion.
+- Dashboard landing view now reads recent posts directly from the posts API with a `limit=3` query, so users always see the latest three community-scoped posts.
+- Users management list now excludes the currently logged-in account (`excludeMe=1`) so admins do not accidentally edit/delete themselves from the table flow.
 - Legacy seeded community (`Jonkoping`) is removed from the bootstrap flow.
 - Default seed now creates a neutral community name instead of hardcoded city-specific naming.
 - `BOARD_MEMBER` is a first-class access role with community-scoped management capabilities.

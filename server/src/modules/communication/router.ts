@@ -8,6 +8,31 @@ import { AppRequest } from "../../types.js";
 
 export function communicationRouter() {
   const router = Router();
+  const postListQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(50).optional(),
+  });
+  const postPayloadSchema = z.object({
+    title: z.string().trim().min(3),
+    content: z.string().trim().min(3),
+  });
+  const postUpdatePayloadSchema = z.object({
+    title: z.string().trim().min(3).optional(),
+    content: z.string().trim().min(3).optional(),
+  });
+  const postCommentPayloadSchema = z.object({
+    content: z.string().trim().min(1),
+  });
+  const postReactionPayloadSchema = z.object({
+    kind: z.enum(["LIKE"]).default("LIKE"),
+  });
+
+  const canReadPostCommunity = (req: AppRequest, communityId: string) => {
+    if (!req.user) return false;
+    if (req.user.role === Role.SUPER_ADMIN) return true;
+    if (!req.user.communityId) return false;
+    return req.user.communityId === communityId;
+  };
+
   const lessonPayloadSchema = z.object({
     title: z.string().min(2),
     nivo: z.number().int().min(1).max(5),
@@ -66,11 +91,31 @@ export function communicationRouter() {
   ): Promise<T[]> => Promise.all(lectures.map((lecture) => applyHomeworkStateToLecture(lecture)));
 
   router.get("/posts", requireAuth, async (req: AppRequest, res) => {
-    const where = req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId || undefined };
+    const query = postListQuerySchema.safeParse(req.query);
+    if (!query.success) return res.status(400).json({ message: "Invalid query parameters" });
+
+    if (req.user!.role !== Role.SUPER_ADMIN && !req.user!.communityId) {
+      return res.status(403).json({ message: "Forbidden community" });
+    }
+    const where = req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId as string };
     const posts = await prisma.post.findMany({
       where,
-      include: { comments: true, reactions: true, author: true },
+      include: {
+        comments: {
+          include: {
+            author: {
+              select: { id: true, firstName: true, lastName: true, role: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        reactions: true,
+        author: {
+          select: { id: true, firstName: true, lastName: true, role: true },
+        },
+      },
       orderBy: { publishedAt: "desc" },
+      ...(query.data.limit ? { take: query.data.limit } : {}),
     });
     return res.json(posts);
   });
@@ -78,35 +123,36 @@ export function communicationRouter() {
   router.post(
     "/posts",
     requireAuth,
-    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    requireAnyRole(Role.ADMIN),
     async (req: AppRequest, res) => {
-    const payload = z
-      .object({
-        title: z.string().min(3),
-        content: z.string().min(3),
-        communityId: z.string().optional(),
-      })
-      .safeParse(req.body);
+    const payload = postPayloadSchema.safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
-    const communityId = payload.data.communityId || req.user!.communityId || undefined;
-    if (!canAccessCommunity(req, communityId)) return res.status(403).json({ message: "Forbidden community" });
+    const communityId = req.user!.communityId;
+    if (!communityId) return res.status(403).json({ message: "Forbidden community" });
 
     const post = await prisma.post.create({
-      data: { title: payload.data.title, content: payload.data.content, authorId: req.user!.id, communityId: communityId! },
+      data: {
+        title: payload.data.title,
+        content: payload.data.content,
+        authorId: req.user!.id,
+        communityId,
+      },
     });
 
     const users = await prisma.user.findMany({
-      where: { role: { in: [Role.USER, Role.PARENT, Role.BOARD_MEMBER] }, communityId: communityId! },
+      where: { role: { in: [Role.USER, Role.PARENT, Role.BOARD_MEMBER] }, communityId },
       select: { id: true },
     });
-    await prisma.notification.createMany({
-      data: users.map((u) => ({
-        userId: u.id,
-        type: NotificationType.POST_PUBLISHED,
-        title: "New post",
-        body: payload.data.title,
-      })),
-    });
+    if (users.length > 0) {
+      await prisma.notification.createMany({
+        data: users.map((u) => ({
+          userId: u.id,
+          type: NotificationType.POST_PUBLISHED,
+          title: "New post",
+          body: payload.data.title,
+        })),
+      });
+    }
       return res.status(201).json(post);
     }
   );
@@ -114,14 +160,9 @@ export function communicationRouter() {
   router.patch(
     "/posts/:postId",
     requireAuth,
-    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    requireAnyRole(Role.ADMIN, Role.SUPER_ADMIN),
     async (req: AppRequest, res) => {
-    const payload = z
-      .object({
-        title: z.string().min(3).optional(),
-        content: z.string().min(3).optional(),
-      })
-      .safeParse(req.body);
+    const payload = postUpdatePayloadSchema.safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
     const existing = await prisma.post.findUnique({ where: { id: req.params.postId } });
     if (!existing) return res.status(404).json({ message: "Post not found" });
@@ -134,7 +175,7 @@ export function communicationRouter() {
   router.delete(
     "/posts/:postId",
     requireAuth,
-    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN, Role.BOARD_MEMBER),
+    requireAnyRole(Role.ADMIN, Role.SUPER_ADMIN),
     async (req: AppRequest, res) => {
     const existing = await prisma.post.findUnique({ where: { id: req.params.postId } });
     if (!existing) return res.status(404).json({ message: "Post not found" });
@@ -145,20 +186,79 @@ export function communicationRouter() {
   );
 
   router.post("/posts/:postId/comments", requireAuth, async (req: AppRequest, res) => {
-    const payload = z.object({ content: z.string().min(1) }).safeParse(req.body);
+    const payload = postCommentPayloadSchema.safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+    const post = await prisma.post.findUnique({ where: { id: req.params.postId }, select: { id: true, communityId: true } });
+    if (!post) return res.status(404).json({ message: "Post not found" });
+    if (!canReadPostCommunity(req, post.communityId)) return res.status(403).json({ message: "Forbidden community" });
+
     const comment = await prisma.comment.create({
-      data: { postId: req.params.postId, authorId: req.user!.id, content: payload.data.content },
+      data: { postId: post.id, authorId: req.user!.id, content: payload.data.content },
+      include: {
+        author: {
+          select: { id: true, firstName: true, lastName: true, role: true },
+        },
+      },
     });
     return res.status(201).json(comment);
   });
 
-  router.post("/posts/:postId/reactions", requireAuth, async (req: AppRequest, res) => {
-    const payload = z.object({ kind: z.string().default("like") }).safeParse(req.body);
+  router.patch("/posts/:postId/comments/:commentId", requireAuth, async (req: AppRequest, res) => {
+    const payload = postCommentPayloadSchema.safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+
+    const existing = await prisma.comment.findUnique({
+      where: { id: req.params.commentId },
+      include: { post: { select: { id: true, communityId: true } } },
+    });
+    if (!existing || existing.postId !== req.params.postId) return res.status(404).json({ message: "Comment not found" });
+    if (!canReadPostCommunity(req, existing.post.communityId)) return res.status(403).json({ message: "Forbidden community" });
+    if (existing.authorId !== req.user!.id) return res.status(403).json({ message: "Forbidden" });
+
+    const updated = await prisma.comment.update({
+      where: { id: existing.id },
+      data: { content: payload.data.content },
+      include: {
+        author: {
+          select: { id: true, firstName: true, lastName: true, role: true },
+        },
+      },
+    });
+    return res.json(updated);
+  });
+
+  router.delete("/posts/:postId/comments/:commentId", requireAuth, async (req: AppRequest, res) => {
+    const existing = await prisma.comment.findUnique({
+      where: { id: req.params.commentId },
+      include: { post: { select: { id: true, communityId: true } } },
+    });
+    if (!existing || existing.postId !== req.params.postId) return res.status(404).json({ message: "Comment not found" });
+    if (!canReadPostCommunity(req, existing.post.communityId)) return res.status(403).json({ message: "Forbidden community" });
+
+    const canModerate = req.user!.role === Role.ADMIN || req.user!.role === Role.SUPER_ADMIN;
+    const isOwnComment = existing.authorId === req.user!.id;
+    if (!canModerate && !isOwnComment) return res.status(403).json({ message: "Forbidden" });
+
+    await prisma.comment.delete({ where: { id: existing.id } });
+    return res.status(204).send();
+  });
+
+  router.post("/posts/:postId/reactions", requireAuth, async (req: AppRequest, res) => {
+    const payload = postReactionPayloadSchema.safeParse(req.body);
+    if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+    const post = await prisma.post.findUnique({
+      where: { id: req.params.postId },
+      select: { id: true, communityId: true, authorId: true },
+    });
+    if (!post) return res.status(404).json({ message: "Post not found" });
+    if (!canReadPostCommunity(req, post.communityId)) return res.status(403).json({ message: "Forbidden community" });
+    if (req.user!.role === Role.ADMIN && post.authorId === req.user!.id) {
+      return res.status(403).json({ message: "Admin cannot react to own post" });
+    }
+
     const reaction = await prisma.reaction.upsert({
       where: { postId_userId: { postId: req.params.postId, userId: req.user!.id } },
-      create: { postId: req.params.postId, userId: req.user!.id, kind: payload.data.kind },
+      create: { postId: post.id, userId: req.user!.id, kind: payload.data.kind },
       update: { kind: payload.data.kind },
     });
     return res.json(reaction);

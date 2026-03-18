@@ -46,6 +46,7 @@ export function usersRouter() {
     status: z.nativeEnum(UserStatus).optional(),
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    excludeMe: z.coerce.number().int().min(0).max(1).optional(),
   });
   const applyHomeworkStateToChildren = async <
     T extends {
@@ -94,9 +95,11 @@ export function usersRouter() {
     const page = query.data.page ?? 1;
     const pageSize = query.data.pageSize ?? 10;
     const searchTerm = query.data.q?.trim();
+    const excludeMe = query.data.excludeMe === 1;
 
     const where = {
       ...(req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId }),
+      ...(excludeMe ? { id: { not: req.user!.id } } : {}),
       ...(query.data.role ? { role: query.data.role } : {}),
       ...(query.data.status ? { status: query.data.status } : {}),
       ...(searchTerm

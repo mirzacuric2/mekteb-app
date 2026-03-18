@@ -37,6 +37,7 @@ type UsersListParams = {
   pageSize: number;
   role?: string;
   status?: "ACTIVE" | "INACTIVE" | "PENDING";
+  excludeMe?: boolean;
 };
 
 export function useUsersListQuery(params: UsersListParams, enabled: boolean) {
@@ -49,6 +50,7 @@ export function useUsersListQuery(params: UsersListParams, enabled: boolean) {
       status: params.status,
       page: params.page,
       pageSize: params.pageSize,
+      excludeMe: params.excludeMe ? 1 : undefined,
     },
     enabled
   );

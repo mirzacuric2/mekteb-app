@@ -47,10 +47,7 @@ function PrivateLayoutShell() {
     session?.user.role === ROLE.ADMIN ||
     session?.user.role === ROLE.SUPER_ADMIN ||
     session?.user.role === ROLE.BOARD_MEMBER;
-  const canPublishPosts =
-    session?.user.role === ROLE.ADMIN ||
-    session?.user.role === ROLE.SUPER_ADMIN ||
-    session?.user.role === ROLE.BOARD_MEMBER;
+  const canPublishPosts = session?.user.role === ROLE.ADMIN;
   const canManage = canManageUsers || canManageChildren || canManageCommunities;
 
   useEffect(() => {
@@ -136,7 +133,9 @@ function PrivateLayoutShell() {
           <div className="sticky top-0 z-30 -mx-3 border-b border-border bg-white px-3 py-0 shadow-sm md:-mx-6 md:px-6 md:pl-3">
             <div className="flex h-14 items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <SidebarTrigger className="md:hidden">Menu</SidebarTrigger>
+                <SidebarTrigger className="md:hidden" aria-label="Open menu">
+                  <PanelLeft className="h-5 w-5" />
+                </SidebarTrigger>
                 <button
                   type="button"
                   aria-label="Toggle sidebar"
@@ -193,7 +192,7 @@ function PrivateLayoutShell() {
               </div>
             </div>
           </div>
-          <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[1120px] flex-1 flex-col space-y-4 pt-4">
+          <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-screen-xl flex-1 flex-col space-y-4 pt-4">
             {activeKey !== "dashboard" ? (
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <House className="h-4 w-4 text-slate-500" />
