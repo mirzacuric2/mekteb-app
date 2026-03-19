@@ -39,7 +39,8 @@ function PrivateLayoutShell() {
   const [isQuickReportOpen, setIsQuickReportOpen] = useState(false);
   const messageIndicator = useMessageNewIndicator(Boolean(session));
   const currentSegment = location.pathname.split("/").pop() || "dashboard";
-  const canManageUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
+  const canEditUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
+  const canManageUsers = canEditUsers || session?.user.role === ROLE.BOARD_MEMBER;
   const canReportActivities = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canManageActivities = canReportActivities;
   const canManageLessons = session?.user.role === ROLE.SUPER_ADMIN;
@@ -88,6 +89,7 @@ function PrivateLayoutShell() {
 
   const activeKey: SectionKey = isSectionKey(currentSegment) ? currentSegment : "dashboard";
   const selectedSection = dashboardSections.find((section) => section.key === activeKey) ?? dashboardSections[0];
+  const shouldUseSingleCommunityLabel = session.user.role === ROLE.ADMIN || session.user.role === ROLE.BOARD_MEMBER;
   const breadcrumbIcon = {
     dashboard: <House className="h-4 w-4 text-slate-500" />,
     posts: <Newspaper className="h-4 w-4 text-slate-500" />,
@@ -105,6 +107,7 @@ function PrivateLayoutShell() {
     () => ({
       canManage,
       canManageUsers,
+      canEditUsers,
       canManageChildren,
       canManageActivities,
       canPublishPosts,
@@ -114,7 +117,17 @@ function PrivateLayoutShell() {
       canCreateCommunities: session.user.role === ROLE.SUPER_ADMIN,
       canAssignCommunityAdmins: session.user.role === ROLE.SUPER_ADMIN,
     }),
-    [canManage, canManageActivities, canManageChildren, canManageCommunities, canManageLessons, canManageUsers, canPublishPosts, session.user.role]
+    [
+      canEditUsers,
+      canManage,
+      canManageActivities,
+      canManageChildren,
+      canManageCommunities,
+      canManageLessons,
+      canManageUsers,
+      canPublishPosts,
+      session.user.role,
+    ]
   );
 
   return (
@@ -189,9 +202,9 @@ function PrivateLayoutShell() {
               </div>
             </div>
           </div>
-          <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-screen-xl flex-1 flex-col space-y-4 pt-4">
+          <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-screen-xl flex-1 flex-col space-y-3 pt-0">
             {activeKey !== "dashboard" ? (
-              <div className="flex items-center gap-2 text-sm text-slate-600">
+              <div className="flex h-8 items-center gap-2 text-sm text-slate-600">
                 <House className="h-4 w-4 text-slate-500" />
                 <button
                   type="button"
@@ -207,7 +220,7 @@ function PrivateLayoutShell() {
                   onClick={() => navigate(`/app/${activeKey}`)}
                 >
                   {breadcrumbIcon}
-                  <span>{t(selectedSection.labelKey)}</span>
+                  <span>{activeKey === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(selectedSection.labelKey)}</span>
                 </button>
               </div>
             ) : null}

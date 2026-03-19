@@ -1,10 +1,10 @@
 import { Bell } from "lucide-react";
-import { RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../components/ui/button";
 import { formatDateTime } from "../../lib/date-time";
-import { useNotificationsData } from "./use-notifications-data";
+import { useNotificationBellData } from "./use-notifications-data";
 import { useNotificationsMutations } from "./use-notifications-mutations";
 import { getNotificationTargetPath } from "./navigation";
 
@@ -31,17 +31,10 @@ export function NotificationBellMenu() {
   const containerRef = useRef<HTMLDivElement>(null);
   useOutsideClick(containerRef, isOpen, () => setIsOpen(false));
 
-  const recentNotifications = useNotificationsData({ limit: 5 });
-  const unreadNotifications = useNotificationsData({ unreadOnly: true });
+  const bellNotifications = useNotificationBellData(5);
   const { markAsRead } = useNotificationsMutations();
-  const unreadCount = useMemo(() => {
-    const unreadData = unreadNotifications.data;
-    if (!unreadData) return 0;
-    if (Array.isArray(unreadData)) return unreadData.length;
-    return unreadData.items.length;
-  }, [unreadNotifications.data]);
-
-  const recentItems = Array.isArray(recentNotifications.data) ? recentNotifications.data : [];
+  const unreadCount = bellNotifications.data?.unreadCount || 0;
+  const recentItems = bellNotifications.data?.items || [];
 
   return (
     <div ref={containerRef} className="group relative">

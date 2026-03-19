@@ -28,3 +28,8 @@ export type NotificationListResponse = {
   page: number;
   pageSize: number;
 };
+
+export type NotificationBellResponse = {
+  items: NotificationRecord[];
+  unreadCount: number;
+};

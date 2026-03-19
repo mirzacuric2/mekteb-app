@@ -1,14 +1,17 @@
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { PostsPanel } from "../posts/posts-panel";
 import { UsersPanel } from "../users/users-panel";
 import { ChildrenPanel } from "../children/children-panel";
 import { LessonsPanel } from "../lessons/lessons-panel";
 import { CommunitiesPanel } from "../communities/communities-panel";
+import { CommunityPage } from "../communities/community-page";
 import { NotificationsPanel } from "../notifications/notifications-panel";
 import { HelpPanel } from "../help/help-panel";
 import { PrivateLayoutContext } from "../../layouts/private-layout-context";
 import { ActivitiesPanel } from "../reporting/activities-panel";
 import { DashboardHomePanel } from "./dashboard-home-panel";
+import { ROLE } from "../../types";
+import { useSession } from "../auth/session-context";
 
 export function DashboardRoute() {
   return <DashboardHomePanel />;
@@ -20,8 +23,8 @@ export function PostsRoute() {
 }
 
 export function UsersRoute() {
-  const { canManageUsers, canCreateAdmin } = useOutletContext<PrivateLayoutContext>();
-  return <UsersPanel enabled={canManageUsers} canCreateAdmin={canCreateAdmin} />;
+  const { canManageUsers, canEditUsers, canCreateAdmin } = useOutletContext<PrivateLayoutContext>();
+  return <UsersPanel enabled={canManageUsers} canEdit={canEditUsers} canCreateAdmin={canCreateAdmin} />;
 }
 
 export function ChildrenRoute() {
@@ -40,8 +43,24 @@ export function LessonsRoute() {
 }
 
 export function CommunitiesRoute() {
+  const { session } = useSession();
+  const [searchParams] = useSearchParams();
   const { canManageCommunities, canCreateCommunities, canAssignCommunityAdmins } =
     useOutletContext<PrivateLayoutContext>();
+  const shouldUseSingleCommunityPage =
+    session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.BOARD_MEMBER;
+  const selectedCommunityId = searchParams.get("communityId");
+
+  if (shouldUseSingleCommunityPage || Boolean(selectedCommunityId)) {
+    return (
+      <CommunityPage
+        canManage={canManageCommunities}
+        canAssignAdmins={canAssignCommunityAdmins}
+        selectedCommunityId={selectedCommunityId}
+      />
+    );
+  }
+
   return (
     <CommunitiesPanel
       canManage={canManageCommunities}

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { dashboardSections, SectionKey } from "../../features/dashboard/sections";
 import { cn } from "../../lib/utils";
+import { ROLE } from "../../types";
 import { LanguageSwitcher } from "../common/language-switcher";
 import {
   SidebarContent,
@@ -69,6 +70,7 @@ export function DashboardSidebar({
   const shouldUseCompactLogo = !isMobile && !open;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const roleLabel = useMemo(() => role.replace("_", " "), [role]);
+  const shouldUseSingleCommunityLabel = role === ROLE.ADMIN || role === ROLE.BOARD_MEMBER;
   const sectionIcons: Record<SectionKey, ReactNode> = {
     dashboard: <LayoutDashboard className="h-4 w-4 shrink-0" />,
     posts: <Newspaper className="h-4 w-4 shrink-0" />,
@@ -119,7 +121,9 @@ export function DashboardSidebar({
                   <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
                     <span className="flex items-center gap-2">
                       {sectionIcons[section.key]}
-                      {!open && !isMobile ? null : <span>{t(section.labelKey)}</span>}
+                      {!open && !isMobile ? null : (
+                        <span>{section.key === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(section.labelKey)}</span>
+                      )}
                     </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -147,7 +151,9 @@ export function DashboardSidebar({
                       <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
                         <span className="flex items-center gap-2">
                           {sectionIcons[section.key]}
-                          {!open && !isMobile ? null : <span>{t(section.labelKey)}</span>}
+                          {!open && !isMobile ? null : (
+                            <span>{section.key === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(section.labelKey)}</span>
+                          )}
                         </span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -172,7 +178,9 @@ export function DashboardSidebar({
                       <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
                         <span className="flex items-center gap-2">
                           {sectionIcons[section.key]}
-                          {!open && !isMobile ? null : <span>{t(section.labelKey)}</span>}
+                          {!open && !isMobile ? null : (
+                            <span>{section.key === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(section.labelKey)}</span>
+                          )}
                         </span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

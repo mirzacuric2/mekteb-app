@@ -22,7 +22,7 @@ import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { useUsersListQuery } from "./use-users-data";
 import { UserFormValues, UserStatus } from "./user-form-schema";
 
-type Props = { enabled: boolean; canCreateAdmin: boolean };
+type Props = { enabled: boolean; canEdit: boolean; canCreateAdmin: boolean };
 
 type CommunityRecord = { id: string; name: string };
 type CreatedUserResponse = UserRecord & { invitationEmailSent?: boolean };
@@ -41,7 +41,7 @@ type UserAddressInput = {
   state?: string;
   country: string;
 };
-export function UsersPanel({ enabled, canCreateAdmin }: Props) {
+export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   const { t } = useTranslation();
   const { session } = useSession();
   const [formOpen, setFormOpen] = useState(false);
@@ -52,8 +52,13 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserRecord | null>(null);
   const queryClient = useQueryClient();
+  const isBoardMember = session?.user.role === ROLE.BOARD_MEMBER;
   const users = useUsersListQuery({ search, page, pageSize: DEFAULT_PAGE_SIZE, excludeMe: true }, enabled);
-  const children = useAuthedQuery<ChildMetaRecord[]>("children-users-meta", "/children", enabled);
+  const children = useAuthedQuery<ChildMetaRecord[]>(
+    "children-users-meta",
+    isBoardMember ? "/children?communityScope=1" : "/children",
+    enabled
+  );
   const communities = useAuthedQuery<CommunityRecord[]>("communities-users", "/communities", enabled);
 
   const communityById = useMemo(() => {
@@ -282,17 +287,19 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
               }}
               placeholder={t("searchUsersPlaceholder")}
               actions={
-                <Button
-                  className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
-                  onClick={() => {
-                    setEditingUser(null);
-                    setFormApiError(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <UserPlus className="h-4 w-4" />
-                  <span className="hidden md:inline">{t("createUser")}</span>
-                </Button>
+                canEdit ? (
+                  <Button
+                    className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
+                    onClick={() => {
+                      setEditingUser(null);
+                      setFormApiError(null);
+                      setFormOpen(true);
+                    }}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span className="hidden md:inline">{t("createUser")}</span>
+                  </Button>
+                ) : null
               }
             />
           </div>
@@ -303,9 +310,11 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
             page={currentPage}
             totalPages={totalPages}
             showCommunityColumn={session?.user.role === ROLE.SUPER_ADMIN}
+            canEdit={canEdit}
             onPageChange={setPage}
             onRowClick={setSelectedUser}
             onEdit={(user) => {
+              if (!canEdit) return;
               if (user.role === ROLE.SUPER_ADMIN) {
                 toast.error("Super admin cannot be edited here.");
                 return;
@@ -314,6 +323,7 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
               setFormOpen(true);
             }}
             onDelete={(user) => {
+              if (!canEdit) return;
               if (user.role === ROLE.SUPER_ADMIN) {
                 toast.error("Super admin cannot be deleted.");
                 return;
@@ -322,94 +332,96 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
             }}
           />
 
-          <UserFormDialog
-            open={formOpen}
-            mode={editingUser ? "edit" : "create"}
-            canCreateAdmin={canCreateAdmin}
-            canSelectCommunity={session?.user.role === ROLE.SUPER_ADMIN}
-            forcedCommunityId={session?.user.role === ROLE.ADMIN ? session.user.communityId : null}
-            communityOptions={communityOptions}
-            submitting={createUser.isPending || updateUser.isPending}
-            apiError={formApiError}
-            initialValues={
-              editingUser
-                ? {
-                    firstName: editingUser.firstName,
-                    lastName: editingUser.lastName,
-                    ssn: editingUser.ssn || "",
-                    email: editingUser.email,
-                    phoneNumber: editingUser.phoneNumber || "",
-                    role:
-                      editingUser.role === ROLE.SUPER_ADMIN
-                        ? ROLE.ADMIN
-                        : editingUser.role === ROLE.USER
-                          ? ROLE.BOARD_MEMBER
-                          : editingUser.role,
-                    communityId: editingUser.communityId || "",
-                    status: editingUser.status || "INACTIVE",
-                    address: {
-                      streetLine1: editingUser.address?.streetLine1 || "",
-                      streetLine2: editingUser.address?.streetLine2 || "",
-                      postalCode: editingUser.address?.postalCode || "",
-                      city: editingUser.address?.city || "",
-                      state: editingUser.address?.state || "",
-                      country: editingUser.address?.country || "",
-                    },
-                  }
-                : undefined
-            }
-            onOpenChange={(open: boolean) => {
-              setFormOpen(open);
-              if (!open) {
-                setEditingUser(null);
-                setFormApiError(null);
+          {canEdit ? (
+            <UserFormDialog
+              open={formOpen}
+              mode={editingUser ? "edit" : "create"}
+              canCreateAdmin={canCreateAdmin}
+              canSelectCommunity={session?.user.role === ROLE.SUPER_ADMIN}
+              forcedCommunityId={session?.user.role === ROLE.ADMIN ? session.user.communityId : null}
+              communityOptions={communityOptions}
+              submitting={createUser.isPending || updateUser.isPending}
+              apiError={formApiError}
+              initialValues={
+                editingUser
+                  ? {
+                      firstName: editingUser.firstName,
+                      lastName: editingUser.lastName,
+                      ssn: editingUser.ssn || "",
+                      email: editingUser.email,
+                      phoneNumber: editingUser.phoneNumber || "",
+                      role:
+                        editingUser.role === ROLE.SUPER_ADMIN
+                          ? ROLE.ADMIN
+                          : editingUser.role === ROLE.USER
+                            ? ROLE.BOARD_MEMBER
+                            : editingUser.role,
+                      communityId: editingUser.communityId || "",
+                      status: editingUser.status || "INACTIVE",
+                      address: {
+                        streetLine1: editingUser.address?.streetLine1 || "",
+                        streetLine2: editingUser.address?.streetLine2 || "",
+                        postalCode: editingUser.address?.postalCode || "",
+                        city: editingUser.address?.city || "",
+                        state: editingUser.address?.state || "",
+                        country: editingUser.address?.country || "",
+                      },
+                    }
+                  : undefined
               }
-            }}
-            onSubmit={(values: UserFormValues) => {
-              if (editingUser) {
-                updateUser.mutate(
+              onOpenChange={(open: boolean) => {
+                setFormOpen(open);
+                if (!open) {
+                  setEditingUser(null);
+                  setFormApiError(null);
+                }
+              }}
+              onSubmit={(values: UserFormValues) => {
+                if (editingUser) {
+                  updateUser.mutate(
+                    {
+                      id: editingUser.id,
+                      firstName: values.firstName,
+                      lastName: values.lastName,
+                      ssn: values.ssn,
+                      role: values.role,
+                      phoneNumber: values.phoneNumber || undefined,
+                      communityId: values.communityId || undefined,
+                      status: values.status,
+                      address: toApiAddress(values.address),
+                    },
+                    {
+                      onSuccess: async () => {
+                        await createChildrenForUser(editingUser.id, values.children);
+                        await queryClient.invalidateQueries({ queryKey: ["children-users-meta"] });
+                      },
+                    }
+                  );
+                  return;
+                }
+
+                createUser.mutate(
                   {
-                    id: editingUser.id,
                     firstName: values.firstName,
                     lastName: values.lastName,
                     ssn: values.ssn,
+                    email: values.email,
                     role: values.role,
                     phoneNumber: values.phoneNumber || undefined,
                     communityId: values.communityId || undefined,
-                    status: values.status,
                     address: toApiAddress(values.address),
                   },
                   {
-                    onSuccess: async () => {
-                      await createChildrenForUser(editingUser.id, values.children);
+                    onSuccess: async (createdUser) => {
+                      if (!createdUser?.id) return;
+                      await createChildrenForUser(createdUser.id, values.children);
                       await queryClient.invalidateQueries({ queryKey: ["children-users-meta"] });
                     },
                   }
                 );
-                return;
-              }
-
-              createUser.mutate(
-                {
-                  firstName: values.firstName,
-                  lastName: values.lastName,
-                  ssn: values.ssn,
-                  email: values.email,
-                  role: values.role,
-                  phoneNumber: values.phoneNumber || undefined,
-                  communityId: values.communityId || undefined,
-                  address: toApiAddress(values.address),
-                },
-                {
-                  onSuccess: async (createdUser) => {
-                    if (!createdUser?.id) return;
-                    await createChildrenForUser(createdUser.id, values.children);
-                    await queryClient.invalidateQueries({ queryKey: ["children-users-meta"] });
-                  },
-                }
-              );
-            }}
-          />
+              }}
+            />
+          ) : null}
 
           <EntityDetailsDrawer
             open={!!selectedUser}
@@ -442,24 +454,26 @@ export function UsersPanel({ enabled, canCreateAdmin }: Props) {
               />
             ) : null}
           </EntityDetailsDrawer>
-          <DeleteConfirmDialog
-            open={!!deletingUser}
-            onOpenChange={(open) => {
-              if (!open) setDeletingUser(null);
-            }}
-            title="Delete user"
-            description={
-              deletingUser
-                ? `Are you sure you want to delete ${deletingUser.firstName} ${deletingUser.lastName}?`
-                : "Delete selected user?"
-            }
-            confirmText="Delete"
-            submitting={deleteUser.isPending}
-            onConfirm={() => {
-              if (!deletingUser) return;
-              deleteUser.mutate(deletingUser.id);
-            }}
-          />
+          {canEdit ? (
+            <DeleteConfirmDialog
+              open={!!deletingUser}
+              onOpenChange={(open) => {
+                if (!open) setDeletingUser(null);
+              }}
+              title="Delete user"
+              description={
+                deletingUser
+                  ? `Are you sure you want to delete ${deletingUser.firstName} ${deletingUser.lastName}?`
+                  : "Delete selected user?"
+              }
+              confirmText="Delete"
+              submitting={deleteUser.isPending}
+              onConfirm={() => {
+                if (!deletingUser) return;
+                deleteUser.mutate(deletingUser.id);
+              }}
+            />
+          ) : null}
         </>
       ) : (
         <p className="text-sm text-slate-500">Visible for ADMIN and SUPER_ADMIN.</p>

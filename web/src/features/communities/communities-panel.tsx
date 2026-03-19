@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../../api";
 import { Button } from "../../components/ui/button";
@@ -15,6 +16,7 @@ import { Loader } from "../common/components/loader";
 import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { COMMUNITIES_API_PATH, COMMUNITIES_QUERY_KEY } from "./constants";
+import { formatUserOptionLabel } from "./community-utils";
 import {
   AdminOption,
   CommunityFormDialog,
@@ -46,15 +48,6 @@ type UserRecord = {
   communityId?: string | null;
 };
 
-function formatUserOptionLabel(user: {
-  firstName?: string | null;
-  lastName?: string | null;
-  email?: string | null;
-}) {
-  const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unnamed user";
-  return user.email ? `${fullName} (${user.email})` : fullName;
-}
-
 function buildAddressPayload(address: {
   streetLine1?: string;
   streetLine2?: string;
@@ -83,6 +76,7 @@ function buildAddressPayload(address: {
 export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Props) {
   const { t } = useTranslation();
   const { session } = useSession();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -307,15 +301,13 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
               tabIndex={community.status === "INACTIVE" ? -1 : 0}
               onClick={() => {
                 if (community.status === "INACTIVE") return;
-                setEditingCommunity(community);
-                setFormOpen(true);
+                navigate(`/app/communities?communityId=${community.id}`);
               }}
               onKeyDown={(event) => {
                 if (community.status === "INACTIVE") return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  setEditingCommunity(community);
-                  setFormOpen(true);
+                  navigate(`/app/communities?communityId=${community.id}`);
                 }
               }}
             >

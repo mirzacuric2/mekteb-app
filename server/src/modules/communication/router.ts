@@ -87,6 +87,7 @@ export function communicationRouter() {
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
     unreadOnly: z.coerce.number().int().min(0).max(1).optional(),
+    includeUnreadCount: z.coerce.number().int().min(0).max(1).optional(),
   });
   const updateNotificationPayloadSchema = z.object({
     isRead: z.boolean(),
@@ -438,6 +439,15 @@ export function communicationRouter() {
       orderBy: { createdAt: "desc" },
       ...(query.data.limit ? { take: query.data.limit } : {}),
     });
+    if (query.data.includeUnreadCount === 1) {
+      const unreadCount = await prisma.notification.count({
+        where: {
+          userId: req.user!.id,
+          isRead: false,
+        },
+      });
+      return res.json({ items: notifications, unreadCount });
+    }
     return res.json(notifications);
   });
 

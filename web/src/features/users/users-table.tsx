@@ -42,10 +42,11 @@ type UsersTableProps = {
   page: number;
   totalPages: number;
   showCommunityColumn?: boolean;
+  canEdit?: boolean;
   onPageChange: (page: number) => void;
   onRowClick: (user: UserRecord) => void;
-  onEdit: (user: UserRecord) => void;
-  onDelete: (user: UserRecord) => void;
+  onEdit?: (user: UserRecord) => void;
+  onDelete?: (user: UserRecord) => void;
 };
 
 export function UsersTable({
@@ -54,13 +55,14 @@ export function UsersTable({
   page,
   totalPages,
   showCommunityColumn = true,
+  canEdit = true,
   onPageChange,
   onRowClick,
   onEdit,
   onDelete,
 }: UsersTableProps) {
   const { t } = useTranslation();
-  const tableColSpan = showCommunityColumn ? 8 : 7;
+  const tableColSpan = showCommunityColumn ? (canEdit ? 8 : 7) : canEdit ? 7 : 6;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -82,9 +84,11 @@ export function UsersTable({
               ) : null}
               <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableChildren")}</th>
               <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableStatus")}</th>
-              <th className="w-[140px] whitespace-nowrap border-b border-border px-4 py-3.5 font-medium text-right">
-                <span className="sr-only">{t("usersTableActions")}</span>
-              </th>
+              {canEdit ? (
+                <th className="w-[140px] whitespace-nowrap border-b border-border px-4 py-3.5 font-medium text-right">
+                  <span className="sr-only">{t("usersTableActions")}</span>
+                </th>
+              ) : null}
             </>
           }
         >
@@ -123,9 +127,11 @@ export function UsersTable({
               <td className="px-4 py-3.5">
                 <StatusBadge status={user.status || "INACTIVE"} />
               </td>
-              <td className="w-[140px] whitespace-nowrap px-4 py-3.5 text-right align-middle">
-                <EntityRowActions onEdit={() => onEdit(user)} onDelete={() => onDelete(user)} />
-              </td>
+              {canEdit ? (
+                <td className="w-[140px] whitespace-nowrap px-4 py-3.5 text-right align-middle">
+                  <EntityRowActions onEdit={() => onEdit?.(user)} onDelete={() => onDelete?.(user)} />
+                </td>
+              ) : null}
             </tr>
           ))}
           {isLoading ? (

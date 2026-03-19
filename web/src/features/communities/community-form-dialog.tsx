@@ -21,27 +21,27 @@ import { BOARD_MEMBER_ROLE_LABEL, BOARD_MEMBER_ROLE_ORDER } from "./constants";
 import { BoardMemberRole } from "./types";
 
 const communityFormSchema = z.object({
-  name: z.string().trim().min(2, "Community name must be at least 2 characters."),
+  name: z.string().trim().min(2, "communityValidationNameMin"),
   description: z.string().trim().optional(),
   contactEmail: z
     .string()
     .trim()
     .optional()
-    .refine((value) => !value || z.string().email().safeParse(value).success, "Enter a valid email."),
+    .refine((value) => !value || z.string().email().safeParse(value).success, "communityValidationEmailInvalid"),
   contactPhone: z.string().trim().optional(),
   address: z.object({
-    streetLine1: z.string().trim().min(2, "Street line 1 is required."),
+    streetLine1: z.string().trim().min(2, "communityValidationStreetLine1Required"),
     streetLine2: z.string().trim().optional(),
-    postalCode: z.string().trim().min(2, "Postal code is required."),
-    city: z.string().trim().min(2, "City is required."),
+    postalCode: z.string().trim().min(2, "communityValidationPostalCodeRequired"),
+    city: z.string().trim().min(2, "communityValidationCityRequired"),
     state: z.string().trim().optional(),
-    country: z.string().trim().min(2, "Country is required."),
+    country: z.string().trim().min(2, "communityValidationCountryRequired"),
   }),
   adminUserIds: z.array(z.string()).default([]),
   boardMembers: z
     .array(
       z.object({
-        userId: z.string().trim().min(1, "Select user."),
+        userId: z.string().trim().min(1, "communityValidationSelectUser"),
         role: z.custom<BoardMemberRole>(),
       })
     )
@@ -65,6 +65,7 @@ type CommunityFormDialogProps = {
   mode: "create" | "edit";
   submitting: boolean;
   canAssignAdmins: boolean;
+  initialTab?: "basic" | "members";
   currentUserId: string;
   restrictOwnBoardMemberAssignmentEdit: boolean;
   assignedAdmins: AdminOption[];
@@ -80,6 +81,7 @@ export function CommunityFormDialog({
   mode,
   submitting,
   canAssignAdmins,
+  initialTab = "basic",
   currentUserId,
   restrictOwnBoardMemberAssignmentEdit,
   assignedAdmins,
@@ -137,7 +139,7 @@ export function CommunityFormDialog({
     if (!open) return;
     setSubmitLocked(false);
     setPendingRemoveIndex(null);
-    setActiveTab("basic");
+    setActiveTab(initialTab);
     reset({
       name: initialValues?.name || "",
       description: initialValues?.description || "",
@@ -154,7 +156,7 @@ export function CommunityFormDialog({
       adminUserIds: initialValues?.adminUserIds || [],
       boardMembers: initialValues?.boardMembers || [],
     });
-  }, [open, initialValues, reset]);
+  }, [open, initialTab, initialValues, reset]);
 
   useEffect(() => {
     if (!submitting) setSubmitLocked(false);
@@ -184,12 +186,12 @@ export function CommunityFormDialog({
                   field === "contactPhone" ||
                   field === "adminUserIds"
                 ) {
-                  setError(field, { type: "manual", message: issue.message });
+                  setError(field, { type: "manual", message: t(issue.message) });
                 }
                 if (field === "address" && typeof nestedField === "string") {
                   setError(`address.${nestedField}` as keyof CommunityFormValues, {
                     type: "manual",
-                    message: issue.message,
+                    message: t(issue.message),
                   });
                 }
               }
@@ -350,7 +352,13 @@ export function CommunityFormDialog({
                             const selectedRole = (selectedBoardMembers?.[index]?.role || "MEMBER") as BoardMemberRole;
                             const isOwnBoardMemberAssignment =
                               restrictOwnBoardMemberAssignmentEdit && selectedUserId === currentUserId;
+                            const selectedUserIdsInOtherRows = new Set(
+                              (selectedBoardMembers || [])
+                                .map((member, memberIndex) => (memberIndex === index ? "" : member?.userId?.trim() || ""))
+                                .filter(Boolean)
+                            );
                             const rowUserOptions = boardMemberUserOptions.filter((option) => {
+                              if (selectedUserIdsInOtherRows.has(option.id)) return false;
                               if (!restrictOwnBoardMemberAssignmentEdit) return true;
                               if (option.id !== currentUserId) return true;
                               return selectedUserId === currentUserId;

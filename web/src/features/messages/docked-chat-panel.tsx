@@ -387,7 +387,7 @@ export function DockedChatPanel() {
       {!isOpen ? (
         <button
           type="button"
-          className="pointer-events-auto relative inline-flex h-12 w-14 items-center justify-center rounded-full border border-border bg-white text-sm font-medium text-slate-700 shadow-lg transition-colors hover:bg-slate-50 sm:h-10 sm:w-auto sm:justify-between sm:gap-2 sm:px-4"
+          className="pointer-events-auto relative inline-flex h-10 w-auto items-center justify-between gap-2 rounded-full border border-border bg-white px-4 text-sm font-medium text-slate-700 shadow-lg transition-colors hover:bg-slate-50"
           onClick={() => openChat()}
           aria-label="Open chat"
         >

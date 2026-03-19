@@ -52,6 +52,7 @@ This folder contains user-facing documentation for daily platform usage.
 - Message threads support a persisted `OPEN/CLOSED` state; Imam/Admin can lock threads via an explicit `Lock thread` destructive action with typed confirmation (`CLOSE`), and closed threads remain visible as read-only history.
 - After thread closure, parent cannot post new messages in that thread and must start a new thread for follow-up communication.
 - Chat header includes a `New message` action (next to close) so users can start a fresh thread without closing the chat dock first.
+- Notification bell menu now loads recent items and unread badge count in a single request (`GET /notifications?limit=5&includeUnreadCount=1`) to avoid duplicate polling calls.
 - Posts now have a full community-scoped CRUD flow: only `ADMIN` can create posts, parents can react/comment and edit their own comments, and admins can moderate/delete unsuitable comments.
 - Posts are currently text-only (`title` + `content`) by design, while keeping API/UI structure ready for future attachment expansion.
 - Dashboard landing view now reads recent posts directly from the posts API with a `limit=3` query, so users always see the latest three community-scoped posts.
@@ -67,6 +68,12 @@ This folder contains user-facing documentation for daily platform usage.
 - Board-member user picker now lists only users with access role `BOARD_MEMBER` (community-scoped), while existing assignments still render as selected values.
 - `BOARD_MEMBER` can update community board-member assignments for their community, but cannot change/remove their own board-member assignment (enforced in both UI and API).
 - Communities list search input is shown only for `SUPER_ADMIN`; community-scoped roles (`ADMIN`/`BOARD_MEMBER`) no longer see this global search control.
+- Community-scoped roles (`ADMIN`/`BOARD_MEMBER`) now open a dedicated single `Community` page (label is singular in sidebar/breadcrumb) where `Basic info` is fixed at the top and management modules are organized in tabs below (currently `Members`, plus placeholder tabs for future insights/calendar; no community edit modal on this route).
+- Community detail layout now uses a compact top summary card (name + description + address with map-pin icon) and an `Edit` action that opens a basic-info modal (without board-member fields).
+- Community tabs are now ordered `Overview`, `Members`, `Events`; `Overview` includes donut-style KPI visuals for users by role, children by nivo, and nivo-level attendance/attention indicators.
+- Super-admin `Communities` list now opens the dedicated community detail page via `?communityId=<id>` when selecting an active community row.
+- Community `Board members` tab now saves changes automatically on member/admin updates (manual save button removed).
+- Community overview now requests community-scoped children data (`communityScope=1`) so `BOARD_MEMBER` and `ADMIN` see the same community-level metrics in that page.
 - Shared community access checks now explicitly allow `BOARD_MEMBER` to access own-community endpoints that rely on `canAccessCommunity` (for example community board-members read/list routes).
 - Board-member assignments keep full history with `active/inactive` status and mandate dates (`mandateStartDate`, `mandateEndDate`).
 - Multiple admins (Imams) can be assigned to the same community.
@@ -106,6 +113,7 @@ This folder contains user-facing documentation for daily platform usage.
 - Table pagination also shares a common default page size constant (`DEFAULT_PAGE_SIZE`) from the same pagination module.
 - Children listing now uses backend search + pagination (`GET /children` with `q`, `page`, `pageSize`) so filtering/scaling stays server-side and role-scoped.
 - Users listing now uses backend search + pagination (`GET /users` with `q`, `page`, `pageSize`) as the standard list contract.
+- `BOARD_MEMBER` can now open the `Users` section in read-only mode (list/search/details only); create/edit/delete actions remain restricted to `ADMIN` and `SUPER_ADMIN`.
 - Activities listing now uses backend search + pagination (`GET /lectures` with `q`, `page`, `pageSize`) as the same standard list contract.
 - Children feature now separates API concerns into dedicated hooks: data-fetch hooks (`use-children-data.ts`) and mutation hooks (`use-children-mutations.ts`).
 - Reusable query-param data hooks are now available for users/children fetch flows (`use-users-data.ts`, `use-children-data.ts`) to support shared list/options retrieval in forms.
