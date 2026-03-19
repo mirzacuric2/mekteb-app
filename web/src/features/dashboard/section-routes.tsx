@@ -1,4 +1,4 @@
-import { useOutletContext, useSearchParams } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 import { PostsPanel } from "../posts/posts-panel";
 import { UsersPanel } from "../users/users-panel";
 import { ChildrenPanel } from "../children/children-panel";
@@ -44,12 +44,11 @@ export function LessonsRoute() {
 
 export function CommunitiesRoute() {
   const { session } = useSession();
-  const [searchParams] = useSearchParams();
+  const { communityId: selectedCommunityId } = useParams<{ communityId?: string }>();
   const { canManageCommunities, canCreateCommunities, canAssignCommunityAdmins } =
     useOutletContext<PrivateLayoutContext>();
   const shouldUseSingleCommunityPage =
     session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.BOARD_MEMBER;
-  const selectedCommunityId = searchParams.get("communityId");
 
   if (shouldUseSingleCommunityPage || Boolean(selectedCommunityId)) {
     return (

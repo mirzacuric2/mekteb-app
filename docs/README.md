@@ -76,7 +76,11 @@ This folder contains user-facing documentation for daily platform usage.
 - Community-scoped roles (`ADMIN`/`BOARD_MEMBER`) now open a dedicated single `Community` page (label is singular in sidebar/breadcrumb) where `Basic info` is fixed at the top and management modules are organized in tabs below (currently `Members`, plus placeholder tabs for future insights/calendar; no community edit modal on this route).
 - Community detail layout now uses a compact top summary card (name + description + address with map-pin icon) and an `Edit` action that opens a basic-info modal (without board-member fields).
 - Community tabs are now ordered `Overview`, `Members`, `Events`; `Overview` includes donut-style KPI visuals for users by role, children by nivo, and nivo-level attendance/attention indicators.
-- Super-admin `Communities` list now opens the dedicated community detail page via `?communityId=<id>` when selecting an active community row.
+- Community overview donut legends now use a compact two-column row layout (label + value) so counts/percentages stay visible on constrained and wide viewports.
+- Community overview donut legends now stack `value (percentage)` below each label on small screens and switch to two-column rows on medium+ screens to prevent right-edge clipping.
+- Super-admin `Communities` list now opens the dedicated community detail page via `/app/communities/<id>` when selecting an active community row.
+- Detail-route breadcrumbs now use icon-only home/section crumbs on mobile screens, while desktop keeps icon + text labels; detail ID remains visible in a blue chip.
+- Nested detail routes keep their parent sidebar section selected (pattern: `/app/<section>/<id>`), matching list/detail behavior for communities and future entity detail pages.
 - Community `Board members` tab now saves changes automatically on member/admin updates (manual save button removed).
 - Community overview now requests community-scoped children data (`communityScope=1`) so `BOARD_MEMBER` and `ADMIN` see the same community-level metrics in that page.
 - Shared community access checks now explicitly allow `BOARD_MEMBER` to access own-community endpoints that rely on `canAccessCommunity` (for example community board-members read/list routes).

@@ -299,13 +299,13 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
               tabIndex={community.status === "INACTIVE" ? -1 : 0}
               onClick={() => {
                 if (community.status === "INACTIVE") return;
-                navigate(`/app/communities?communityId=${community.id}`);
+                navigate(`/app/communities/${community.id}`);
               }}
               onKeyDown={(event) => {
                 if (community.status === "INACTIVE") return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  navigate(`/app/communities?communityId=${community.id}`);
+                  navigate(`/app/communities/${community.id}`);
                 }
               }}
             >

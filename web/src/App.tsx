@@ -32,6 +32,7 @@ export function App() {
         <Route path="activities" element={<ActivitiesRoute />} />
         <Route path="lessons" element={<LessonsRoute />} />
         <Route path="communities" element={<CommunitiesRoute />} />
+        <Route path="communities/:communityId" element={<CommunitiesRoute />} />
         <Route path="notifications" element={<NotificationsRoute />} />
       </Route>
       <Route path="*" element={<Navigate to="/app/dashboard" replace />} />

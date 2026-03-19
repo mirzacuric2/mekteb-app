@@ -33,7 +33,7 @@ export function CommunityDonutChart({ title, subtitle, segments, emptyText, noDa
       <p className="mb-3 text-xs text-slate-500">{subtitle}</p>
 
       {total > 0 ? (
-        <div className="flex flex-col items-center gap-3 md:flex-row md:items-start md:gap-5">
+        <div className="flex min-w-0 flex-col items-center gap-3 md:flex-row md:items-start md:gap-5">
           <div className="relative h-[140px] w-[140px] shrink-0">
             <svg width={CHART_SIZE} height={CHART_SIZE} className="-rotate-90">
               <circle
@@ -78,16 +78,19 @@ export function CommunityDonutChart({ title, subtitle, segments, emptyText, noDa
               <p className="text-xs text-slate-500">{t("communityOverviewChartTotalLabel")}</p>
             </div>
           </div>
-          <div className="w-full space-y-1">
+          <div className="min-w-0 w-full space-y-1 md:w-auto md:min-w-[240px] md:max-w-[320px]">
             {segmentsWithData.map((segment) => {
               const percentage = total ? Math.round((segment.value / total) * 100) : 0;
               return (
-                <div key={segment.key} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="inline-flex items-center gap-2 text-slate-700">
-                    <span className={`h-2.5 w-2.5 rounded-full ${segment.dotClass}`} />
-                    {segment.label}
+                <div
+                  key={segment.key}
+                  className="grid grid-cols-1 gap-y-0.5 text-sm md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-x-3 md:gap-y-0"
+                >
+                  <span className="inline-flex min-w-0 items-center gap-2 text-slate-700">
+                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${segment.dotClass}`} />
+                    <span className="truncate">{segment.label}</span>
                   </span>
-                  <span className="text-slate-900">
+                  <span className="pl-5 text-slate-900 md:pl-0 md:text-right">
                     {segment.value} ({percentage}%)
                   </span>
                 </div>

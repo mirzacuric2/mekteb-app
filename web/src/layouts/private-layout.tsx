@@ -7,7 +7,6 @@ import {
   BookOpen,
   ClipboardList,
   ClipboardPenLine,
-  ChevronRight,
   CircleHelp,
   House,
   Mail,
@@ -28,6 +27,7 @@ import { DockedChatPanel } from "../features/messages/docked-chat-panel";
 import { ChatControllerProvider, useChatController } from "../features/messages/chat-controller";
 import { NotificationBellMenu } from "../features/notifications/notification-bell-menu";
 import { useMessageNewIndicator } from "../features/messages/use-message-new-indicator";
+import { PrivateBreadcrumb } from "../components/layout/private-breadcrumb";
 
 function PrivateLayoutShell() {
   const { t, i18n } = useTranslation();
@@ -38,7 +38,10 @@ function PrivateLayoutShell() {
   const { open, setOpen, setOpenMobile } = useSidebar();
   const [isQuickReportOpen, setIsQuickReportOpen] = useState(false);
   const messageIndicator = useMessageNewIndicator(Boolean(session));
-  const currentSegment = location.pathname.split("/").pop() || "dashboard";
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const currentSegment = pathSegments[1] || "dashboard";
+  const detailEntityId = pathSegments[2] ?? null;
+  const isDetailView = Boolean(detailEntityId);
   const canEditUsers = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
   const canManageUsers = canEditUsers || session?.user.role === ROLE.BOARD_MEMBER;
   const canReportActivities = session?.user.role === ROLE.ADMIN || session?.user.role === ROLE.SUPER_ADMIN;
@@ -90,16 +93,18 @@ function PrivateLayoutShell() {
   const activeKey: SectionKey = isSectionKey(currentSegment) ? currentSegment : "dashboard";
   const selectedSection = dashboardSections.find((section) => section.key === activeKey) ?? dashboardSections[0];
   const shouldUseSingleCommunityLabel = session.user.role === ROLE.ADMIN || session.user.role === ROLE.BOARD_MEMBER;
+  const breadcrumbSectionLabel =
+    activeKey === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(selectedSection.labelKey);
   const breadcrumbIcon = {
-    dashboard: <House className="h-4 w-4 text-slate-500" />,
-    posts: <Newspaper className="h-4 w-4 text-slate-500" />,
-    help: <CircleHelp className="h-4 w-4 text-slate-500" />,
-    notifications: <Bell className="h-4 w-4 text-slate-500" />,
-    users: <Users className="h-4 w-4 text-slate-500" />,
-    children: <UserRound className="h-4 w-4 text-slate-500" />,
-    activities: <ClipboardList className="h-4 w-4 text-slate-500" />,
-    lessons: <BookOpen className="h-4 w-4 text-slate-500" />,
-    communities: <Building2 className="h-4 w-4 text-slate-500" />,
+    dashboard: <House className="h-4 w-4" />,
+    posts: <Newspaper className="h-4 w-4" />,
+    help: <CircleHelp className="h-4 w-4" />,
+    notifications: <Bell className="h-4 w-4" />,
+    users: <Users className="h-4 w-4" />,
+    children: <UserRound className="h-4 w-4" />,
+    activities: <ClipboardList className="h-4 w-4" />,
+    lessons: <BookOpen className="h-4 w-4" />,
+    communities: <Building2 className="h-4 w-4" />,
   }[activeKey];
   const initials = `${session.user.firstName[0] ?? ""}${session.user.lastName[0] ?? ""}`.toUpperCase();
 
@@ -204,25 +209,15 @@ function PrivateLayoutShell() {
           </div>
           <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-screen-xl flex-1 flex-col space-y-3 pt-0">
             {activeKey !== "dashboard" ? (
-              <div className="flex h-8 items-center gap-2 text-sm text-slate-600">
-                <House className="h-4 w-4 text-slate-500" />
-                <button
-                  type="button"
-                  className="transition-colors hover:text-slate-900"
-                  onClick={() => navigate("/app/dashboard")}
-                >
-                  {t("dashboard")}
-                </button>
-                <ChevronRight className="h-4 w-4 text-slate-400" />
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 font-medium text-primary transition-colors hover:bg-primary/15"
-                  onClick={() => navigate(`/app/${activeKey}`)}
-                >
-                  {breadcrumbIcon}
-                  <span>{activeKey === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(selectedSection.labelKey)}</span>
-                </button>
-              </div>
+              <PrivateBreadcrumb
+                isDetailView={isDetailView}
+                detailEntityId={detailEntityId}
+                dashboardLabel={t("dashboard")}
+                sectionLabel={breadcrumbSectionLabel}
+                sectionIcon={breadcrumbIcon}
+                onNavigateDashboard={() => navigate("/app/dashboard")}
+                onNavigateSection={() => navigate(`/app/${activeKey}`)}
+              />
             ) : null}
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden [overscroll-behavior-x:none]">
               <Outlet context={context} />
