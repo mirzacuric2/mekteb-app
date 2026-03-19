@@ -120,7 +120,7 @@ export function LessonsPanel({ canManage }: Props) {
 
       <div className="max-h-[calc(100dvh-220px)] space-y-3 overflow-y-auto pr-1 text-sm">
         {isLessonsListLoading ? (
-          <LoadingBlock text="" containerClassName="min-h-[240px]" />
+          <LoadingBlock text={t("loadingLessons")} containerClassName="min-h-[240px]" />
         ) : (
           LESSON_NIVO_ORDER.map((group) => (
             <div key={group} className="space-y-1">

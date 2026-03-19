@@ -187,7 +187,7 @@ export function ActivitiesTable({
           </tr>
         ))}
         {isLoading ? (
-          <TableLoadingRow colSpan={7} text={t("childrenLoading")} />
+          <TableLoadingRow colSpan={7} text={t("reportingLoading")} />
         ) : null}
         {!activities.length && !isLoading ? (
           <tr>

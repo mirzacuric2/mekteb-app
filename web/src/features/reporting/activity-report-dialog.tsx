@@ -384,7 +384,7 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
               </div>
             ) : childrenQuery.isLoading || lessonsQuery.isLoading ? (
               <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">
-                <Loader size="sm" text={t("childrenLoading")} />
+                <Loader size="sm" text={t("reportingLoading")} />
               </div>
             ) : nivoLessons.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">

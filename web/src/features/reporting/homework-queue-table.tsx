@@ -130,7 +130,7 @@ export function HomeworkQueueTable({
           );
         })}
         {isLoading ? (
-          <TableLoadingRow colSpan={4} text={t("childrenLoading")} />
+          <TableLoadingRow colSpan={4} text={t("reportingLoading")} />
         ) : null}
         {!isLoading && !keys.size ? (
           <tr>

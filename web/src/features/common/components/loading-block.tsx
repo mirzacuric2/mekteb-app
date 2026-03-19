@@ -19,7 +19,7 @@ export function LoadingBlock({
         containerClassName
       )}
     >
-      <Loader size="xs" text={text} className={cn("justify-center", className)} />
+      <Loader size="sm" text={text} className={cn("justify-center", className)} />
     </div>
   );
 }

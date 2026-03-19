@@ -34,6 +34,9 @@ This folder contains user-facing documentation for daily platform usage.
 
 - Deployment/startup flow is hardened: production startup now runs Prisma migrate deploy without automatic seeding (`prestart -> db:sync`), while local development keeps explicit seed-on-start behavior via `predev -> db:sync:with-seed`.
 - Server API error handling is hardened to return safe JSON errors (including invalid JSON body `400` responses) and avoid leaking raw/minified runtime stack traces to clients.
+- Shared table/list loading wrappers now use `sm` loader size (instead of extra-small) for clearer loading-state visibility without being too dominant.
+- Lessons page now shows a localized loading label while lesson groups are fetching, so loading state is explicit for users.
+- Reporting screens now use a dedicated localized report-loading label (instead of the children-specific loading label) across reports table, homework queue, and report dialog loading states.
 - Messaging is upgraded to a global bottom-right chat dock with 30-second auto-refresh for recent threads and unread-message badge updates.
 - Notifications now include event-based alerts for new posts, imam absence comments, and homework completion, with 30-second polling, a bell dropdown showing the latest 5 items, and a dedicated `/app/notifications` page reachable via `See all` (sidebar notification entry removed).
 - Status badges are now centralized through a reusable shared component (`StatusBadge`) and reused across users, children, reports, communities, and child progress surfaces for consistent color semantics.
