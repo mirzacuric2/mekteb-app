@@ -1,8 +1,8 @@
 import { DataTable } from "../common/components/data-table";
 import { EntityRowActions } from "../common/components/entity-row-actions";
 import { PaginationControls } from "../common/components/pagination-controls";
-import { Loader } from "../common/components/loader";
 import { StatusBadge } from "../common/components/status-badge";
+import { TableLoadingRow } from "../common/components/table-loading-row";
 import { Button } from "../../components/ui/button";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -99,11 +99,7 @@ export function ChildrenTable({
           </tr>
         ))}
         {isLoading ? (
-          <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={5}>
-              <Loader size="lg" text={t("childrenLoading")} className="justify-center" />
-            </td>
-          </tr>
+          <TableLoadingRow colSpan={5} text={t("childrenLoading")} />
         ) : null}
         {!children.length && !isLoading ? (
           <tr>

@@ -4,8 +4,8 @@ import { Button } from "../../components/ui/button";
 import { Checkbox } from "../../components/ui/checkbox";
 import { Switch } from "../../components/ui/switch";
 import { DataTable } from "../common/components/data-table";
-import { Loader } from "../common/components/loader";
 import { PaginationControls } from "../common/components/pagination-controls";
+import { TableLoadingRow } from "../common/components/table-loading-row";
 import { HomeworkQueueItem } from "./types";
 
 type HomeworkQueueTableProps = {
@@ -130,11 +130,7 @@ export function HomeworkQueueTable({
           );
         })}
         {isLoading ? (
-          <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={4}>
-              <Loader size="lg" text={t("childrenLoading")} className="justify-center" />
-            </td>
-          </tr>
+          <TableLoadingRow colSpan={4} text={t("childrenLoading")} />
         ) : null}
         {!isLoading && !keys.size ? (
           <tr>

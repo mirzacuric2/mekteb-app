@@ -266,3 +266,7 @@ This folder contains user-facing documentation for daily platform usage.
 - Parent-facing dashboard copy now uses lecture-first wording for completed outcomes (for example "completed lectures"), while draft/in-progress states remain report-oriented.
 - In child drawer timeline (`Lecture progress`), the right-side "completed lectures out of reports" pill is removed for less clutter, and Imam comments now show up to two entries (with overflow hint) so comment count better matches visible content.
 - Missing-value rendering now uses the shared `NaValue` component in child details, with a lighter neutral tone for `N/A` to improve hierarchy and consistency.
+- Deployment hardening: Prisma now includes a drift-recovery migration that safely adds missing `Attendance.homeworkTitle` and `Attendance.homeworkDescription` columns (`IF NOT EXISTS`) so older environments do not crash on lecture/attendance reads.
+- Table loading rows now use a shared compact loader pattern across users/children/reports/homework tables (smaller spinner + tighter vertical spacing) to reduce visual aggression and keep list states consistent.
+- Loading states are now visually unified across major app surfaces (tables, list cards, and report dialog sections) via shared compact loader components to keep feedback subtle and consistent.
+- Loader visuals were further reduced in size (`xs`) with tighter table/loading-block spacing for an even less intrusive loading experience across those shared states.

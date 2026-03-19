@@ -3,7 +3,7 @@ import { EntityRowActions } from "../common/components/entity-row-actions";
 import { NaValue } from "../common/components/na-value";
 import { PaginationControls } from "../common/components/pagination-controls";
 import { StatusBadge } from "../common/components/status-badge";
-import { Loader } from "../common/components/loader";
+import { TableLoadingRow } from "../common/components/table-loading-row";
 import { useTranslation } from "react-i18next";
 import { Role } from "../../types";
 import { UserStatus } from "./user-form-schema";
@@ -135,11 +135,7 @@ export function UsersTable({
             </tr>
           ))}
           {isLoading ? (
-            <tr>
-              <td className="px-4 py-10 text-center text-slate-500" colSpan={tableColSpan}>
-                <Loader size="lg" text={t("loadingUsers")} className="justify-center" />
-              </td>
-            </tr>
+            <TableLoadingRow colSpan={tableColSpan} text={t("loadingUsers")} />
           ) : null}
           {!users.length && !isLoading ? (
             <tr>

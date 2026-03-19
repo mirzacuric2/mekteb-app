@@ -6,6 +6,7 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
+import { Loader } from "../common/components/loader";
 import { PostCard } from "./post-card";
 import { POST_FORM_DEFAULT_VALUES, PostFormValues, postFormSchema } from "./post-form-schema";
 import { PostRecord } from "./types";
@@ -134,7 +135,11 @@ export function PostsPanel({ canPublish }: Props) {
           <p className="text-sm text-slate-500">You can react and comment on posts from your community.</p>
         )}
 
-        {posts.isLoading ? <p className="text-sm text-slate-500">Loading posts...</p> : null}
+        {posts.isLoading ? (
+          <div className="rounded-md border border-dashed border-border p-3 text-slate-500">
+            <Loader size="sm" text="Loading posts..." />
+          </div>
+        ) : null}
         {!posts.isLoading && !posts.data?.length ? <p className="text-sm text-slate-500">No posts yet.</p> : null}
 
         <ul className="space-y-2 text-sm">

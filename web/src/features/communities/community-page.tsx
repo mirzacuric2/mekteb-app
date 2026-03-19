@@ -10,7 +10,7 @@ import { Card } from "../../components/ui/card";
 import { Tabs } from "../../components/ui/tabs";
 import { ROLE } from "../../types";
 import { useSession } from "../auth/session-context";
-import { Loader } from "../common/components/loader";
+import { LoadingBlock } from "../common/components/loading-block";
 import { NaValue } from "../common/components/na-value";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { COMMUNITIES_API_PATH, COMMUNITIES_QUERY_KEY } from "./constants";
@@ -168,8 +168,8 @@ export function CommunityPage({ canManage, canAssignAdmins, selectedCommunityId 
 
   if (communities.isLoading || communityDetails.isLoading) {
     return (
-      <Card className="flex min-h-[220px] items-center justify-center">
-        <Loader size="md" />
+      <Card>
+        <LoadingBlock text="" containerClassName="min-h-[220px] border-0" />
       </Card>
     );
   }

@@ -18,7 +18,7 @@ import { Lesson } from "./types";
 import { EntityListToolbar } from "../common/components/entity-list-toolbar";
 import { LessonFormDialog, LessonFormValues } from "./lesson-form-dialog";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
-import { Loader } from "../common/components/loader";
+import { LoadingBlock } from "../common/components/loading-block";
 
 type Props = { canManage: boolean };
 
@@ -120,9 +120,7 @@ export function LessonsPanel({ canManage }: Props) {
 
       <div className="max-h-[calc(100dvh-220px)] space-y-3 overflow-y-auto pr-1 text-sm">
         {isLessonsListLoading ? (
-          <div className="flex min-h-[240px] justify-center rounded-md border border-dashed border-border pt-6">
-            <Loader size="md" />
-          </div>
+          <LoadingBlock text="" containerClassName="min-h-[240px]" />
         ) : (
           LESSON_NIVO_ORDER.map((group) => (
             <div key={group} className="space-y-1">

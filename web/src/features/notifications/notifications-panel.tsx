@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useNotificationsData } from "./use-notifications-data";
 import { useNotificationsMutations } from "./use-notifications-mutations";
 import { getNotificationTargetPath } from "./navigation";
+import { Loader } from "../common/components/loader";
 
 export function NotificationsPanel() {
   const navigate = useNavigate();
@@ -25,7 +26,9 @@ export function NotificationsPanel() {
       </div>
       <ul className="space-y-1 text-sm">
         {notifications.isLoading ? (
-          <li className="rounded-md border border-dashed border-border p-3 text-slate-500">Loading notifications...</li>
+          <li className="rounded-md border border-dashed border-border p-3 text-slate-500">
+            <Loader size="sm" text="Loading notifications..." />
+          </li>
         ) : null}
         {!notifications.isLoading && items.length === 0 ? (
           <li className="rounded-md border border-dashed border-border p-3 text-slate-500">No notifications found.</li>

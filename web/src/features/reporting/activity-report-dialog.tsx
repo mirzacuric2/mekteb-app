@@ -11,6 +11,7 @@ import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
 import { CHILD_STATUS, ChildRecord } from "../children/types";
+import { Loader } from "../common/components/loader";
 import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER, LessonNivo } from "../lessons/constants";
 import { Lesson } from "../lessons/types";
 import { useAuthedQuery } from "../common/use-authed-query";
@@ -383,7 +384,7 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
               </div>
             ) : childrenQuery.isLoading || lessonsQuery.isLoading ? (
               <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">
-                {t("childrenLoading")}
+                <Loader size="sm" text={t("childrenLoading")} />
               </div>
             ) : nivoLessons.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">

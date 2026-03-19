@@ -10,7 +10,7 @@ import { Button } from "../../components/ui/button";
 import { useRoleAccess } from "../auth/use-role-access";
 import { UserPlus } from "lucide-react";
 import { EntityListToolbar } from "../common/components/entity-list-toolbar";
-import { Loader } from "../common/components/loader";
+import { LoadingBlock } from "../common/components/loading-block";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { ChildrenTable } from "./children-table";
@@ -228,9 +228,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
         }
       />
       {children.isLoading ? (
-        <div className="flex min-h-[220px] items-center justify-center rounded-md border border-dashed border-border">
-          <Loader size="md" />
-        </div>
+        <LoadingBlock text={t("childrenLoading")} containerClassName="min-h-[220px]" />
       ) : (
         <ChildrenTable
           children={pagedChildren}

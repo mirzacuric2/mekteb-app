@@ -5,9 +5,9 @@ import { Button } from "../../components/ui/button";
 import { Checkbox } from "../../components/ui/checkbox";
 import { DataTable } from "../common/components/data-table";
 import { EntityRowActions } from "../common/components/entity-row-actions";
-import { Loader } from "../common/components/loader";
 import { PaginationControls } from "../common/components/pagination-controls";
 import { StatusBadge } from "../common/components/status-badge";
+import { TableLoadingRow } from "../common/components/table-loading-row";
 import { LESSON_NIVO_LABEL } from "../lessons/constants";
 import { LECTURE_STATUS } from "./reporting.constants";
 import { ActivityLecture } from "./types";
@@ -187,11 +187,7 @@ export function ActivitiesTable({
           </tr>
         ))}
         {isLoading ? (
-          <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={7}>
-              <Loader size="lg" text={t("childrenLoading")} className="justify-center" />
-            </td>
-          </tr>
+          <TableLoadingRow colSpan={7} text={t("childrenLoading")} />
         ) : null}
         {!activities.length && !isLoading ? (
           <tr>

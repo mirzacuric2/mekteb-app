@@ -12,7 +12,7 @@ import { ROLE } from "../../types";
 import { useSession } from "../auth/session-context";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { EntityListToolbar } from "../common/components/entity-list-toolbar";
-import { Loader } from "../common/components/loader";
+import { LoadingBlock } from "../common/components/loading-block";
 import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { COMMUNITIES_API_PATH, COMMUNITIES_QUERY_KEY } from "./constants";
@@ -287,9 +287,7 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
 
       <div className="space-y-2">
         {communities.isLoading ? (
-          <div className="flex min-h-[200px] items-center justify-center rounded-md border border-dashed border-border">
-            <Loader size="md" />
-          </div>
+          <LoadingBlock text="" containerClassName="min-h-[200px]" />
         ) : filteredCommunities.length ? (
           filteredCommunities.map((community) => (
             <div
