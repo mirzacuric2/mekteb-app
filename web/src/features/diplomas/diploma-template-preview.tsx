@@ -48,7 +48,6 @@ export function DiplomaTemplatePreview({
       setLoadingPdf(true);
       setLoadError(null);
       try {
-        // pdf.js may detach the buffer it receives; never pass the shared query/cache buffer.
         const pdf = await getDocument({ data: copyArrayBufferToUint8(data) }).promise;
         const page = await pdf.getPage(1);
         const baseViewport = page.getViewport({ scale: 1 });

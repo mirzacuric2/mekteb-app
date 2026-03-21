@@ -5,7 +5,6 @@ function normalizePart(value: string | null | undefined) {
   return (value ?? "").trim().replace(/\s+/g, " ");
 }
 
-/** Diploma-style line: `First ef. Last` (Bosnian honorific). */
 export function formatDiplomaImamLineFromAdmin(
   firstName: string | null | undefined,
   lastName: string | null | undefined

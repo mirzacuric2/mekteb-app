@@ -1,20 +1,5 @@
 import { DIPLOMA_NAME_FONT_STYLE, type DiplomaNameFontStyle } from "./diploma-name-font";
 
-/**
- * Diploma dynamic text placement (pdf-lib: origin bottom-left, Y increases upward).
- *
- * Each line has **Y** = baseline distance from the bottom, and optional **X** = distance from the
- * left for the **left edge** of the text (`drawText` in pdf-lib). Leave X unset (or clear the field)
- * to keep that line **horizontally centered** within the side margins.
- *
- * **Per-community layout** is stored in the database (Community → **Diplomas** tab).
- * App defaults below apply when no saved layout exists; admins tune positions in the UI
- * (click-to-set on the template preview).
- *
- * Tip: open the template in a PDF editor that shows rulers in **points** (1 pt ≈ 1/72 inch).
- * Portrait A4 is typically 595 × 842 pt; **landscape** swaps width/height.
- */
-
 export type DiplomaRgb = { r: number; g: number; b: number };
 
 export type DiplomaTextLayout = {
@@ -22,12 +7,7 @@ export type DiplomaTextLayout = {
   nameBaselineFromBottomPt: number;
   nivoBaselineFromBottomPt: number;
   dateBaselineFromBottomPt: number;
-  /** Baseline for optional imam/signature line (same coordinate system). */
   imamBaselineFromBottomPt: number;
-  /**
-   * Left edge of each line in pt from the page’s left (pdf-lib X). If null/omitted, that line is
-   * horizontally centered (respecting minSideMarginPt).
-   */
   nameXFromLeftPt?: number | null;
   nivoXFromLeftPt?: number | null;
   dateXFromLeftPt?: number | null;
@@ -40,7 +20,6 @@ export type DiplomaTextLayout = {
   dateFontSize: number;
   imamFontSize: number;
   minSideMarginPt: number;
-  /** Child full name only; nivo, date, and imam use the body (sans) font. */
   nameFontStyle: DiplomaNameFontStyle;
   nameColor: DiplomaRgb;
   nivoColor: DiplomaRgb;
@@ -112,7 +91,6 @@ export function computeDiplomaTextPositions(layout: DiplomaTextLayout): {
 
 export type DiplomaTextHorizontalKey = "name" | "nivo" | "date" | "imam";
 
-/** Resolve drawText `x` (left edge of text). Custom X is clamped so the line stays within side margins. */
 export function resolveDiplomaTextX(
   layout: DiplomaTextLayout,
   key: DiplomaTextHorizontalKey,

@@ -1,6 +1,5 @@
 import type { DiplomaTextLayout } from "./diploma-layout";
 
-/** Paste these lines into `DIPLOMA_TEXT_LAYOUT` in `diploma-layout.ts` (replace matching keys). */
 function xLine(key: string, v: number | null | undefined): string {
   if (v == null || Number.isNaN(v)) return "";
   return `${key}XFromLeftPt: ${v},\n`;

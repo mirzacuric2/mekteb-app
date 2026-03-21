@@ -12,7 +12,6 @@ import { loadDiplomaPdfFonts } from "./load-diploma-font";
 GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const RENDER_SCALE = 1.35;
-/** Fixed calendar date so ceremony line is stable and locale-formatted via formatDate */
 const SAMPLE_CEREMONY_DATE = new Date(2025, 5, 15);
 const DEBOUNCE_MS = 500;
 

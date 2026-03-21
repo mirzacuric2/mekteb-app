@@ -1,7 +1,3 @@
-/**
- * pdfjs-dist 5.x calls `Map.prototype.getOrInsertComputed` (TC39 proposal); Safari and
- * older runtimes may not implement it yet. Safe to no-op when native exists.
- */
 type MapWithPolyfill = Map<unknown, unknown> & {
   getOrInsertComputed?: (key: unknown, callback: () => unknown) => unknown;
 };

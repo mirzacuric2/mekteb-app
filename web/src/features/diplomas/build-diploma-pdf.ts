@@ -26,25 +26,14 @@ function resolveNivoLineText(childNivo: number, override: string | null | undefi
   return nivoDisplayLabel(childNivo);
 }
 
-/**
- * One merged PDF: one page per child, template page copied and text drawn on top.
- * Text positions assume A4; custom templates should keep similar empty areas.
- */
 export async function buildDiplomaPdfMerged(params: {
   templateBytes: Uint8Array;
   fontBytes: Uint8Array;
-  /** When set and layout uses script name style, embedded for the child’s full name only. */
   nameScriptFontBytes?: Uint8Array | null;
   children: DiplomaPdfChild[];
   ceremonyDateText: string;
-  /** Optional line under the date area (e.g. imam name). Drawn only if non-empty after trim. */
   imamLine?: string | null;
-  /**
-   * When non-empty after trim, printed as the nivo line for every page instead of
-   * the default label for each child’s numeric nivo.
-   */
   nivoLineOverride?: string | null;
-  /** Override default placement; defaults to `DIPLOMA_TEXT_LAYOUT` from `diploma-layout.ts`. */
   textLayout?: DiplomaTextLayout;
 }): Promise<Uint8Array> {
   const {

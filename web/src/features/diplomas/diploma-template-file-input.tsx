@@ -6,12 +6,7 @@ type Props = {
   id: string;
   disabled?: boolean;
   onPick: (file: File) => void;
-  /**
-   * Describes which PDF is currently used for preview/generation. Native file inputs cannot show
-   * a “selected” default asset; this line makes the active source explicit.
-   */
   activeSourceHint?: string;
-  /** Rendered on the same row as the file input (wraps below on narrow viewports). */
   actions?: ReactNode;
 };
 

@@ -8,10 +8,6 @@ type Props = {
   onLayoutChange: (next: DiplomaTextLayout) => void;
 };
 
-/**
- * One grid for both rows: `max-content` fixes label column width (does not eat free space like `auto`).
- * Second column fixed width so both selects share the same track and line up.
- */
 const diplomaAdvancedSelectPairsGridClass =
   "grid w-full grid-cols-1 gap-y-2 gap-x-0 sm:grid-cols-[max-content_18rem] sm:items-center sm:gap-x-3 sm:gap-y-2 sm:justify-start";
 

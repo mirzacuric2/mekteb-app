@@ -50,13 +50,10 @@ function downloadPdf(bytes: Uint8Array, filename: string) {
 type BaseDiplomaGeneratePanelProps = {
   communityId: string;
   textLayout: DiplomaTextLayout;
-  /** Resolved template bytes (custom from API or default asset) */
   templateBytes: ArrayBuffer | null;
   defaultImamLineFromSettings: string;
   templateLoading: boolean;
-  /** When false, children list is not fetched (e.g. drawer closed). */
   active: boolean;
-  /** Called after a successful PDF download. */
   onGenerateComplete?: () => void;
 };
 
@@ -67,7 +64,6 @@ type DialogLayoutProps = BaseDiplomaGeneratePanelProps & {
 
 type InlineLayoutProps = BaseDiplomaGeneratePanelProps & {
   dialogLayout?: false;
-  /** Omit title/intro when the parent already shows them. */
   hideIntro?: boolean;
 };
 
@@ -404,7 +400,6 @@ function DiplomaChildRow({
   child: ChildRecord;
   checked: boolean;
   onToggle: () => void;
-  /** When set, shown instead of the default nivo label (matches PDF when override is used). */
   nivoLinePreview?: string | null;
 }) {
   const label = `${child.firstName} ${child.lastName}`.trim();

@@ -12,9 +12,7 @@ type Segment = {
 type Props = {
   title: string;
   subtitle: string;
-  /** Optional icon shown beside the title. */
   titleIcon?: LucideIcon;
-  /** Tailwind classes for the icon wrapper (e.g. bg-sky-50 text-sky-600). */
   titleIconClassName?: string;
   segments: Segment[];
   emptyText: string;

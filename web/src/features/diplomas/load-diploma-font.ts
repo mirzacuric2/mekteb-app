@@ -6,7 +6,6 @@ const FONT_PATH = "/fonts/NotoSans-Regular.ttf";
 let fontBytesPromise: Promise<Uint8Array> | null = null;
 let nameScriptFontBytesPromise: Promise<Uint8Array> | null = null;
 
-/** Single-flight fetch of the diploma PDF font; safe to call from multiple components. */
 export function loadDiplomaFontBytes(): Promise<Uint8Array> {
   if (!fontBytesPromise) {
     const p = (async () => {
@@ -22,7 +21,6 @@ export function loadDiplomaFontBytes(): Promise<Uint8Array> {
   return fontBytesPromise;
 }
 
-/** Script/handwriting font used for the child name when `nameFontStyle === SCRIPT`. */
 export function loadDiplomaNameScriptFontBytes(): Promise<Uint8Array> {
   if (!nameScriptFontBytesPromise) {
     const p = (async () => {
@@ -38,7 +36,6 @@ export function loadDiplomaNameScriptFontBytes(): Promise<Uint8Array> {
   return nameScriptFontBytesPromise;
 }
 
-/** Body font plus optional script bytes for name line (null if sans or fetch failed). */
 export async function loadDiplomaPdfFonts(layout: Pick<DiplomaTextLayout, "nameFontStyle">): Promise<{
   bodyFontBytes: Uint8Array;
   nameScriptFontBytes: Uint8Array | null;
