@@ -15,6 +15,7 @@ SUPER_ADMIN has the highest access level across communities.
 - Create users with `ADMIN`, `BOARD_MEMBER`, or `PARENT` role.
 - Reassign users to different communities.
 - Access all children, posts, messages, and notifications.
+- Use **Community → Diplomas** (same as admins): **PDF template** and **text layout** cards on the tab; open **Generate diplomas** for the batch form and merged PDF download (browser-side). When viewing a community, the child list is scoped to **that** community; the API may still return up to **100** rows per request—use the nivo filter or multiple runs for large groups.
 - Create/update/delete lessons.
 - Use Activities workflows (reports, complete lecture, homework queue) across all communities when acting operationally.
 - Monitor platform-wide consistency for names, roles, and statuses.

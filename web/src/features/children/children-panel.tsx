@@ -28,7 +28,6 @@ import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-
 import { useAuthedQuery } from "../common/use-authed-query";
 import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
 import { Lesson } from "../lessons/types";
-
 type Props = { canManage: boolean };
 
 export function ChildrenPanel({ canManage: _canManage }: Props) {
@@ -214,16 +213,18 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
         placeholder={t("childrenSearchPlaceholder")}
         actions={
           canAdminManage ? (
-            <Button
-              className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
-              onClick={() => {
-                resetForm();
-                setFormOpen(true);
-              }}
-            >
-              <UserPlus className="h-4 w-4" />
-              <span className="hidden md:inline">{t("childrenCreate")}</span>
-            </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
+                onClick={() => {
+                  resetForm();
+                  setFormOpen(true);
+                }}
+              >
+                <UserPlus className="h-4 w-4" />
+                <span className="hidden md:inline">{t("childrenCreate")}</span>
+              </Button>
+            </div>
           ) : undefined
         }
       />

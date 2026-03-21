@@ -1,7 +1,10 @@
+import { Activity, AlertTriangle, Baby, Layers, PieChart, Users, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "../../api";
+import { cn } from "../../lib/utils";
 import { ROLE } from "../../types";
 import { ChildRecord, ChildrenListResponse } from "../children/types";
 import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER, LessonNivo } from "../lessons/constants";
@@ -20,6 +23,44 @@ const MAX_CHILDREN_PAGES = 20;
 function toPercent(value: number, total: number) {
   if (!total) return 0;
   return Math.round(((value / total) * 100 + Number.EPSILON) * 10) / 10;
+}
+
+function OverviewStatCard({
+  icon: Icon,
+  label,
+  value,
+  accentClassName,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+  accentClassName: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-white p-3.5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl",
+            accentClassName
+          )}
+        >
+          <Icon className="h-5 w-5" aria-hidden />
+        </div>
+        <div className="flex h-12 min-w-0 flex-1 flex-col justify-center gap-0.5 overflow-hidden">
+          <p
+            className="line-clamp-1 text-[11px] font-semibold uppercase leading-none tracking-wide text-slate-500"
+            title={label}
+          >
+            {label}
+          </p>
+          <p className="text-2xl font-semibold tabular-nums leading-none tracking-tight text-slate-900">
+            {value}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function CommunityOverviewTab() {
@@ -148,29 +189,32 @@ export function CommunityOverviewTab() {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-md border border-border p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{t("communityOverviewUsersCount")}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{usersQuery.data?.length || 0}</p>
-        </div>
-        <div className="rounded-md border border-border p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{t("communityOverviewChildrenCount")}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{childrenQuery.data?.length || 0}</p>
-        </div>
-        <div className="rounded-md border border-border p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{t("communityOverviewNeedsAttention")}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">
-            {progressByNivo.reduce((sum, nivo) => sum + nivo.needsAttention, 0)}
-          </p>
-          <p className="text-xs text-slate-500">
-            {t("communityOverviewNoRecordsLabel")}: {progressByNivo.reduce((sum, nivo) => sum + nivo.withoutRecords, 0)}
-          </p>
-        </div>
+        <OverviewStatCard
+          icon={Users}
+          label={t("communityOverviewUsersCount")}
+          value={usersQuery.data?.length || 0}
+          accentClassName="bg-sky-50 text-sky-700"
+        />
+        <OverviewStatCard
+          icon={Baby}
+          label={t("communityOverviewChildrenCount")}
+          value={childrenQuery.data?.length || 0}
+          accentClassName="bg-emerald-50 text-emerald-700"
+        />
+        <OverviewStatCard
+          icon={AlertTriangle}
+          label={t("communityOverviewNeedsAttention")}
+          value={progressByNivo.reduce((sum, nivo) => sum + nivo.needsAttention, 0)}
+          accentClassName="bg-amber-50 text-amber-700"
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <CommunityDonutChart
           title={t("communityOverviewUsersByRoleTitle")}
           subtitle={t("communityOverviewUsersByRoleSubtitle")}
+          titleIcon={PieChart}
+          titleIconClassName="bg-sky-50 text-sky-700"
           segments={roleSegments}
           emptyText={t("communityOverviewNoUsers")}
           noDataLabel={t("communityOverviewNoDataLabel")}
@@ -178,6 +222,8 @@ export function CommunityOverviewTab() {
         <CommunityDonutChart
           title={t("communityOverviewChildrenByNivoTitle")}
           subtitle={t("communityOverviewChildrenByNivoSubtitle")}
+          titleIcon={Layers}
+          titleIconClassName="bg-emerald-50 text-emerald-700"
           segments={childrenByNivoSegments}
           emptyText={t("communityOverviewNoChildren")}
           noDataLabel={t("communityOverviewNoDataLabel")}
@@ -185,8 +231,15 @@ export function CommunityOverviewTab() {
       </div>
 
       <div className="rounded-md border border-border p-4">
-        <p className="text-sm font-medium text-slate-800">{t("communityOverviewProgressByNivoTitle")}</p>
-        <p className="mb-3 text-xs text-slate-500">{t("communityOverviewProgressByNivoSubtitle")}</p>
+        <div className="mb-3 flex gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+            <Activity className="h-5 w-5" aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-800">{t("communityOverviewProgressByNivoTitle")}</p>
+            <p className="text-xs text-slate-500">{t("communityOverviewProgressByNivoSubtitle")}</p>
+          </div>
+        </div>
         <div className="space-y-2">
           {progressByNivo.map((item) => (
             <div

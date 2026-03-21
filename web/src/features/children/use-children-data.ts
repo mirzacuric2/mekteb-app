@@ -1,5 +1,5 @@
 import { useAuthedQuery, useAuthedQueryWithParams } from "../common/use-authed-query";
-import { ChildRecord, ChildrenListResponse } from "./types";
+import { CHILD_STATUS, ChildRecord, ChildStatus, ChildrenListResponse } from "./types";
 import { useUsersQuery } from "../users/use-users-data";
 
 export type ChildrenParentOption = {
@@ -21,9 +21,11 @@ type ChildrenListParams = {
   page: number;
   pageSize: number;
   mineOnly?: boolean;
+  nivo?: number;
+  status?: ChildStatus;
 };
 
-export function useChildrenListQuery({ search, page, pageSize, mineOnly }: ChildrenListParams) {
+export function useChildrenListQuery({ search, page, pageSize, mineOnly, nivo, status }: ChildrenListParams) {
   return useAuthedQueryWithParams<ChildrenListResponse>(
     "children",
     "/children",
@@ -32,8 +34,25 @@ export function useChildrenListQuery({ search, page, pageSize, mineOnly }: Child
       pageSize,
       q: search.trim() || undefined,
       mine: mineOnly ? 1 : undefined,
+      nivo,
+      status,
     },
     true
+  );
+}
+
+/** Active children for diploma batch (max pageSize 100 per API); optional nivo narrows the list. */
+export function useChildrenDiplomaCandidatesQuery(open: boolean, nivo: number | undefined) {
+  return useAuthedQueryWithParams<ChildrenListResponse>(
+    "children-diplomas",
+    "/children",
+    {
+      page: 1,
+      pageSize: 100,
+      status: CHILD_STATUS.ACTIVE,
+      ...(nivo !== undefined ? { nivo } : {}),
+    },
+    open
   );
 }
 

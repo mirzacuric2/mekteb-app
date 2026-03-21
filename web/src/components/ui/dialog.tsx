@@ -61,7 +61,7 @@ export function DialogContent({ children, className }: DialogContentProps) {
 }
 
 export function DialogHeader({ children, className }: { children: ReactNode; className?: string }) {
-  return <header className={cn("border-b border-border p-4", className)}>{children}</header>;
+  return <header className={cn("shrink-0 border-b border-border p-4", className)}>{children}</header>;
 }
 
 export function DialogTitle({ children, className }: { children: ReactNode; className?: string }) {
@@ -69,9 +69,9 @@ export function DialogTitle({ children, className }: { children: ReactNode; clas
 }
 
 export function DialogBody({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("min-h-0 flex-1 space-y-4 overflow-y-auto p-4", className)}>{children}</div>;
+  return <div className={cn("min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-4", className)}>{children}</div>;
 }
 
 export function DialogFooter({ children, className }: { children: ReactNode; className?: string }) {
-  return <footer className={cn("flex justify-end gap-2 border-t border-border p-4", className)}>{children}</footer>;
+  return <footer className={cn("flex shrink-0 justify-end gap-2 border-t border-border p-4", className)}>{children}</footer>;
 }

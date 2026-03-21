@@ -1,4 +1,6 @@
+import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { cn } from "../../lib/utils";
 
 type Segment = {
   key: string;
@@ -10,6 +12,10 @@ type Segment = {
 type Props = {
   title: string;
   subtitle: string;
+  /** Optional icon shown beside the title. */
+  titleIcon?: LucideIcon;
+  /** Tailwind classes for the icon wrapper (e.g. bg-sky-50 text-sky-600). */
+  titleIconClassName?: string;
   segments: Segment[];
   emptyText: string;
   noDataLabel: string;
@@ -20,7 +26,15 @@ const STROKE_WIDTH = 18;
 const RADIUS = (CHART_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-export function CommunityDonutChart({ title, subtitle, segments, emptyText, noDataLabel }: Props) {
+export function CommunityDonutChart({
+  title,
+  subtitle,
+  titleIcon: TitleIcon,
+  titleIconClassName,
+  segments,
+  emptyText,
+  noDataLabel,
+}: Props) {
   const { t } = useTranslation();
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
   const segmentsWithData = segments.filter((segment) => segment.value > 0);
@@ -28,8 +42,22 @@ export function CommunityDonutChart({ title, subtitle, segments, emptyText, noDa
 
   return (
     <div className="rounded-md border border-border p-4">
-      <p className="text-sm font-medium text-slate-800">{title}</p>
-      <p className="mb-3 text-xs text-slate-500">{subtitle}</p>
+      <div className="mb-3 flex gap-3">
+        {TitleIcon ? (
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600",
+              titleIconClassName
+            )}
+          >
+            <TitleIcon className="h-5 w-5" aria-hidden />
+          </div>
+        ) : null}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-800">{title}</p>
+          <p className="text-xs text-slate-500">{subtitle}</p>
+        </div>
+      </div>
 
       {total > 0 ? (
         <div className="flex min-w-0 flex-col items-center gap-3 md:flex-row md:items-start md:gap-5">

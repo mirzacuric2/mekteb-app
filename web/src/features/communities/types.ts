@@ -59,4 +59,8 @@ export type CommunityRecord = {
   users?: CommunityAdminRecord[];
   boardMembers?: BoardMemberRecord[];
   _count?: { boardMembers: number };
+  /** Present on API responses; true when a custom PDF template is stored for diplomas. */
+  hasCustomDiplomaTemplate?: boolean;
+  diplomaLayoutJson?: unknown;
+  diplomaDefaultImamLine?: string | null;
 };

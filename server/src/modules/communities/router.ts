@@ -1,6 +1,7 @@
 import { BoardMemberRole, CommunityStatus, Prisma, Role } from "@prisma/client";
-import { Router } from "express";
+import express, { Router } from "express";
 import { z } from "zod";
+import { COMMUNITY_JSON_OMIT, withCommunityDiplomaFlags } from "./community-json.js";
 import { requireAnyRole, requireAuth, requireRole } from "../../auth.js";
 import { canAccessCommunity } from "../../common/access.js";
 import { prisma } from "../../prisma.js";
@@ -106,6 +107,48 @@ function boardAssignmentKey(data: { userId: string; role: BoardMemberRole }) {
   return `${data.userId}:${data.role}`;
 }
 
+const MAX_DIPLOMA_TEMPLATE_BYTES = 15 * 1024 * 1024;
+
+const diplomaRgbSchema = z.object({
+  r: z.number().min(0).max(1),
+  g: z.number().min(0).max(1),
+  b: z.number().min(0).max(1),
+});
+
+const diplomaTextLayoutSchema = z.object({
+  placementMode: z.enum(["stacked", "absolute"]),
+  nameBaselineFromBottomPt: z.number(),
+  nivoBaselineFromBottomPt: z.number(),
+  dateBaselineFromBottomPt: z.number(),
+  imamBaselineFromBottomPt: z.number(),
+  nameXFromLeftPt: z.number().nullable().optional(),
+  nivoXFromLeftPt: z.number().nullable().optional(),
+  dateXFromLeftPt: z.number().nullable().optional(),
+  imamXFromLeftPt: z.number().nullable().optional(),
+  lineHeightFactor: z.number().positive(),
+  gapAfterNamePt: z.number(),
+  gapAfterNivoPt: z.number(),
+  nameFontSize: z.number().positive().max(200),
+  nivoFontSize: z.number().positive().max(200),
+  dateFontSize: z.number().positive().max(200),
+  imamFontSize: z.number().positive().max(200),
+  minSideMarginPt: z.number(),
+  nameFontStyle: z.enum(["SANS", "SCRIPT"]).optional(),
+  nameColor: diplomaRgbSchema,
+  nivoColor: diplomaRgbSchema,
+  dateColor: diplomaRgbSchema,
+  imamColor: diplomaRgbSchema,
+});
+
+const patchDiplomaSettingsSchema = z.object({
+  layout: diplomaTextLayoutSchema,
+  defaultImamLine: z.union([z.string(), z.null()]).optional(),
+});
+
+function isPdfMagicBuffer(buf: Buffer): boolean {
+  return buf.length >= 4 && buf.subarray(0, 4).toString("ascii") === "%PDF";
+}
+
 export function communitiesRouter() {
   const router = Router();
 
@@ -115,6 +158,7 @@ export function communitiesRouter() {
         req.user!.role === Role.SUPER_ADMIN
           ? {}
           : { id: req.user!.communityId || undefined, status: CommunityStatus.ACTIVE },
+      omit: COMMUNITY_JSON_OMIT,
       include: {
         address: true,
         users: {
@@ -126,7 +170,7 @@ export function communitiesRouter() {
       },
       orderBy: { name: "asc" },
     });
-    return res.json(communities);
+    return res.json(communities.map(withCommunityDiplomaFlags));
   });
 
   router.get(
@@ -136,6 +180,7 @@ export function communitiesRouter() {
     async (req: AppRequest, res) => {
     const community = await prisma.community.findFirst({
       where: { id: req.params.id, status: CommunityStatus.ACTIVE },
+      omit: COMMUNITY_JSON_OMIT,
       include: {
         address: true,
         users: {
@@ -155,7 +200,7 @@ export function communitiesRouter() {
     });
     if (!community) return res.status(404).json({ message: "Community not found" });
     if (!canAccessCommunity(req, community.id)) return res.status(403).json({ message: "Forbidden" });
-    return res.json(community);
+    return res.json(withCommunityDiplomaFlags(community));
     }
   );
 
@@ -260,6 +305,7 @@ export function communitiesRouter() {
 
       return tx.community.findUniqueOrThrow({
         where: { id: createdCommunity.id },
+        omit: COMMUNITY_JSON_OMIT,
         include: {
           address: true,
           users: {
@@ -278,7 +324,7 @@ export function communitiesRouter() {
         },
       });
     });
-    return res.status(201).json(community);
+    return res.status(201).json(withCommunityDiplomaFlags(community));
   });
 
   router.patch(
@@ -450,6 +496,7 @@ export function communitiesRouter() {
         contactPhone: payload.data.contactPhone?.trim() || undefined,
         addressId,
       },
+      omit: COMMUNITY_JSON_OMIT,
       include: {
         address: true,
         users: {
@@ -468,7 +515,7 @@ export function communitiesRouter() {
       },
     });
 
-    return res.json(updated);
+    return res.json(withCommunityDiplomaFlags(updated));
     }
   );
 
@@ -725,6 +772,122 @@ export function communitiesRouter() {
         },
       });
       return res.status(204).send();
+    }
+  );
+
+  router.patch(
+    "/communities/:id/diploma-settings",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
+    async (req: AppRequest, res) => {
+      const parsed = patchDiplomaSettingsSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Invalid payload" });
+      const existing = await prisma.community.findFirst({
+        where: { id: req.params.id, status: CommunityStatus.ACTIVE },
+        select: { id: true },
+      });
+      if (!existing) return res.status(404).json({ message: "Community not found" });
+      if (!canAccessCommunity(req, existing.id)) return res.status(403).json({ message: "Forbidden" });
+
+      const imamPayload = parsed.data.defaultImamLine;
+      const imamUpdate =
+        imamPayload === undefined
+          ? {}
+          : {
+              diplomaDefaultImamLine:
+                imamPayload === null ? null : imamPayload.trim().slice(0, 200) || null,
+            };
+
+      const updated = await prisma.community.update({
+        where: { id: existing.id },
+        data: {
+          diplomaLayoutJson: parsed.data.layout as Prisma.InputJsonValue,
+          ...imamUpdate,
+        },
+        select: {
+          id: true,
+          diplomaLayoutJson: true,
+          diplomaDefaultImamLine: true,
+          diplomaTemplateUpdatedAt: true,
+        },
+      });
+      return res.json(withCommunityDiplomaFlags(updated));
+    }
+  );
+
+  router.put(
+    "/communities/:id/diploma-template",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
+    express.raw({ type: "*/*", limit: MAX_DIPLOMA_TEMPLATE_BYTES }),
+    async (req: AppRequest, res) => {
+      const existing = await prisma.community.findFirst({
+        where: { id: req.params.id, status: CommunityStatus.ACTIVE },
+        select: { id: true },
+      });
+      if (!existing) return res.status(404).json({ message: "Community not found" });
+      if (!canAccessCommunity(req, existing.id)) return res.status(403).json({ message: "Forbidden" });
+
+      const raw = req.body;
+      if (!Buffer.isBuffer(raw) || raw.length === 0) {
+        return res.status(400).json({ message: "Expected raw PDF body" });
+      }
+      if (raw.length > MAX_DIPLOMA_TEMPLATE_BYTES) {
+        return res.status(400).json({ message: "PDF template is too large (max 15 MB)" });
+      }
+      if (!isPdfMagicBuffer(raw)) {
+        return res.status(400).json({ message: "File must be a PDF" });
+      }
+
+      await prisma.community.update({
+        where: { id: existing.id },
+        data: {
+          diplomaTemplatePdf: new Uint8Array(raw),
+          diplomaTemplateUpdatedAt: new Date(),
+        },
+      });
+      return res.status(204).send();
+    }
+  );
+
+  router.delete(
+    "/communities/:id/diploma-template",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
+    async (req: AppRequest, res) => {
+      const existing = await prisma.community.findFirst({
+        where: { id: req.params.id, status: CommunityStatus.ACTIVE },
+        select: { id: true },
+      });
+      if (!existing) return res.status(404).json({ message: "Community not found" });
+      if (!canAccessCommunity(req, existing.id)) return res.status(403).json({ message: "Forbidden" });
+
+      await prisma.community.update({
+        where: { id: existing.id },
+        data: { diplomaTemplatePdf: null, diplomaTemplateUpdatedAt: null },
+      });
+      return res.status(204).send();
+    }
+  );
+
+  router.get(
+    "/communities/:id/diploma-template",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
+    async (req: AppRequest, res) => {
+      const existing = await prisma.community.findFirst({
+        where: { id: req.params.id, status: CommunityStatus.ACTIVE },
+        select: { diplomaTemplatePdf: true },
+      });
+      if (!existing) return res.status(404).json({ message: "Community not found" });
+      if (!canAccessCommunity(req, req.params.id)) return res.status(403).json({ message: "Forbidden" });
+      const pdf = existing.diplomaTemplatePdf;
+      if (!pdf || pdf.length === 0) {
+        return res.status(404).json({ message: "No custom diploma template uploaded" });
+      }
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Length", String(pdf.length));
+      return res.send(Buffer.from(pdf));
     }
   );
 

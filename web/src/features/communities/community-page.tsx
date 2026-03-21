@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { Building2, Edit3, MapPin } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Building2, CalendarDays, Edit3, GraduationCap, LayoutDashboard, MapPin, UsersRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { api } from "../../api";
@@ -24,6 +24,7 @@ import {
 } from "./community-form-dialog";
 import { CommunityRecord } from "./types";
 import { CommunityEventsPanel } from "../events/community-events-panel";
+import { CommunityDiplomasTab } from "./diplomas/community-diplomas-tab";
 
 type Props = {
   canManage: boolean;
@@ -52,7 +53,7 @@ export function CommunityPage({ canManage, canAssignAdmins, selectedCommunityId 
   const { t } = useTranslation();
   const { session } = useSession();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "members" | "events">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "members" | "events" | "diplomas">("overview");
   const [basicInfoDialogOpen, setBasicInfoDialogOpen] = useState(false);
   const canManageEvents =
     session?.user.role === ROLE.SUPER_ADMIN ||
@@ -60,6 +61,12 @@ export function CommunityPage({ canManage, canAssignAdmins, selectedCommunityId 
     session?.user.role === ROLE.BOARD_MEMBER;
   const hoverActionsForDesktop =
     session?.user.role === ROLE.SUPER_ADMIN || session?.user.role === ROLE.ADMIN;
+  const canConfigureDiplomas =
+    session?.user.role === ROLE.SUPER_ADMIN || session?.user.role === ROLE.ADMIN;
+
+  useEffect(() => {
+    if (activeTab === "diplomas" && !canConfigureDiplomas) setActiveTab("overview");
+  }, [activeTab, canConfigureDiplomas]);
 
   const communities = useAuthedQuery<CommunityRecord[]>(COMMUNITIES_QUERY_KEY, COMMUNITIES_API_PATH, canManage);
   const directoryUsers = useAuthedQuery<DirectoryUser[]>("directory-users", "/directory", canManage);
@@ -231,11 +238,14 @@ export function CommunityPage({ canManage, canAssignAdmins, selectedCommunityId 
       <Card className="space-y-4">
         <Tabs
           value={activeTab}
-          onChange={(value) => setActiveTab(value as "overview" | "members" | "events")}
+          onChange={(value) => setActiveTab(value as "overview" | "members" | "events" | "diplomas")}
           tabs={[
-            { key: "overview", label: t("communityOverviewTab") },
-            { key: "members", label: t("communitiesBoardMembersLabel") },
-            { key: "events", label: t("communityEventsTab") },
+            { key: "overview", label: t("communityOverviewTab"), icon: LayoutDashboard },
+            { key: "members", label: t("communitiesBoardMembersLabel"), icon: UsersRound },
+            { key: "events", label: t("communityEventsTab"), icon: CalendarDays },
+            ...(canConfigureDiplomas
+              ? [{ key: "diplomas" as const, label: t("communityDiplomasTab"), icon: GraduationCap }]
+              : []),
           ]}
         >
           {activeTab === "overview" ? (
@@ -268,12 +278,14 @@ export function CommunityPage({ canManage, canAssignAdmins, selectedCommunityId 
                 })
               }
             />
-          ) : (
+          ) : activeTab === "events" ? (
             <CommunityEventsPanel
               communityId={details.id}
               canManageEvents={canManageEvents}
               hoverActionsForDesktop={hoverActionsForDesktop}
             />
+          ) : (
+            <CommunityDiplomasTab community={details} />
           )}
         </Tabs>
       </Card>

@@ -12,6 +12,7 @@ ADMIN manages users and content within assigned community scope.
 
 - Create/update/delete `BOARD_MEMBER` and `PARENT` accounts in your community.
 - View users and children in your community.
+- Configure **diploma PDFs** on **Community → Diplomas** (tab): **PDF template** card (upload/replace background PDF, save/remove) and **Text positions and style** (click-to-place preview, typography/colors, sample output). **Default imam line** can be left empty to suggest the first assigned community admin as `First ef. Last`. Use **Generate diplomas** for ceremony date / nivo filter / imam override / child selection and a merged PDF download. Generation is in the browser; **template and layout are stored per community**, not the generated files.
 - Create children with required `SSN`, `community`, `nivo`, and at least one linked parent.
 - Update children in your community, including `nivo`, parent links, and optional child address.
 - When assigning child parents, you can select parent accounts in `PENDING`, `ACTIVE`, or `INACTIVE` status.

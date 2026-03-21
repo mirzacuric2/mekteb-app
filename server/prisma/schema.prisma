@@ -95,6 +95,13 @@ model Community {
   status    CommunityStatus @default(ACTIVE)
   deactivatedAt DateTime?
   addressId  String?
+  /// Custom diploma PDF background for this community (optional).
+  diplomaTemplatePdf Bytes?
+  diplomaTemplateUpdatedAt DateTime?
+  /// JSON layout for name/nivo/date/imam positions (see web diploma-layout shape).
+  diplomaLayoutJson Json?
+  /// Prefills the imam line in the diploma generator when set.
+  diplomaDefaultImamLine String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
