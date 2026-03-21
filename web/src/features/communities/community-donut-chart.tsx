@@ -4,8 +4,7 @@ type Segment = {
   key: string;
   label: string;
   value: number;
-  colorClass: string;
-  dotClass: string;
+  color: string;
 };
 
 type Props = {
@@ -58,7 +57,7 @@ export function CommunityDonutChart({ title, subtitle, segments, emptyText, noDa
                       r={RADIUS}
                       fill="transparent"
                       stroke="currentColor"
-                      className={segment.colorClass}
+                      style={{ color: segment.color }}
                       strokeWidth={STROKE_WIDTH}
                       strokeDasharray={`${length} ${gap}`}
                       strokeDashoffset={state.offset}
@@ -87,7 +86,7 @@ export function CommunityDonutChart({ title, subtitle, segments, emptyText, noDa
                   className="grid grid-cols-1 gap-y-0.5 text-sm md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-x-3 md:gap-y-0"
                 >
                   <span className="inline-flex min-w-0 items-center gap-2 text-slate-700">
-                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${segment.dotClass}`} />
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
                     <span className="truncate">{segment.label}</span>
                   </span>
                   <span className="pl-5 text-slate-900 md:pl-0 md:text-right">

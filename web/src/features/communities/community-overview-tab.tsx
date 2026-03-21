@@ -7,6 +7,7 @@ import { ChildRecord, ChildrenListResponse } from "../children/types";
 import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER, LessonNivo } from "../lessons/constants";
 import { LECTURE_STATUS } from "../reporting/reporting.constants";
 import { CommunityDonutChart } from "./community-donut-chart";
+import { getNivoColor } from "../common/nivo-colors";
 
 type DirectoryUser = {
   id: string;
@@ -63,24 +64,21 @@ export function CommunityOverviewTab() {
         key: ROLE.ADMIN,
         label: t("roleAdmin"),
         value: roleCounts.get(ROLE.ADMIN) || 0,
-        colorClass: "text-sky-500",
-        dotClass: "bg-sky-500",
+        color: "#0ea5e9",
       },
       {
         key: ROLE.BOARD_MEMBER,
         label: t("roleBoardMember"),
         value: roleCounts.get(ROLE.BOARD_MEMBER) || 0,
-        colorClass: "text-amber-500",
-        dotClass: "bg-amber-500",
+        color: "#f59e0b",
       },
       {
         key: ROLE.PARENT,
         label: t("roleParent"),
         value: roleCounts.get(ROLE.PARENT) || 0,
-        colorClass: "text-emerald-500",
-        dotClass: "bg-emerald-500",
+        color: "#22c55e",
       },
-      { key: ROLE.USER, label: t("roleUser"), value: roleCounts.get(ROLE.USER) || 0, colorClass: "text-violet-500", dotClass: "bg-violet-500" },
+      { key: ROLE.USER, label: t("roleUser"), value: roleCounts.get(ROLE.USER) || 0, color: "#8b5cf6" },
     ];
   }, [t, usersQuery.data]);
 
@@ -90,27 +88,11 @@ export function CommunityOverviewTab() {
       counts.set(child.nivo, (counts.get(child.nivo) || 0) + 1);
     }
 
-    const nivoColors: Record<LessonNivo, string> = {
-      1: "text-sky-500",
-      2: "text-emerald-500",
-      3: "text-amber-500",
-      4: "text-violet-500",
-      5: "text-rose-500",
-    };
-    const nivoDotColors: Record<LessonNivo, string> = {
-      1: "bg-sky-500",
-      2: "bg-emerald-500",
-      3: "bg-amber-500",
-      4: "bg-violet-500",
-      5: "bg-rose-500",
-    };
-
     return LESSON_NIVO_ORDER.map((nivo) => ({
       key: `nivo-${nivo}`,
       label: LESSON_NIVO_LABEL[nivo],
       value: counts.get(nivo) || 0,
-      colorClass: nivoColors[nivo],
-      dotClass: nivoDotColors[nivo],
+      color: getNivoColor(nivo) || "#64748b",
     }));
   }, [childrenQuery.data]);
 

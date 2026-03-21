@@ -7,18 +7,36 @@ import { useRoleAccess } from "../auth/use-role-access";
 import { useTranslation } from "react-i18next";
 import { DASHBOARD_RECENT_POSTS_LIMIT } from "../posts/constants";
 import { usePostsQuery } from "../posts/use-posts-data";
+import { useSession } from "../auth/session-context";
+import { CommunityEventsPanel } from "../events/community-events-panel";
 
 export function DashboardHomePanel() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { session } = useSession();
   const posts = usePostsQuery({ limit: DASHBOARD_RECENT_POSTS_LIMIT }, true);
   const { isParent, isAdmin, isUser, isBoardMember } = useRoleAccess();
   const canSeeProgressDashboard = isParent || isAdmin || isUser || isBoardMember;
+  const dashboardCommunityId = session?.user.communityId ?? null;
+  const showDashboardCommunityEvents = Boolean(dashboardCommunityId && canSeeProgressDashboard);
   const recentPosts = posts.data || [];
 
   return (
     <div className="space-y-3">
       {canSeeProgressDashboard ? <ProgressOverviewCards enabled /> : null}
+      {showDashboardCommunityEvents && dashboardCommunityId ? (
+        <Card className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <CommunityEventsPanel
+            communityId={dashboardCommunityId}
+            canManageEvents={false}
+            forceWeekly
+            hoverActionsForDesktop={false}
+            stackWeeklyDays
+            dashboardPreview
+            showParentWeekSummary
+          />
+        </Card>
+      ) : null}
       <Card className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <h3 className="text-base font-semibold text-slate-900">{t("dashboardRecentPostsTitle")}</h3>
         {recentPosts.length ? (

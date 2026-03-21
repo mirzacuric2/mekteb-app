@@ -23,6 +23,7 @@ import {
   CommunityFormValues,
 } from "./community-form-dialog";
 import { CommunityRecord } from "./types";
+import { CommunityEventsPanel } from "../events/community-events-panel";
 
 type Props = {
   canManage: boolean;
@@ -53,6 +54,12 @@ export function CommunityPage({ canManage, canAssignAdmins, selectedCommunityId 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"overview" | "members" | "events">("overview");
   const [basicInfoDialogOpen, setBasicInfoDialogOpen] = useState(false);
+  const canManageEvents =
+    session?.user.role === ROLE.SUPER_ADMIN ||
+    session?.user.role === ROLE.ADMIN ||
+    session?.user.role === ROLE.BOARD_MEMBER;
+  const hoverActionsForDesktop =
+    session?.user.role === ROLE.SUPER_ADMIN || session?.user.role === ROLE.ADMIN;
 
   const communities = useAuthedQuery<CommunityRecord[]>(COMMUNITIES_QUERY_KEY, COMMUNITIES_API_PATH, canManage);
   const directoryUsers = useAuthedQuery<DirectoryUser[]>("directory-users", "/directory", canManage);
@@ -262,10 +269,11 @@ export function CommunityPage({ canManage, canAssignAdmins, selectedCommunityId 
               }
             />
           ) : (
-            <div className="rounded-md border border-dashed border-border p-4">
-              <p className="text-sm font-medium text-slate-700">{t("communityEventsTitle")}</p>
-              <p className="text-sm text-slate-500">{t("communityEventsDescription")}</p>
-            </div>
+            <CommunityEventsPanel
+              communityId={details.id}
+              canManageEvents={canManageEvents}
+              hoverActionsForDesktop={hoverActionsForDesktop}
+            />
           )}
         </Tabs>
       </Card>

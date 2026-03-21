@@ -74,6 +74,18 @@ enum LectureStatus {
   COMPLETED
 }
 
+enum EventRecurrence {
+  NONE
+  WEEKLY
+  YEARLY
+}
+
+enum EventAudience {
+  GENERAL
+  CHILDREN
+  NIVO
+}
+
 model Community {
   id        String   @id @default(uuid())
   name      String   @unique
@@ -92,6 +104,7 @@ model Community {
   lectures Lecture[]
   posts    Post[]
   boardMembers CommunityBoardMember[]
+  events   Event[]
 
   @@index([status])
 }
@@ -144,6 +157,7 @@ model User {
   receivedMessages Message[] @relation("Receiver")
   notifications  Notification[]
   boardMemberships CommunityBoardMember[]
+  createdEvents Event[] @relation("EventCreatedBy")
 }
 
 model CommunityBoardMember {
@@ -192,6 +206,7 @@ model Child {
   parents      ParentChild[]
   attendance   Attendance[]
   homework     Homework[]
+  events       EventChild[]
 
   @@index([communityId, status])
 }
@@ -356,4 +371,41 @@ model Notification {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id                String          @id @default(uuid())
+  communityId       String
+  createdById       String
+  title             String
+  description       String?
+  startAt           DateTime
+  endAt             DateTime
+  recurrence        EventRecurrence @default(NONE)
+  recurrenceInterval Int            @default(1)
+  recurrenceEndsAt  DateTime?
+  audience          EventAudience   @default(GENERAL)
+  nivo              Int?
+  color             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  community Community  @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  createdBy User       @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  children  EventChild[]
+
+  @@index([communityId, startAt])
+  @@index([communityId, audience, startAt])
+}
+
+model EventChild {
+  eventId   String
+  childId   String
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, childId])
+  @@index([childId])
 }

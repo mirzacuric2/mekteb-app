@@ -5,6 +5,7 @@ This folder contains user-facing documentation for daily platform usage.
 ## Start Here
 
 - [User Guide](./user-guide.md) - common navigation and feature basics for all users.
+- [Community Events Calendar](./features/community-events.md) - weekly calendar behavior, permissions, recurrence, and API contract.
 
 ## Role Handbooks
 
@@ -32,6 +33,7 @@ This folder contains user-facing documentation for daily platform usage.
 
 ## Feature Notes (Latest)
 
+- Community events now have full CRUD with a weekly calendar view: `ADMIN` and `BOARD_MEMBER` can create/update/delete recurring or one-time events, and event coloring is now standardized via shared `Nivo` colors (with neutral fallback) across calendar/dashboard views; parents/users get a read-only calendar filtered to general events plus child-linked/nivo-linked events for their connected children. The home dashboard shows a **read-only preview** of the current week only (no create/edit/delete there); management stays on **Community → Events** for authorized roles. The weekly calendar (dashboard and community) uses the same header: **ISO week number** (and week-year) as the main title, with the calendar date range on a smaller line above (locale-aware month formatting when the week stays in one month). On the dashboard, every role that sees the community events card (`PARENT`, `USER`, `ADMIN`, `BOARD_MEMBER`) uses the same **stacked weekly layout** (one full-width day per row) and a **read-only “This week for your family”** block above the day list, shown as **three compact stat cards** (week total, upcoming count, next session with 24-hour time) plus an optional **by child** line when events target named children. **Community → Events** shows the **same week summary layout** whenever the **weekly** calendar is shown (mobile and viewports below the month breakpoint), with **community-scoped** headings (`eventsCommunityWeekSummary*`), while the dashboard keeps **family** wording (`eventsParentWeekSummary*`); desktop month view keeps the **Month summary** strip instead. `ADMIN`, `BOARD_MEMBER`, and `SUPER_ADMIN` who are also linked as parents to children in that community get the **same event visibility as parents** on this card only (client-filtered from the full list using linked child ids/nivos); with no linked children they still see the full community week like before.
 - Deployment/startup flow is hardened: production startup now runs Prisma migrate deploy without automatic seeding (`prestart -> db:sync`), while local development keeps explicit seed-on-start behavior via `predev -> db:sync:with-seed`.
 - Server API error handling is hardened to return safe JSON errors (including invalid JSON body `400` responses) and avoid leaking raw/minified runtime stack traces to clients.
 - Shared table/list loading wrappers now use `sm` loader size (instead of extra-small) for clearer loading-state visibility without being too dominant.
@@ -183,6 +185,7 @@ This folder contains user-facing documentation for daily platform usage.
 - `Activities` page no longer shows a create button; new reports are created only via header `Report activities`.
 - Activity report dialog titles are now localized with separate create/edit labels for `en`, `sv`, and `bs`.
 - Date/time rendering now uses shared web utility helpers (`web/src/lib/date-time.ts`) for consistent formatting across activities and detail drawers.
+- Displayed times use a **24-hour clock** everywhere the shared helpers are used (including community event cards and posts), regardless of browser locale defaults such as US 12-hour output.
 - ISO date validation (`isValidIsoDateString`) is shared in `web/src/lib/date-time.ts` and reused by child form schema validation.
 - Editing an activity from the `Activities` page opens the report modal prefilled and updates stored lecture attendance rows (lesson, absence/presence, homework, comments) in one save.
 - Activity timestamps now follow standard audit fields (`createdAt`, `updatedAt`); `heldAt` is removed from lecture read/write flows.

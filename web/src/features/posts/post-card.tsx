@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, MessageCircle, PencilLine, Send, ThumbsUp, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { formatDateTime } from "../../lib/date-time";
 import { postCommentSchema } from "./post-form-schema";
 import { PostComment, PostRecord } from "./types";
 
@@ -99,7 +100,7 @@ export function PostCard({
         <p className="whitespace-pre-wrap text-sm text-slate-700">{post.content}</p>
         <p className="text-xs text-slate-500">
           {post.author ? `${post.author.firstName} ${post.author.lastName}` : "Admin"} -{" "}
-          {new Date(post.publishedAt).toLocaleString()}
+          {formatDateTime(post.publishedAt)}
         </p>
       </div>
 

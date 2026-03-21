@@ -5,6 +5,7 @@ import { authRouter } from "./modules/auth/router.js";
 import { usersRouter } from "./modules/users/router.js";
 import { communicationRouter } from "./modules/communication/router.js";
 import { communitiesRouter } from "./modules/communities/router.js";
+import { eventsRouter } from "./modules/events/router.js";
 
 type ApiError = Error & {
   code?: string;
@@ -66,6 +67,7 @@ export function createApp() {
   app.get("/health", (_req, res) => res.json({ ok: true }));
   app.use("/auth", authRouter());
   app.use("/", communitiesRouter());
+  app.use("/", eventsRouter());
   app.use("/", usersRouter());
   app.use("/", communicationRouter());
 
