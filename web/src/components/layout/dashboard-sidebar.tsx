@@ -9,6 +9,7 @@ import {
   Newspaper,
   LogOut,
   LayoutDashboard,
+  Settings,
   User,
   UserRound,
   Users,
@@ -75,6 +76,7 @@ export function DashboardSidebar({
     dashboard: <LayoutDashboard className="h-4 w-4 shrink-0" />,
     posts: <Newspaper className="h-4 w-4 shrink-0" />,
     help: <CircleHelp className="h-4 w-4 shrink-0" />,
+    settings: <Settings className="h-4 w-4 shrink-0" />,
     notifications: <Bell className="h-4 w-4 shrink-0" />,
     users: <Users className="h-4 w-4 shrink-0" />,
     children: <UserRound className="h-4 w-4 shrink-0" />,
@@ -123,6 +125,28 @@ export function DashboardSidebar({
                       {sectionIcons[section.key]}
                       {!open && !isMobile ? null : (
                         <span>{section.key === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(section.labelKey)}</span>
+                      )}
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>{t("accountNav")}</SidebarGroupLabel>
+          <SidebarMenu>
+            {dashboardSections
+              .filter((section) => section.key === "settings")
+              .map((section) => (
+                <SidebarMenuItem key={section.key}>
+                  <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
+                    <span className="flex items-center gap-2">
+                      {sectionIcons[section.key]}
+                      {!open && !isMobile ? null : (
+                        <span>
+                          {section.key === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(section.labelKey)}
+                        </span>
                       )}
                     </span>
                   </SidebarMenuButton>
@@ -249,6 +273,17 @@ export function DashboardSidebar({
               <div className="px-2 pb-2">
                 <Role role={role} />
               </div>
+              <button
+                type="button"
+                className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  onNavigate("settings");
+                }}
+              >
+                <Settings className="h-4 w-4 text-slate-500" />
+                <span>{t("settings")}</span>
+              </button>
               <button
                 type="button"
                 className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"

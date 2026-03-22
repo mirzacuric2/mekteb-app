@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "../../../components/ui/input";
 
 type DebouncedSearchInputProps = {
@@ -15,6 +15,8 @@ export function DebouncedSearchInput({
   delayMs = 700,
 }: DebouncedSearchInputProps) {
   const [localValue, setLocalValue] = useState(value);
+  const onDebouncedChangeRef = useRef(onDebouncedChange);
+  onDebouncedChangeRef.current = onDebouncedChange;
 
   useEffect(() => {
     setLocalValue(value);
@@ -22,11 +24,11 @@ export function DebouncedSearchInput({
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      onDebouncedChange(localValue);
+      onDebouncedChangeRef.current(localValue);
     }, delayMs);
 
     return () => window.clearTimeout(timeout);
-  }, [delayMs, localValue, onDebouncedChange]);
+  }, [delayMs, localValue]);
 
   return (
     <Input

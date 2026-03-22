@@ -1,7 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, setAuthToken } from "../../api";
 import { AxiosError, InternalAxiosRequestConfig } from "axios";
+import i18n from "../../i18n";
 import { SessionUser } from "../../types";
+import { userPreferredLanguageFromApi } from "../users/user-preferred-language";
+import { sessionUserFromAuthProfile, type AuthProfileResponse } from "./map-auth-profile";
 
 type SessionData = { token: string; refreshToken: string; user: SessionUser };
 type Session = SessionData | null;
@@ -10,6 +13,7 @@ type SessionContextValue = {
   session: Session;
   login: (token: string, refreshToken: string, user: SessionUser) => void;
   logout: () => void;
+  mergeSessionUser: (partial: Partial<SessionUser>) => void;
 };
 
 const storageKey = "mekteb-session";
@@ -18,10 +22,21 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session>(null);
   const [ready, setReady] = useState(false);
+  const profileHydratedTokenRef = useRef<string | null>(null);
   const clearSession = useCallback(() => {
+    profileHydratedTokenRef.current = null;
     setSession(null);
     setAuthToken(undefined);
     localStorage.removeItem(storageKey);
+  }, []);
+
+  const mergeSessionUser = useCallback((partial: Partial<SessionUser>) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const next: SessionData = { ...prev, user: { ...prev.user, ...partial } };
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -45,6 +60,39 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, [clearSession]);
 
+  useEffect(() => {
+    if (!ready || !session?.user.preferredLanguage) return;
+    const ui = userPreferredLanguageFromApi(session.user.preferredLanguage);
+    const current = i18n.language?.split("-")[0]?.toLowerCase() ?? "";
+    if (current === ui) return;
+    void i18n.changeLanguage(ui);
+  }, [ready, session?.user.preferredLanguage]);
+
+  useEffect(() => {
+    if (!ready || !session?.token) return;
+    if (session.user.preferredLanguage !== undefined && session.user.preferredLanguage !== null) return;
+    if (profileHydratedTokenRef.current === session.token) return;
+
+    const tokenAtFetch = session.token;
+    profileHydratedTokenRef.current = tokenAtFetch;
+
+    api
+      .get<AuthProfileResponse>("/auth/me")
+      .then(({ data }) => {
+        const user = sessionUserFromAuthProfile(data);
+        setSession((prev) => {
+          if (!prev || prev.token !== tokenAtFetch) return prev;
+          const next: SessionData = { ...prev, user: { ...prev.user, ...user } };
+          localStorage.setItem(storageKey, JSON.stringify(next));
+          return next;
+        });
+        void i18n.changeLanguage(userPreferredLanguageFromApi(user.preferredLanguage));
+      })
+      .catch(() => {
+        /* Keep ref so we do not retry in a loop; user can refresh or sign in again. */
+      });
+  }, [ready, session?.token, session?.user.preferredLanguage]);
+
   const value = useMemo<SessionContextValue>(
     () => ({
       ready,
@@ -56,8 +104,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(storageKey, JSON.stringify(next));
       },
       logout: clearSession,
+      mergeSessionUser,
     }),
-    [clearSession, ready, session]
+    [clearSession, mergeSessionUser, ready, session]
   );
 
   useEffect(() => {

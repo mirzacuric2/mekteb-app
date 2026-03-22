@@ -9,6 +9,7 @@ import {
   LessonsRoute,
   NotificationsRoute,
   PostsRoute,
+  SettingsRoute,
   UsersRoute,
 } from "./features/dashboard/section-routes";
 import { PrivateLayout } from "./layouts/private-layout";
@@ -34,6 +35,7 @@ export function App() {
         <Route path="communities" element={<CommunitiesRoute />} />
         <Route path="communities/:communityId" element={<CommunitiesRoute />} />
         <Route path="notifications" element={<NotificationsRoute />} />
+        <Route path="settings" element={<SettingsRoute />} />
       </Route>
       <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
     </Routes>

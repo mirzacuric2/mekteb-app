@@ -12,6 +12,7 @@ import {
   Mail,
   Newspaper,
   PanelLeft,
+  Settings,
   UserRound,
   Users,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import { ChatControllerProvider, useChatController } from "../features/messages/
 import { NotificationBellMenu } from "../features/notifications/notification-bell-menu";
 import { useMessageNewIndicator } from "../features/messages/use-message-new-indicator";
 import { PrivateBreadcrumb } from "../components/layout/private-breadcrumb";
+import { usePatchMeLanguage } from "../features/settings/use-patch-me-language";
 
 function PrivateLayoutShell() {
   const { t, i18n } = useTranslation();
@@ -38,6 +40,7 @@ function PrivateLayoutShell() {
   const { open, setOpen, setOpenMobile } = useSidebar();
   const [isQuickReportOpen, setIsQuickReportOpen] = useState(false);
   const messageIndicator = useMessageNewIndicator(Boolean(session));
+  const patchLanguage = usePatchMeLanguage();
   const pathSegments = location.pathname.split("/").filter(Boolean);
   const currentSegment = pathSegments[1] || "dashboard";
   const detailEntityId = pathSegments[2] ?? null;
@@ -99,6 +102,7 @@ function PrivateLayoutShell() {
     dashboard: <House className="h-4 w-4" />,
     posts: <Newspaper className="h-4 w-4" />,
     help: <CircleHelp className="h-4 w-4" />,
+    settings: <Settings className="h-4 w-4" />,
     notifications: <Bell className="h-4 w-4" />,
     users: <Users className="h-4 w-4" />,
     children: <UserRound className="h-4 w-4" />,
@@ -153,7 +157,10 @@ function PrivateLayoutShell() {
             role={session.user.role}
             language={i18n.language}
             onLogout={logout}
-            onLanguageChange={(language) => i18n.changeLanguage(language)}
+            onLanguageChange={(language) => {
+              void i18n.changeLanguage(language);
+              patchLanguage.mutate(language);
+            }}
           />
         </Sidebar>
 

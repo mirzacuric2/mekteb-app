@@ -7,6 +7,7 @@ import { StatusBadge } from "../common/components/status-badge";
 import { TableLoadingRow } from "../common/components/table-loading-row";
 import { useTranslation } from "react-i18next";
 import type { Role as PlatformRole } from "../../types";
+import type { UserPreferredLanguageApi } from "./user-preferred-language";
 import { UserStatus } from "./user-form-schema";
 
 type UserRole = PlatformRole;
@@ -32,6 +33,7 @@ export type UserRecord = {
   communityId: string | null;
   communityName?: string | null;
   status?: UserStatus;
+  preferredLanguage?: UserPreferredLanguageApi;
   createdAt?: string;
   updatedAt?: string;
   childrenCount?: number;

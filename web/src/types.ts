@@ -1,3 +1,5 @@
+import type { UserPreferredLanguageApi } from "./features/users/user-preferred-language";
+
 export const ROLE = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
@@ -17,6 +19,7 @@ export type SessionUser = {
   email: string;
   role: Role;
   communityId: string | null;
+  preferredLanguage?: UserPreferredLanguageApi;
 };
 
 export type LoginResponse = {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { EDITABLE_ROLE_VALUES, ROLE } from "../../types";
 import { LESSON_NIVO } from "../lessons/constants";
+import { userUiLanguageFormSchema } from "./user-preferred-language";
 
 const childSchema = z.object({
   firstName: z.string().min(2, "Child first name must be at least 2 characters."),
@@ -52,6 +53,7 @@ export const userFormSchema = z.object({
   role: z.enum(EDITABLE_ROLE_VALUES),
   communityId: z.string().optional().or(z.literal("")),
   status: z.enum(USER_STATUS_VALUES).default(USER_STATUS.PENDING),
+  preferredLanguage: userUiLanguageFormSchema,
   address: z.union([filledAddressSchema, emptyAddressSchema]),
   children: z.array(childSchema).default([]),
 });
@@ -67,6 +69,7 @@ export const USER_FORM_DEFAULT_VALUES: UserFormValues = {
   role: ROLE.PARENT,
   communityId: "",
   status: USER_STATUS.PENDING,
+  preferredLanguage: "en",
   address: {
     streetLine1: "",
     streetLine2: "",

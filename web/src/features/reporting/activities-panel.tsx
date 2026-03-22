@@ -66,7 +66,6 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
   );
   const activityItems = activities.data?.items || [];
   const totalPages = Math.max(1, Math.ceil((activities.data?.total || 0) / DEFAULT_PAGE_SIZE));
-  const currentPage = activities.data?.page || page;
   const homework = useHomeworkQueueQuery(
     {
       search: homeworkSearch,
@@ -90,7 +89,6 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
   );
   const homeworkItems = homework.data?.items || [];
   const homeworkTotalPages = Math.max(1, Math.ceil((homework.data?.total || 0) / DEFAULT_PAGE_SIZE));
-  const homeworkCurrentPage = homework.data?.page || homeworkPage;
 
   const deleteActivity = useMutation({
     mutationFn: async (id: string) => api.delete(`/lectures/${id}`),
@@ -161,8 +159,10 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   <EntityListToolbar
                     search={search}
                     onSearchChange={(value) => {
-                      setSearch(value);
-                      setPage(1);
+                      setSearch((prev) => {
+                        if (prev !== value) setPage(1);
+                        return value;
+                      });
                     }}
                     placeholder={t("activitiesSearchPlaceholder")}
                   />
@@ -200,7 +200,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                 <ActivitiesTable
                   activities={activityItems}
                   isLoading={activities.isLoading}
-                  page={currentPage}
+                  page={page}
                   totalPages={totalPages}
                   showCommunityColumn={showCommunityColumn}
                   onPageChange={setPage}
@@ -237,8 +237,10 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   <EntityListToolbar
                     search={homeworkSearch}
                     onSearchChange={(value) => {
-                      setHomeworkSearch(value);
-                      setHomeworkPage(1);
+                      setHomeworkSearch((prev) => {
+                        if (prev !== value) setHomeworkPage(1);
+                        return value;
+                      });
                     }}
                     placeholder={t("homeworkQueueSearchPlaceholder")}
                   />
@@ -284,7 +286,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   <HomeworkQueueTable
                     items={homeworkItems}
                     isLoading={homework.isLoading}
-                    page={homeworkCurrentPage}
+                    page={homeworkPage}
                     totalPages={homeworkTotalPages}
                     showCommunityColumn={showCommunityColumn}
                     savingKey={savingHomeworkKey}

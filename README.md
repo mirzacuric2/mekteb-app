@@ -94,6 +94,8 @@ Local URLs:
 - `DATABASE_URL` (PostgreSQL connection string)
 - `JWT_SECRET` (required in non-local environments)
 - `FRONTEND_URL` (web app public URL)
+- `EMAIL_PUBLIC_WEB_URL` (optional; public web origin used for the invitation email logo when `FRONTEND_URL` is localhost)
+- `EMAIL_LOGO_URL` (optional; full URL to a logo image; overrides the default logo path)
 - SMTP values for email flow:
   - `SMTP_HOST`
   - `SMTP_PORT`
@@ -133,7 +135,7 @@ This repository includes a `render.yaml` blueprint for two services:
 
 Set these environment variables in Render:
 
-- API: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, SMTP vars
+- API: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, optional `EMAIL_PUBLIC_WEB_URL` / `EMAIL_LOGO_URL` for invitation logos when the API uses a local `FRONTEND_URL`, SMTP vars
 - Web: `VITE_API_URL` (pointing to the API public URL)
 
 ### Option B: Docker Compose on a VPS

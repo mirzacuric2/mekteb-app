@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { ROLE } from "../../types";
+import type { UserUiLanguage } from "./user-preferred-language";
 import { USER_FORM_DEFAULT_VALUES, UserFormValues, userFormSchema } from "./user-form-schema";
 
 type UseUserFormArgs = {
@@ -10,6 +11,7 @@ type UseUserFormArgs = {
   canSelectCommunity: boolean;
   forcedCommunityId?: string | null;
   initialValues?: Partial<UserFormValues>;
+  defaultPreferredLanguage?: UserUiLanguage;
   submitting: boolean;
   apiError?: { field?: string; message: string } | null;
   onSubmit: (values: UserFormValues) => void;
@@ -22,6 +24,7 @@ export function useUserForm({
   canSelectCommunity,
   forcedCommunityId,
   initialValues,
+  defaultPreferredLanguage = "en",
   submitting,
   apiError,
   onSubmit,
@@ -35,6 +38,8 @@ export function useUserForm({
     control,
     setError,
     clearErrors,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<UserFormValues>({
     defaultValues: USER_FORM_DEFAULT_VALUES,
@@ -51,10 +56,12 @@ export function useUserForm({
     reset({
       ...USER_FORM_DEFAULT_VALUES,
       ...initialValues,
-      role: initialValues?.role || (canCreateAdmin ? ROLE.BOARD_MEMBER : ROLE.PARENT),
+      role: initialValues?.role || ROLE.PARENT,
       communityId: canSelectCommunity
         ? initialValues?.communityId || ""
         : forcedCommunityId || initialValues?.communityId || "",
+      preferredLanguage:
+        initialValues?.preferredLanguage ?? (mode === "create" ? defaultPreferredLanguage : USER_FORM_DEFAULT_VALUES.preferredLanguage),
       children: [],
       address: {
         streetLine1: initialValues?.address?.streetLine1 || "",
@@ -65,7 +72,7 @@ export function useUserForm({
         country: initialValues?.address?.country || "",
       },
     });
-  }, [open, initialValues, reset, canCreateAdmin, canSelectCommunity, forcedCommunityId]);
+  }, [open, initialValues, reset, canCreateAdmin, canSelectCommunity, forcedCommunityId, mode, defaultPreferredLanguage]);
 
   useEffect(() => {
     if (!submitting) {
@@ -85,7 +92,8 @@ export function useUserForm({
       field === "role" ||
       field === "communityId" ||
       field === "address" ||
-      field === "status"
+      field === "status" ||
+      field === "preferredLanguage"
     ) {
       setError(field, { type: "server", message: apiError.message });
       return;
@@ -118,7 +126,8 @@ export function useUserForm({
           field === "phoneNumber" ||
           field === "role" ||
           field === "communityId" ||
-          field === "status"
+          field === "status" ||
+          field === "preferredLanguage"
         ) {
           setError(field, { type: "manual", message: issue.message });
           continue;
@@ -161,5 +170,7 @@ export function useUserForm({
     fields,
     append,
     remove,
+    watch,
+    setValue,
   };
 }

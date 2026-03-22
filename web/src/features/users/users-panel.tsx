@@ -33,6 +33,7 @@ import { LessonNivo } from "../lessons/constants";
 import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { useUsersListQuery } from "./use-users-data";
 import { UserFormValues, UserStatus } from "./user-form-schema";
+import { normalizeUserUiLanguage, userPreferredLanguageFromApi } from "./user-preferred-language";
 
 type Props = { enabled: boolean; canEdit: boolean; canCreateAdmin: boolean };
 
@@ -54,7 +55,7 @@ type UserAddressInput = {
   country: string;
 };
 export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { session } = useSession();
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
@@ -154,7 +155,6 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   ]);
 
   const totalPages = Math.max(1, Math.ceil((users.data?.total || 0) / DEFAULT_PAGE_SIZE));
-  const currentPage = users.data?.page || page;
   const usersLoading = users.isLoading || children.isLoading || communities.isLoading;
 
   const getApiMessage = (error: unknown, fallback: string) => {
@@ -203,6 +203,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
       phoneNumber,
       communityId,
       address,
+      preferredLanguage,
     }: {
       firstName: string;
       lastName: string;
@@ -212,6 +213,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
       phoneNumber?: string;
       communityId?: string;
       address?: UserAddressInput;
+      preferredLanguage: UserFormValues["preferredLanguage"];
     }) =>
       (
         await api.post("/users", {
@@ -223,6 +225,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
           phoneNumber,
           communityId,
           address,
+          preferredLanguage,
         })
       ).data as CreatedUserResponse,
     onSuccess: async (createdUser) => {
@@ -231,13 +234,13 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
       setEditingUser(null);
       await queryClient.invalidateQueries({ queryKey: ["users"] });
       if (createdUser.invitationEmailSent) {
-        toast.success("User created and verification email sent.");
+        toast.success(t("usersToastCreatedWithEmail"));
       } else {
-        toast.warning("User created, but verification email was not sent.");
+        toast.warning(t("usersToastCreatedNoEmail"));
       }
     },
     onError: (error) => {
-      const apiFieldError = getApiFieldError(error, "Failed to create user.");
+      const apiFieldError = getApiFieldError(error, t("usersErrorCreateFailed"));
       setFormApiError(apiFieldError);
       toast.error(apiFieldError.message);
     },
@@ -254,6 +257,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
       communityId,
       status,
       address,
+      preferredLanguage,
     }: {
       id: string;
       firstName: string;
@@ -264,6 +268,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
       communityId?: string;
       status: UserStatus;
       address?: UserAddressInput;
+      preferredLanguage: UserFormValues["preferredLanguage"];
     }) =>
       (
         await api.patch(`/users/${id}`, {
@@ -275,6 +280,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
           communityId,
           status,
           address,
+          preferredLanguage,
         })
       ).data,
     onSuccess: async () => {
@@ -282,10 +288,10 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
       setFormOpen(false);
       setEditingUser(null);
       await queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success("User updated.");
+      toast.success(t("usersToastUpdated"));
     },
     onError: (error) => {
-      const apiFieldError = getApiFieldError(error, "Failed to update user.");
+      const apiFieldError = getApiFieldError(error, t("usersErrorUpdateFailed"));
       setFormApiError(apiFieldError);
       toast.error(apiFieldError.message);
     },
@@ -329,8 +335,10 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
             <EntityListToolbar
               search={search}
               onSearchChange={(value) => {
-                setSearch(value);
-                setPage(1);
+                setSearch((prev) => {
+                  if (prev !== value) setPage(1);
+                  return value;
+                });
               }}
               placeholder={t("searchUsersPlaceholder")}
               actions={
@@ -355,7 +363,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
           <UsersTable
             users={usersWithChildrenCount}
             isLoading={usersLoading}
-            page={currentPage}
+            page={page}
             totalPages={totalPages}
             showCommunityColumn={session?.user.role === ROLE.SUPER_ADMIN}
             canEdit={canEdit}
@@ -364,7 +372,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
             onEdit={(user) => {
               if (!canEdit) return;
               if (user.role === ROLE.SUPER_ADMIN) {
-                toast.error("Super admin cannot be edited here.");
+                toast.error(t("usersErrorSuperAdminEdit"));
                 return;
               }
               setEditingUser(user);
@@ -373,7 +381,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
             onDelete={(user) => {
               if (!canEdit) return;
               if (user.role === ROLE.SUPER_ADMIN) {
-                toast.error("Super admin cannot be deleted.");
+                toast.error(t("usersErrorSuperAdminDelete"));
                 return;
               }
               setDeletingUser(user);
@@ -390,6 +398,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
               communityOptions={communityOptions}
               submitting={createUser.isPending || updateUser.isPending}
               apiError={formApiError}
+              defaultPreferredLanguage={normalizeUserUiLanguage(i18n.language)}
               initialValues={
                 editingUser
                   ? {
@@ -406,6 +415,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                             : editingUser.role,
                       communityId: editingUser.communityId || "",
                       status: editingUser.status || "INACTIVE",
+                      preferredLanguage: userPreferredLanguageFromApi(editingUser.preferredLanguage),
                       address: {
                         streetLine1: editingUser.address?.streetLine1 || "",
                         streetLine2: editingUser.address?.streetLine2 || "",
@@ -437,6 +447,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                       communityId: values.communityId || undefined,
                       status: values.status,
                       address: toApiAddress(values.address),
+                      preferredLanguage: values.preferredLanguage,
                     },
                     {
                       onSuccess: async () => {
@@ -458,6 +469,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                     phoneNumber: values.phoneNumber || undefined,
                     communityId: values.communityId || undefined,
                     address: toApiAddress(values.address),
+                    preferredLanguage: values.preferredLanguage,
                   },
                   {
                     onSuccess: async (createdUser) => {
@@ -477,9 +489,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
               if (!open) setSelectedUser(null);
             }}
             title={
-              selectedUser
-                ? `${selectedUser.firstName} ${selectedUser.lastName}`
-                : "User details"
+              selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : t("usersDrawerTitleFallback")
             }
             headerSubline={selectedUser ? <Role role={selectedUser.role} /> : undefined}
             headerMeta={
@@ -524,13 +534,15 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
               onOpenChange={(open) => {
                 if (!open) setDeletingUser(null);
               }}
-              title="Delete user"
+              title={t("usersDeleteTitle")}
               description={
                 deletingUser
-                  ? `Are you sure you want to delete ${deletingUser.firstName} ${deletingUser.lastName}?`
-                  : "Delete selected user?"
+                  ? t("usersDeleteDescription", {
+                      name: `${deletingUser.firstName} ${deletingUser.lastName}`,
+                    })
+                  : t("usersDeleteDescriptionGeneric")
               }
-              confirmText="Delete"
+              confirmText={t("delete")}
               submitting={deleteUser.isPending}
               onConfirm={() => {
                 if (!deletingUser) return;
@@ -540,7 +552,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
           ) : null}
         </>
       ) : (
-        <p className="text-sm text-slate-500">Visible for ADMIN and SUPER_ADMIN.</p>
+        <p className="text-sm text-slate-500">{t("usersVisibleRolesHint")}</p>
       )}
     </Card>
   );

@@ -173,7 +173,6 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   };
 
   const totalPages = Math.max(1, Math.ceil((children.data?.total || 0) / DEFAULT_PAGE_SIZE));
-  const currentPage = children.data?.page || page;
   const pagedChildren = children.data?.items || [];
   const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, Boolean(selectedChild));
   const selectedChildScheduledLessons = useMemo(() => {
@@ -217,8 +216,10 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
         <EntityListToolbar
           search={search}
           onSearchChange={(value) => {
-            setSearch(value);
-            setPage(1);
+            setSearch((prev) => {
+              if (prev !== value) setPage(1);
+              return value;
+            });
           }}
           placeholder={t("childrenSearchPlaceholder")}
           actions={
@@ -243,7 +244,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
           <ChildrenTable
             children={pagedChildren}
             isLoading={children.isLoading}
-            page={currentPage}
+            page={page}
             totalPages={totalPages}
             onPageChange={setPage}
             onRowClick={(child) => setSelectedChild(child)}

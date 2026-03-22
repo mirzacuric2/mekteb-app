@@ -57,6 +57,12 @@ enum UserStatus {
   INACTIVE
 }
 
+enum UserPreferredLanguage {
+  EN
+  SV
+  BS
+}
+
 enum CommunityStatus {
   ACTIVE
   INACTIVE
@@ -146,6 +152,7 @@ model User {
   passwordHash   String?
   role           Role
   status         UserStatus @default(PENDING)
+  preferredLanguage UserPreferredLanguage @default(EN)
   invitedById    String?
   communityId    String?
   createdAt      DateTime @default(now())

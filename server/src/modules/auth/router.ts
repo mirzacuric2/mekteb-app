@@ -12,7 +12,10 @@ import {
   signAuthToken,
   verifyRefreshToken,
 } from "../../auth.js";
+import { userUiLanguageSchema, userUiLanguageToPrisma } from "../../common/user-ui-language.js";
+import { AUTH_ME_SELECT } from "./auth-me-select.js";
 import { sendEmail } from "../../email.js";
+import { buildVerificationEmailContent, resolveVerificationLogoUrl } from "../../email/verification-email.js";
 import { AppRequest } from "../../types.js";
 
 export function authRouter() {
@@ -49,6 +52,7 @@ export function authRouter() {
         email: user.email,
         role: user.role,
         communityId: user.communityId,
+        preferredLanguage: user.preferredLanguage,
       },
     });
   });
@@ -87,6 +91,7 @@ export function authRouter() {
         email: user.email,
         role: user.role,
         communityId: user.communityId,
+        preferredLanguage: user.preferredLanguage,
       },
     });
   });
@@ -118,12 +123,46 @@ export function authRouter() {
   });
 
   router.get("/me", requireAuth, async (req: AppRequest, res) => {
-    const me = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    const me = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: AUTH_ME_SELECT,
+    });
+    if (!me) return res.status(404).json({ message: "User not found" });
     return res.json(me);
   });
 
+  router.patch("/me", requireAuth, async (req: AppRequest, res) => {
+    const payload = z
+      .object({
+        preferredLanguage: userUiLanguageSchema.optional(),
+      })
+      .safeParse(req.body);
+    if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+
+    const updates: { preferredLanguage?: ReturnType<typeof userUiLanguageToPrisma> } = {};
+    if (payload.data.preferredLanguage !== undefined) {
+      updates.preferredLanguage = userUiLanguageToPrisma(payload.data.preferredLanguage);
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "No updates provided" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: updates,
+      select: AUTH_ME_SELECT,
+    });
+    return res.json(updated);
+  });
+
   router.post("/invite-token", requireAuth, async (req: AppRequest, res) => {
-    const payload = z.object({ email: z.string().email(), firstName: z.string().min(2) }).safeParse(req.body);
+    const payload = z
+      .object({
+        email: z.string().email(),
+        firstName: z.string().min(2),
+        preferredLanguage: userUiLanguageSchema.optional().default("en"),
+      })
+      .safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
     const rawToken = generateRawToken();
     await prisma.verificationToken.create({
@@ -133,10 +172,19 @@ export function authRouter() {
         expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
       },
     });
+    const verifyUrl = `${frontendUrl.replace(/\/$/, "")}/verify?token=${rawToken}`;
+    const logoUrl = resolveVerificationLogoUrl(frontendUrl);
+    const { subject, html, text } = buildVerificationEmailContent({
+      firstName: payload.data.firstName,
+      verifyUrl,
+      language: payload.data.preferredLanguage,
+      logoUrl,
+    });
     await sendEmail({
       to: payload.data.email,
-      subject: "Verify your Mekteb account",
-      html: `<p>Selam ${payload.data.firstName}, verify your account:</p><a href="${frontendUrl}/verify?token=${rawToken}">Verify</a>`,
+      subject,
+      html,
+      text,
     });
     return res.status(201).json({ ok: true });
   });

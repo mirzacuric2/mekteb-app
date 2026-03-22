@@ -7,6 +7,7 @@ import { CommunitiesPanel } from "../communities/communities-panel";
 import { CommunityPage } from "../communities/community-page";
 import { NotificationsPanel } from "../notifications/notifications-panel";
 import { HelpPanel } from "../help/help-panel";
+import { SettingsPanel } from "../settings/settings-panel";
 import { PrivateLayoutContext } from "../../layouts/private-layout-context";
 import { ActivitiesPanel } from "../reporting/activities-panel";
 import { DashboardHomePanel } from "./dashboard-home-panel";
@@ -75,4 +76,8 @@ export function NotificationsRoute() {
 
 export function HelpRoute() {
   return <HelpPanel />;
+}
+
+export function SettingsRoute() {
+  return <SettingsPanel />;
 }

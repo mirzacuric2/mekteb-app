@@ -4,7 +4,7 @@ import { Loader } from "../common/components/loader";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
-import { ROLE } from "../../types";
+import { ROLE, type EditableRole } from "../../types";
 import { LESSON_NIVO, LESSON_NIVO_LABEL, LESSON_NIVO_ORDER } from "../lessons/constants";
 import {
   Dialog,
@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { LanguageSwitcher } from "../../components/common/language-switcher";
+import type { UserUiLanguage } from "./user-preferred-language";
 import { UserFormValues, USER_STATUS } from "./user-form-schema";
 import { useUserForm } from "./use-user-form";
 
@@ -29,6 +31,7 @@ type UserFormDialogProps = {
   submitting: boolean;
   apiError?: { field?: string; message: string } | null;
   initialValues?: Partial<UserFormValues>;
+  defaultPreferredLanguage?: UserUiLanguage;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: UserFormValues) => void;
 };
@@ -43,26 +46,44 @@ export function UserFormDialog({
   submitting,
   apiError,
   initialValues,
+  defaultPreferredLanguage,
   onOpenChange,
   onSubmit,
 }: UserFormDialogProps) {
   const { t } = useTranslation();
-  const { register, clearErrors, errors, serverError, submitLocked, submit, fields, append, remove } =
-    useUserForm({
-      open,
-      mode,
-      canCreateAdmin,
-      canSelectCommunity,
-      forcedCommunityId,
-      initialValues,
-      submitting,
-      apiError,
-      onSubmit,
-    });
-  const roleOptions = [
-    { value: ROLE.BOARD_MEMBER, label: ROLE.BOARD_MEMBER },
-    { value: ROLE.PARENT, label: ROLE.PARENT },
-    ...(canCreateAdmin ? [{ value: ROLE.ADMIN, label: ROLE.ADMIN }] : []),
+  const {
+    register,
+    clearErrors,
+    errors,
+    serverError,
+    submitLocked,
+    submit,
+    fields,
+    append,
+    remove,
+    watch,
+    setValue,
+  } = useUserForm({
+    open,
+    mode,
+    canCreateAdmin,
+    canSelectCommunity,
+    forcedCommunityId,
+    initialValues,
+    defaultPreferredLanguage,
+    submitting,
+    apiError,
+    onSubmit,
+  });
+  const roleOptionLabelKey: Record<EditableRole, "roleBoardMember" | "roleParent" | "roleAdmin"> = {
+    [ROLE.BOARD_MEMBER]: "roleBoardMember",
+    [ROLE.PARENT]: "roleParent",
+    [ROLE.ADMIN]: "roleAdmin",
+  };
+  const roleOptionValues: EditableRole[] = [
+    ROLE.PARENT,
+    ROLE.BOARD_MEMBER,
+    ...(canCreateAdmin ? [ROLE.ADMIN] : []),
   ];
   const errorsAny = errors as any;
 
@@ -111,10 +132,13 @@ export function UserFormDialog({
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">{t("role")}</label>
-                  <Select {...register("role", { onChange: () => clearErrors("role") })}>
-                    {roleOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+                  <Select
+                    {...register("role", { onChange: () => clearErrors("role") })}
+                    value={watch("role")}
+                  >
+                    {roleOptionValues.map((value) => (
+                      <option key={value} value={value}>
+                        {t(roleOptionLabelKey[value])}
                       </option>
                     ))}
                   </Select>
@@ -134,6 +158,21 @@ export function UserFormDialog({
                     {errors.communityId ? <p className="mt-1 text-xs text-red-600">{errors.communityId.message}</p> : null}
                   </div>
                 ) : null}
+                <div className="md:col-span-2">
+                  <p className="mb-1 text-sm font-medium text-slate-700">{t("userFormPreferredLanguage")}</p>
+                  <p className="mb-2 text-xs text-slate-500">{t("userFormPreferredLanguageHint")}</p>
+                  <LanguageSwitcher
+                    value={watch("preferredLanguage")}
+                    onChange={(language) => {
+                      setValue("preferredLanguage", language, { shouldValidate: true, shouldDirty: true });
+                      clearErrors("preferredLanguage");
+                    }}
+                    fullWidth
+                  />
+                  {errors.preferredLanguage ? (
+                    <p className="mt-1 text-xs text-red-600">{errors.preferredLanguage.message}</p>
+                  ) : null}
+                </div>
               </div>
             </div>
 
@@ -146,28 +185,37 @@ export function UserFormDialog({
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-slate-700">{t("streetLine1")}</label>
-                  <Input placeholder="Street and number" {...register("address.streetLine1", { onChange: () => clearErrors("address.streetLine1") })} />
+                  <Input
+                    placeholder={t("userFormAddressPlaceholderStreetLine1")}
+                    {...register("address.streetLine1", { onChange: () => clearErrors("address.streetLine1") })}
+                  />
                 </div>
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-slate-700">{t("streetLine2Optional")}</label>
-                  <Input placeholder="Apartment, floor, unit..." {...register("address.streetLine2")} />
+                  <Input placeholder={t("userFormAddressPlaceholderStreetLine2")} {...register("address.streetLine2")} />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">{t("postalCode")}</label>
-                  <Input placeholder="71000" {...register("address.postalCode", { onChange: () => clearErrors("address.postalCode") })} />
+                  <Input
+                    placeholder={t("userFormAddressPlaceholderPostalCode")}
+                    {...register("address.postalCode", { onChange: () => clearErrors("address.postalCode") })}
+                  />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">{t("city")}</label>
-                  <Input placeholder="Sarajevo" {...register("address.city", { onChange: () => clearErrors("address.city") })} />
+                  <Input
+                    placeholder={t("userFormAddressPlaceholderCity")}
+                    {...register("address.city", { onChange: () => clearErrors("address.city") })}
+                  />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">{t("stateOptional")}</label>
-                  <Input placeholder="Canton / Region" {...register("address.state")} />
+                  <Input placeholder={t("userFormAddressPlaceholderState")} {...register("address.state")} />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">{t("country")}</label>
                   <Input
-                    placeholder="Bosnia and Herzegovina"
+                    placeholder={t("userFormAddressPlaceholderCountry")}
                     {...register("address.country", { onChange: () => clearErrors("address.country") })}
                   />
                 </div>
@@ -221,7 +269,9 @@ export function UserFormDialog({
                   {fields.map((field, index) => (
                     <div key={field.id} className="rounded-md border border-border bg-slate-50/50 p-3">
                       <div className="mb-3 flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Child {index + 1}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {t("userFormChildHeading", { number: index + 1 })}
+                        </p>
                         <Button type="button" variant="outline" className="inline-flex items-center gap-1 px-2" onClick={() => remove(index)}>
                           <Trash2 size={14} />
                           {t("remove")}
@@ -230,22 +280,31 @@ export function UserFormDialog({
                       <div className="grid gap-3 md:grid-cols-2">
                         <div>
                           <label className="mb-1 block text-xs font-medium text-slate-600">{t("firstName")}</label>
-                          <Input placeholder="First name" {...register(`children.${index}.firstName` as const)} />
+                          <Input
+                            placeholder={t("userFormChildFirstNamePlaceholder")}
+                            {...register(`children.${index}.firstName` as const)}
+                          />
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium text-slate-600">{t("lastName")}</label>
-                          <Input placeholder="Last name" {...register(`children.${index}.lastName` as const)} />
+                          <Input
+                            placeholder={t("userFormChildLastNamePlaceholder")}
+                            {...register(`children.${index}.lastName` as const)}
+                          />
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium text-slate-600">{t("ssn")}</label>
-                          <Input placeholder="YYYYMMDDXXXX" {...register(`children.${index}.ssn` as const)} />
+                          <Input
+                            placeholder={t("userFormChildSsnPlaceholder")}
+                            {...register(`children.${index}.ssn` as const)}
+                          />
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium text-slate-600">{t("birthDate")}</label>
                           <Input type="date" {...register(`children.${index}.birthDate` as const)} />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="mb-1 block text-xs font-medium text-slate-600">Nivo</label>
+                          <label className="mb-1 block text-xs font-medium text-slate-600">{t("childrenNivoLabel")}</label>
                           <Select {...register(`children.${index}.nivo` as const, { valueAsNumber: true })}>
                             {LESSON_NIVO_ORDER.map((value) => (
                               <option key={value} value={value}>

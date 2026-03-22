@@ -4,9 +4,9 @@ This guide explains how to use the Mekteb App interface and core features.
 
 ## 1) Login and Session
 
-- Open the web app login page (hero + sign-in card side by side on large screens, stacked on small screens; scroll if the card is taller than the screen).
+- Open the web app login page (hero + sign-in card side by side on large screens, stacked on small screens; scroll if the card is taller than the screen). The hero text begins with **Esselamu alejkum**; the verify (`/verify`) page uses the same salutation.
 - Sign in with your email and password.
-- Change language from the login card or, after sign-in, from the sidebar language control.
+- Change language from the login card or, after sign-in, from the sidebar language control (changes are saved to your account). You can also open **Settings** (`/app/settings`) from the sidebar **Account** section or your user menu for the same control and future preferences.
 - **Invited accounts:** Open the **verify** link from your email (`/verify?token=…`). The page matches the login layout; enter and confirm your password (no token field—the link supplies it). Then sign in on the login page.
 - After login, you are redirected to the dashboard.
 - Your available actions depend on your role (`SUPER_ADMIN`, `ADMIN`, `BOARD_MEMBER`, `PARENT`, legacy `USER`).
@@ -18,7 +18,8 @@ This guide explains how to use the Mekteb App interface and core features.
 - The top dashboard header stays visible while you scroll page content.
 - When your role includes reporting (`ADMIN` / `SUPER_ADMIN`), use the header **Report activities** action to open the reporting modal; desktop shows label + icon, mobile shows icon-only. Parent and board-member accounts do not see this control.
 - Use the header notification bell icon for quick access to `Notifications`; messages are handled from the docked chat launcher.
-- Use language selector in the sidebar footer when needed.
+- Use the language selector in the sidebar footer when needed; it updates your saved language preference.
+- Open **Settings** from the **Account** sidebar group or the user menu (avatar) for account preferences (more options will be added over time).
 - Use the Help icon near your profile avatar for quick role-based guidance (content is filtered by your role).
 
 ## 2.1) Role handbooks (screens and expectations)

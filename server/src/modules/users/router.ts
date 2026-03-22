@@ -3,7 +3,9 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
 import { generateRawToken, hashToken, requireAnyRole, requireAuth, requireRole } from "../../auth.js";
+import { userUiLanguageSchema, userUiLanguageToPrisma } from "../../common/user-ui-language.js";
 import { sendEmail } from "../../email.js";
+import { buildVerificationEmailContent, resolveVerificationLogoUrl } from "../../email/verification-email.js";
 import { canAccessCommunity } from "../../common/access.js";
 import { AppRequest } from "../../types.js";
 
@@ -161,6 +163,7 @@ export function usersRouter() {
         phoneNumber: phoneSchema.optional(),
         communityId: z.string().optional(),
         address: addressSchema.optional(),
+        preferredLanguage: userUiLanguageSchema.optional().default("en"),
       })
       .safeParse(req.body);
     if (!payload.success) {
@@ -249,6 +252,7 @@ export function usersRouter() {
         communityId: communityId || null,
         addressId: addressId || null,
         status: UserStatus.PENDING,
+        preferredLanguage: userUiLanguageToPrisma(payload.data.preferredLanguage),
       },
       include: { address: true },
     });
@@ -263,10 +267,19 @@ export function usersRouter() {
     });
     let invitationEmailSent = false;
     try {
+      const verifyUrl = `${frontendUrl.replace(/\/$/, "")}/verify?token=${rawToken}`;
+      const logoUrl = resolveVerificationLogoUrl(frontendUrl);
+      const { subject, html, text } = buildVerificationEmailContent({
+        firstName: user.firstName,
+        verifyUrl,
+        language: payload.data.preferredLanguage,
+        logoUrl,
+      });
       invitationEmailSent = await sendEmail({
         to: user.email,
-        subject: "Verify your Mekteb account",
-        html: `<p>Selam ${user.firstName}, verify your account:</p><a href="${frontendUrl}/verify?token=${rawToken}">Verify</a>`,
+        subject,
+        html,
+        text,
       });
     } catch (error) {
       console.error("Failed to send verification email", error);
@@ -286,6 +299,7 @@ export function usersRouter() {
         communityId: z.string().optional(),
         status: z.nativeEnum(UserStatus).optional(),
         address: addressSchema.nullable().optional(),
+        preferredLanguage: userUiLanguageSchema.optional(),
       })
       .safeParse(req.body);
     if (!payload.success) {
@@ -369,6 +383,9 @@ export function usersRouter() {
         ssn: ssn || undefined,
         phoneNumber: payload.data.phoneNumber?.trim() || undefined,
         addressId: addressIdUpdate,
+        ...(payload.data.preferredLanguage !== undefined
+          ? { preferredLanguage: userUiLanguageToPrisma(payload.data.preferredLanguage) }
+          : {}),
       },
       include: { address: true },
     });
