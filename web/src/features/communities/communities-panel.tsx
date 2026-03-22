@@ -8,10 +8,19 @@ import { toast } from "sonner";
 import { api } from "../../api";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { cn } from "../../lib/utils";
 import { ROLE } from "../../types";
 import { useSession } from "../auth/session-context";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
-import { EntityListToolbar } from "../common/components/entity-list-toolbar";
+import {
+  ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME,
+  ENTITY_LIST_TO_TABLE_STACK_CLASSNAME,
+  EntityListToolbar,
+  MANAGEMENT_PAGE_CARD_CLASSNAME,
+  MANAGEMENT_PAGE_CARD_STACK_CLASSNAME,
+} from "../common/components/entity-list-toolbar";
 import { LoadingBlock } from "../common/components/loading-block";
 import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
@@ -255,96 +264,101 @@ export function CommunitiesPanel({ canManage, canCreate, canAssignAdmins }: Prop
 
   if (!canManage) {
     return (
-      <Card>
+      <Card className={MANAGEMENT_PAGE_CARD_CLASSNAME}>
         <p className="text-sm text-slate-500">{t("communitiesVisibleForAdminOnly")}</p>
       </Card>
     );
   }
 
   return (
-    <Card className="space-y-4">
-      {canAssignAdmins ? (
-        <EntityListToolbar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder={t("communitiesSearchPlaceholder")}
-          actions={
-            canCreate ? (
-              <Button
-                className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
+    <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, MANAGEMENT_PAGE_CARD_STACK_CLASSNAME)}>
+      <div className={ENTITY_LIST_TO_TABLE_STACK_CLASSNAME}>
+        {canAssignAdmins ? (
+          <EntityListToolbar
+            search={search}
+            onSearchChange={setSearch}
+            placeholder={t("communitiesSearchPlaceholder")}
+            actions={
+              canCreate ? (
+                <Button
+                  variant="outline"
+                  className={ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME}
+                  onClick={() => {
+                    setEditingCommunity(null);
+                    setFormOpen(true);
+                  }}
+                >
+                  <Plus className={ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME} aria-hidden />
+                  <span className={ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME}>{t("communitiesCreate")}</span>
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : null}
+
+        <div className="space-y-2">
+          {communities.isLoading ? (
+            <LoadingBlock text="" containerClassName="min-h-[200px]" />
+          ) : filteredCommunities.length ? (
+            filteredCommunities.map((community) => (
+              <div
+                key={community.id}
+                className={`rounded-md border border-border p-3 transition-colors ${
+                  community.status === "INACTIVE" ? "cursor-default bg-slate-100/60" : "cursor-pointer hover:bg-slate-50"
+                }`}
+                role={community.status === "INACTIVE" ? undefined : "button"}
+                tabIndex={community.status === "INACTIVE" ? -1 : 0}
                 onClick={() => {
-                  setEditingCommunity(null);
-                  setFormOpen(true);
+                  if (community.status === "INACTIVE") return;
+                  navigate(`/app/communities/${community.id}`);
+                }}
+                onKeyDown={(event) => {
+                  if (community.status === "INACTIVE") return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate(`/app/communities/${community.id}`);
+                  }
                 }}
               >
-                <Plus className="h-4 w-4" />
-                <span className="hidden md:inline">{t("communitiesCreate")}</span>
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : null}
-
-      <div className="space-y-2">
-        {communities.isLoading ? (
-          <LoadingBlock text="" containerClassName="min-h-[200px]" />
-        ) : filteredCommunities.length ? (
-          filteredCommunities.map((community) => (
-            <div
-              key={community.id}
-              className={`rounded-md border border-border p-3 transition-colors ${
-                community.status === "INACTIVE" ? "cursor-default bg-slate-100/60" : "cursor-pointer hover:bg-slate-50"
-              }`}
-              role={community.status === "INACTIVE" ? undefined : "button"}
-              tabIndex={community.status === "INACTIVE" ? -1 : 0}
-              onClick={() => {
-                if (community.status === "INACTIVE") return;
-                navigate(`/app/communities/${community.id}`);
-              }}
-              onKeyDown={(event) => {
-                if (community.status === "INACTIVE") return;
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  navigate(`/app/communities/${community.id}`);
-                }
-              }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="w-full text-left">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{community.name}</p>
-                    {community.status === "INACTIVE" ? (
-                      <StatusBadge status="INACTIVE" className="px-2 py-0.5 text-[11px]" />
-                    ) : null}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="w-full text-left">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{community.name}</p>
+                      {community.status === "INACTIVE" ? (
+                        <StatusBadge status="INACTIVE" className="px-2 py-0.5 text-[11px]" />
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      {community.address?.city || t("communitiesNoCity")} - {community.address?.country || t("communitiesNoCountry")}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {t("communitiesAdminsCount")}: {community.users?.length || 0} | {t("communitiesBoardMembersCount")}:{" "}
+                      {community._count?.boardMembers || 0}
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500">
-                    {community.address?.city || t("communitiesNoCity")} - {community.address?.country || t("communitiesNoCountry")}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {t("communitiesAdminsCount")}: {community.users?.length || 0} | {t("communitiesBoardMembersCount")}:{" "}
-                    {community._count?.boardMembers || 0}
-                  </p>
+                  {canCreate && community.status !== "INACTIVE" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 w-8 shrink-0 border-red-200 px-0 py-0 text-xs text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 sm:h-8 sm:w-auto sm:gap-1 sm:px-2 sm:py-0 sm:text-sm"
+                      aria-label={t("communitiesInactivate")}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        setDeletingCommunity(community);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                      <span className="hidden sm:inline">{t("communitiesInactivate")}</span>
+                    </Button>
+                  ) : null}
                 </div>
-                {canCreate && community.status !== "INACTIVE" ? (
-                  <Button
-                    variant="outline"
-                    className="border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      event.preventDefault();
-                      setDeletingCommunity(community);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t("communitiesInactivate")}
-                  </Button>
-                ) : null}
               </div>
-            </div>
-          ))
-        ) : (
-          <p className="text-sm text-slate-500">{t("communitiesNoResults")}</p>
-        )}
+            ))
+          ) : (
+            <p className="text-sm text-slate-500">{t("communitiesNoResults")}</p>
+          )}
+        </div>
       </div>
 
       <CommunityFormDialog

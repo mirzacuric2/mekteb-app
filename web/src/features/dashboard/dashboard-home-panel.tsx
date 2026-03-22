@@ -25,13 +25,12 @@ export function DashboardHomePanel() {
     <div className="space-y-3">
       {canSeeProgressDashboard ? <ProgressOverviewCards enabled /> : null}
       {showDashboardCommunityEvents && dashboardCommunityId ? (
-        <Card className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <Card className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
           <CommunityEventsPanel
             communityId={dashboardCommunityId}
             canManageEvents={false}
             forceWeekly
             hoverActionsForDesktop={false}
-            stackWeeklyDays
             dashboardPreview
             showParentWeekSummary
           />

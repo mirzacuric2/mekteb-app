@@ -12,6 +12,7 @@ export type ActivityLecture = {
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  community?: { id: string; name: string } | null;
   attendance: Array<{
     lectureId: string;
     childId: string;
@@ -59,6 +60,7 @@ export type HomeworkQueueItem = {
     completedAt?: string | null;
     updatedAt: string;
     createdAt: string;
+    community?: { id: string; name: string } | null;
   };
   child: {
     id: string;

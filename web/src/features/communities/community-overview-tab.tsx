@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import { cn } from "../../lib/utils";
 import { ROLE } from "../../types";
+import { ROLE_ACCENT_HEX } from "../common/role";
 import { ChildRecord, ChildrenListResponse } from "../children/types";
 import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER, LessonNivo } from "../lessons/constants";
 import { LECTURE_STATUS } from "../reporting/reporting.constants";
@@ -105,21 +106,26 @@ export function CommunityOverviewTab() {
         key: ROLE.ADMIN,
         label: t("roleAdmin"),
         value: roleCounts.get(ROLE.ADMIN) || 0,
-        color: "#0ea5e9",
+        color: ROLE_ACCENT_HEX[ROLE.ADMIN],
       },
       {
         key: ROLE.BOARD_MEMBER,
         label: t("roleBoardMember"),
         value: roleCounts.get(ROLE.BOARD_MEMBER) || 0,
-        color: "#f59e0b",
+        color: ROLE_ACCENT_HEX[ROLE.BOARD_MEMBER],
       },
       {
         key: ROLE.PARENT,
         label: t("roleParent"),
         value: roleCounts.get(ROLE.PARENT) || 0,
-        color: "#22c55e",
+        color: ROLE_ACCENT_HEX[ROLE.PARENT],
       },
-      { key: ROLE.USER, label: t("roleUser"), value: roleCounts.get(ROLE.USER) || 0, color: "#8b5cf6" },
+      {
+        key: ROLE.USER,
+        label: t("roleUser"),
+        value: roleCounts.get(ROLE.USER) || 0,
+        color: ROLE_ACCENT_HEX[ROLE.USER],
+      },
     ];
   }, [t, usersQuery.data]);
 

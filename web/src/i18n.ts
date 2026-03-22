@@ -1,6 +1,31 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
+const UI_LANGUAGE_STORAGE_KEY = "mekteb-ui-locale";
+const UI_LANGUAGES = ["en", "sv", "bs"] as const;
+type UiLanguage = (typeof UI_LANGUAGES)[number];
+
+function isUiLanguage(value: string): value is UiLanguage {
+  return (UI_LANGUAGES as readonly string[]).includes(value);
+}
+
+function readStoredUiLanguage(): UiLanguage | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem(UI_LANGUAGE_STORAGE_KEY);
+    if (raw && isUiLanguage(raw)) return raw;
+  } catch {}
+  return undefined;
+}
+
+function persistUiLanguage(lng: string) {
+  if (typeof window === "undefined") return;
+  if (!isUiLanguage(lng)) return;
+  try {
+    localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, lng);
+  } catch {}
+}
+
 const resources = {
   en: {
     translation: {
@@ -8,6 +33,28 @@ const resources = {
       login: "Login",
       email: "Email",
       password: "Password",
+      loginEmailPlaceholder: "you@example.com",
+      loginHeroSubtitle:
+        "Follow progress, attendance, and homework with your community—one secure sign-in for families and staff.",
+      loginFormHeading: "Sign in",
+      loginCardDescription: "Sign in with your email and password.",
+      loginSubmitting: "Signing in…",
+      loginError: "Sign-in failed. Check your email and password.",
+      verifyHeroSubtitle: "Set your password to finish activating your invited account—then you can sign in.",
+      verifyFormHeading: "Activate your account",
+      verifyCardDescription: "Choose and confirm your password (at least 8 characters). Your invitation link is applied automatically.",
+      verifyConfirmPasswordLabel: "Confirm password",
+      verifyPasswordPlaceholder: "At least 8 characters",
+      verifySubmit: "Activate account",
+      verifySubmitting: "Saving…",
+      verifyError: "Activation failed. The link may be invalid or expired—ask for a new invitation.",
+      verifySuccess: "Account activated. You can sign in now.",
+      verifyMissingToken:
+        "This page needs a valid link from your invitation email. Open the link from the message again or ask an administrator to resend it.",
+      verifyPasswordTooShort: "Password must be at least 8 characters.",
+      verifyPasswordMismatch: "Passwords do not match.",
+      verifyConfirmRequired: "Confirm your password.",
+      verifyBackToLogin: "Back to sign in",
       dashboard: "Dashboard",
       posts: "Posts",
       dashboardRecentPostsTitle: "Recent posts",
@@ -39,6 +86,14 @@ const resources = {
       children: "Children",
       activities: "Reports",
       notifications: "Notifications",
+      notificationsMarkAllRead: "Mark all as read",
+      notificationsLoading: "Loading notifications...",
+      notificationsEmpty: "No notifications found.",
+      notificationsBellEmpty: "No notifications yet.",
+      notificationsSeeAll: "See all",
+      notificationsMarkRead: "Mark read",
+      notificationsOpen: "Open",
+      notificationsDelete: "Delete",
       general: "Family",
       management: "Management",
       language: "Language",
@@ -164,6 +219,7 @@ const resources = {
       roleUser: "User",
       roleParent: "Parent",
       roleBoardMember: "Board member",
+      roleSuperAdmin: "Super admin",
       role: "Role",
       editUser: "Edit user",
       saveUser: "Save user",
@@ -391,12 +447,14 @@ const resources = {
       noChildrenAdded: "No children added.",
       na: "N/A",
       userDetails: "User details",
+      usersChildDrawerLoadFailed: "Could not load child details.",
       searchUsersPlaceholder: "Search users by name, email, or role...",
       created: "Created",
       updated: "Updated",
       helpDocTitle: "App documentation",
       helpDocIntro:
-        "This page provides practical guidance for daily use. You can also open role-specific handbooks based on your account permissions.",
+        "This page provides practical guidance for daily use. Below you will find the full handbook for your role, in your selected language (EN / SV / BS).",
+      helpHandbookExpandHint: "Expand a section below to read screen-by-screen details.",
       helpQuickStartTitle: "Quick start",
       helpQuickStart1: "Open a section from the sidebar and confirm your current page in the breadcrumb.",
       helpQuickStart2: "Use search fields to quickly narrow down large lists.",
@@ -417,7 +475,7 @@ const resources = {
       helpAdmin2: "Keep attendance and posts current so families always see fresh updates.",
       helpAdmin3: "Use messages for direct communication with parents and guardians.",
       helpAdmin4: "Verify records before deleting to avoid accidental data loss.",
-      helpUserTitle: "USER handbook",
+      helpUserTitle: "Community member guide",
       helpUser1: "Check notifications and posts regularly for new updates.",
       helpUser2: "Follow child attendance and progress details from your dashboard.",
       helpUser3: "Use messages to contact admins when clarification is needed.",
@@ -488,6 +546,7 @@ const resources = {
       lessonsNivoLabel: "Nivo",
       lessonsSuperAdminOnly: "Only super admin can create, edit, or delete lessons.",
       lessonsNoResults: "No lessons.",
+      lessonsNivoLessonCount: "{{count}} lessons",
       lessonsDeleteTitle: "Delete lesson",
       lessonsDeleteDescription: 'Are you sure you want to delete "{{title}}"?',
       lessonsDeleteDescriptionFallback: "Delete selected lesson?",
@@ -653,7 +712,7 @@ const resources = {
       parentDashboardViewDetails: "View details",
       parentDashboardDrawerTitle: "Detailed child overview",
       parentDashboardDrawerDescription: "Per-child lecture progress, attendance, homework, and latest comment.",
-      parentDashboardChildDetailsDrawerDescription: "Child details and lecture progress timeline for this nivo.",
+      parentDashboardChildDrawerLoading: "Loading child details...",
       parentDashboardLectureProgressTab: "Lecture progress",
       parentDashboardHomeworkProgressTab: "Homework progress",
       parentDashboardChildProfileTitle: "Child profile snapshot",
@@ -707,6 +766,28 @@ const resources = {
       login: "Logga in",
       email: "E-post",
       password: "Lösenord",
+      loginEmailPlaceholder: "du@exempel.se",
+      loginHeroSubtitle:
+        "Följ framsteg, närvaro och läxor med er förening—en säker inloggning för familjer och personal.",
+      loginFormHeading: "Logga in",
+      loginCardDescription: "Logga in med din e-post och ditt lösenord.",
+      loginSubmitting: "Loggar in…",
+      loginError: "Inloggningen misslyckades. Kontrollera e-post och lösenord.",
+      verifyHeroSubtitle: "Ange ditt lösenord för att aktivera ditt inbjudna konto—logga sedan in.",
+      verifyFormHeading: "Aktivera ditt konto",
+      verifyCardDescription: "Välj och bekräfta ditt lösenord (minst 8 tecken). Länken från mailet används automatiskt.",
+      verifyConfirmPasswordLabel: "Bekräfta lösenord",
+      verifyPasswordPlaceholder: "Minst 8 tecken",
+      verifySubmit: "Aktivera konto",
+      verifySubmitting: "Sparar…",
+      verifyError: "Aktivering misslyckades. Länken kan vara ogiltig eller utgången—be om en ny inbjudan.",
+      verifySuccess: "Kontot är aktiverat. Du kan logga in nu.",
+      verifyMissingToken:
+        "Sidan kräver en giltig länk från inbjudan. Öppna länken från mailet igen eller be administratören skicka om den.",
+      verifyPasswordTooShort: "Lösenordet måste vara minst 8 tecken.",
+      verifyPasswordMismatch: "Lösenorden matchar inte.",
+      verifyConfirmRequired: "Bekräfta lösenordet.",
+      verifyBackToLogin: "Tillbaka till inloggning",
       dashboard: "Instrumentpanel",
       posts: "Inlägg",
       dashboardRecentPostsTitle: "Senaste inlägg",
@@ -738,6 +819,14 @@ const resources = {
       children: "Barn",
       activities: "Rapporter",
       notifications: "Notiser",
+      notificationsMarkAllRead: "Markera alla som lästa",
+      notificationsLoading: "Laddar notiser...",
+      notificationsEmpty: "Inga notiser hittades.",
+      notificationsBellEmpty: "Inga notiser ännu.",
+      notificationsSeeAll: "Visa alla",
+      notificationsMarkRead: "Markera läst",
+      notificationsOpen: "Öppna",
+      notificationsDelete: "Ta bort",
       general: "Familj",
       management: "Hantering",
       language: "Språk",
@@ -863,6 +952,7 @@ const resources = {
       roleUser: "Användare",
       roleParent: "Förälder",
       roleBoardMember: "Styrelsemedlem",
+      roleSuperAdmin: "Superadmin",
       role: "Roll",
       editUser: "Redigera användare",
       saveUser: "Spara användare",
@@ -1091,12 +1181,14 @@ const resources = {
       noChildrenAdded: "Inga barn tillagda.",
       na: "Ej tillgänglig",
       userDetails: "Användardetaljer",
+      usersChildDrawerLoadFailed: "Kunde inte ladda barnets detaljer.",
       searchUsersPlaceholder: "Sök användare på namn, e-post eller roll...",
       created: "Skapad",
       updated: "Uppdaterad",
       helpDocTitle: "Appdokumentation",
       helpDocIntro:
-        "Denna sida ger praktisk vägledning för daglig användning. Du kan också öppna rollspecifika handböcker baserat på dina behörigheter.",
+        "Denna sida ger praktisk vägledning för daglig användning. Nedan finns hela handboken för din roll, på språket du valt (EN / SV / BS).",
+      helpHandbookExpandHint: "Expandera en sektion nedan för att läsa skärm-för-skärm.",
       helpQuickStartTitle: "Snabbstart",
       helpQuickStart1: "Öppna en sektion från sidomenyn och bekräfta aktuell sida i brödsmulan.",
       helpQuickStart2: "Använd sökfält för att snabbt filtrera långa listor.",
@@ -1117,7 +1209,7 @@ const resources = {
       helpAdmin2: "Håll närvaro och inlägg uppdaterade så familjer alltid ser aktuella uppgifter.",
       helpAdmin3: "Använd meddelanden för direkt kommunikation med föräldrar.",
       helpAdmin4: "Kontrollera uppgifter innan borttagning för att undvika oavsiktlig dataförlust.",
-      helpUserTitle: "USER-handbok",
+      helpUserTitle: "Guide för communitymedlemmar",
       helpUser1: "Kontrollera notiser och inlägg regelbundet för nya uppdateringar.",
       helpUser2: "Följ barnets närvaro och utveckling från din instrumentpanel.",
       helpUser3: "Använd meddelanden för att kontakta administratörer vid behov av förtydligande.",
@@ -1189,6 +1281,7 @@ const resources = {
       lessonsNivoLabel: "Nivå",
       lessonsSuperAdminOnly: "Endast super admin kan skapa, redigera eller ta bort lektioner.",
       lessonsNoResults: "Inga lektioner.",
+      lessonsNivoLessonCount: "{{count}} lektioner",
       lessonsDeleteTitle: "Ta bort lektion",
       lessonsDeleteDescription: 'Är du säker på att du vill ta bort "{{title}}"?',
       lessonsDeleteDescriptionFallback: "Ta bort vald lektion?",
@@ -1355,7 +1448,7 @@ const resources = {
       parentDashboardViewDetails: "Visa detaljer",
       parentDashboardDrawerTitle: "Detaljerad översikt per barn",
       parentDashboardDrawerDescription: "Per barn: lektionsframsteg, närvaro, läxor och senaste kommentar.",
-      parentDashboardChildDetailsDrawerDescription: "Barnets detaljer och tidslinje för lektionsframsteg på denna nivå.",
+      parentDashboardChildDrawerLoading: "Laddar barnets detaljer...",
       parentDashboardLectureProgressTab: "Lektionsframsteg",
       parentDashboardHomeworkProgressTab: "Läxframsteg",
       parentDashboardChildProfileTitle: "Barnprofil i korthet",
@@ -1410,6 +1503,28 @@ const resources = {
       login: "Prijava",
       email: "Email",
       password: "Lozinka",
+      loginEmailPlaceholder: "vi@primjer.ba",
+      loginHeroSubtitle:
+        "Pratite napredak, prisustvo i zadaće sa vašom zajednicom—jedna sigurna prijava za porodice i osoblje.",
+      loginFormHeading: "Prijava",
+      loginCardDescription: "Prijavite se emailom i lozinkom.",
+      loginSubmitting: "Prijava…",
+      loginError: "Prijava nije uspjela. Provjerite email i lozinku.",
+      verifyHeroSubtitle: "Postavite lozinku da aktivirate pozvani nalog—zatim se možete prijaviti.",
+      verifyFormHeading: "Aktivacija naloga",
+      verifyCardDescription: "Odaberite i potvrdite lozinku (najmanje 8 znakova). Link iz emaila koristi se automatski.",
+      verifyConfirmPasswordLabel: "Potvrda lozinke",
+      verifyPasswordPlaceholder: "Najmanje 8 znakova",
+      verifySubmit: "Aktiviraj nalog",
+      verifySubmitting: "Spremanje…",
+      verifyError: "Aktivacija nije uspjela. Link možda nije važeći ili je istekao—zatražite novu pozivnicu.",
+      verifySuccess: "Nalog je aktiviran. Možete se prijaviti.",
+      verifyMissingToken:
+        "Stranica zahtijeva važeći link iz pozivnog emaila. Ponovo otvorite link iz poruke ili zatražite novi od administratora.",
+      verifyPasswordTooShort: "Lozinka mora imati najmanje 8 znakova.",
+      verifyPasswordMismatch: "Lozinke se ne podudaraju.",
+      verifyConfirmRequired: "Potvrdite lozinku.",
+      verifyBackToLogin: "Natrag na prijavu",
       dashboard: "Početna",
       posts: "Objave",
       dashboardRecentPostsTitle: "Najnovije objave",
@@ -1441,6 +1556,14 @@ const resources = {
       children: "Djeca",
       activities: "Izvještaji",
       notifications: "Obavijesti",
+      notificationsMarkAllRead: "Označi sve kao pročitano",
+      notificationsLoading: "Učitavanje obavijesti...",
+      notificationsEmpty: "Nema obavijesti.",
+      notificationsBellEmpty: "Još nema obavijesti.",
+      notificationsSeeAll: "Vidi sve",
+      notificationsMarkRead: "Označi kao pročitano",
+      notificationsOpen: "Otvori",
+      notificationsDelete: "Obriši",
       general: "Porodica",
       management: "Upravljanje",
       language: "Jezik",
@@ -1566,6 +1689,7 @@ const resources = {
       roleUser: "Korisnik",
       roleParent: "Roditelj",
       roleBoardMember: "Član odbora",
+      roleSuperAdmin: "Super admin",
       role: "Uloga",
       editUser: "Uredi korisnika",
       saveUser: "Sačuvaj korisnika",
@@ -1794,12 +1918,14 @@ const resources = {
       noChildrenAdded: "Nema dodane djece.",
       na: "N/A",
       userDetails: "Detalji korisnika",
+      usersChildDrawerLoadFailed: "Nije moguće učitati detalje djeteta.",
       searchUsersPlaceholder: "Pretraži korisnike po imenu, emailu ili ulozi...",
       created: "Kreiran",
       updated: "Ažuriran",
       helpDocTitle: "Dokumentacija aplikacije",
       helpDocIntro:
-        "Ova stranica nudi praktične smjernice za svakodnevno korištenje. Ispod su i priručnici po ulogama, u skladu s vašim dozvolama.",
+        "Ova stranica nudi praktične smjernice za svakodnevno korištenje. Ispod je cjelovit priručnik za vašu ulogu, na jeziku koji ste odabrali (EN / SV / BS).",
+      helpHandbookExpandHint: "Proširite sekciju ispod za detalje ekran po ekran.",
       helpQuickStartTitle: "Brzi početak",
       helpQuickStart1: "Otvorite sekciju iz bočnog menija i provjerite trenutnu stranicu u navigaciji.",
       helpQuickStart2: "Koristite polja za pretragu kako biste brzo suzili duge liste.",
@@ -1820,7 +1946,7 @@ const resources = {
       helpAdmin2: "Održavajte prisustvo i objave ažurnim da porodice vide tačne informacije.",
       helpAdmin3: "Koristite poruke za direktnu komunikaciju s roditeljima i starateljima.",
       helpAdmin4: "Provjerite podatke prije brisanja kako biste izbjegli nenamjeran gubitak.",
-      helpUserTitle: "USER priručnik",
+      helpUserTitle: "Vodič za članove zajednice",
       helpUser1: "Redovno provjeravajte obavijesti i objave za nove informacije.",
       helpUser2: "Pratite prisustvo i napredak djeteta na svojoj početnoj stranici.",
       helpUser3: "Koristite poruke za kontakt s administratorima kada je potrebno pojašnjenje.",
@@ -1891,6 +2017,7 @@ const resources = {
       lessonsNivoLabel: "Nivo",
       lessonsSuperAdminOnly: "Samo super admin može kreirati, uređivati ili brisati lekcije.",
       lessonsNoResults: "Nema lekcija.",
+      lessonsNivoLessonCount: "{{count}} lekcija",
       lessonsDeleteTitle: "Obriši lekciju",
       lessonsDeleteDescription: 'Da li ste sigurni da želite obrisati "{{title}}"?',
       lessonsDeleteDescriptionFallback: "Obrisati odabranu lekciju?",
@@ -2057,7 +2184,7 @@ const resources = {
       parentDashboardViewDetails: "Prikaži detalje",
       parentDashboardDrawerTitle: "Detaljan pregled po djetetu",
       parentDashboardDrawerDescription: "Po djetetu: napredak lekcija, prisustvo, zadaca i zadnji komentar.",
-      parentDashboardChildDetailsDrawerDescription: "Detalji djeteta i vremenska linija napretka lekcija za ovaj nivo.",
+      parentDashboardChildDrawerLoading: "Učitavanje detalja djeteta...",
       parentDashboardLectureProgressTab: "Napredak lekcija",
       parentDashboardHomeworkProgressTab: "Napredak zadaće",
       parentDashboardChildProfileTitle: "Brzi profil djeteta",
@@ -2110,11 +2237,15 @@ const resources = {
 
 i18n.use(initReactI18next).init({
   resources,
-  lng: "en",
+  lng: readStoredUiLanguage() ?? "en",
   fallbackLng: "en",
   interpolation: {
     escapeValue: false,
   },
+});
+
+i18n.on("languageChanged", (lng) => {
+  persistUiLanguage(lng);
 });
 
 export default i18n;

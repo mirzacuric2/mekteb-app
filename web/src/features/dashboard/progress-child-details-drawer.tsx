@@ -5,7 +5,6 @@ import {
   Drawer,
   DrawerClose,
   DrawerContent,
-  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from "../../components/ui/drawer";
@@ -31,6 +30,7 @@ import {
 import { useOpenImamChat } from "../messages/use-open-imam-chat";
 import { MESSAGE_CONTEXT_TYPE } from "../messages/types";
 import { useRoleAccess } from "../auth/use-role-access";
+import { LoadingBlock } from "../common/components/loading-block";
 
 type ProgressChildDetailsDrawerProps = {
   open: boolean;
@@ -38,6 +38,7 @@ type ProgressChildDetailsDrawerProps = {
   child: ChildRecord | null;
   summary: ChildProgressSummary | null;
   scheduledLessons: number;
+  isLoading?: boolean;
 };
 
 type LectureProgressItem = {
@@ -63,6 +64,7 @@ export function ProgressChildDetailsDrawer({
   child,
   summary,
   scheduledLessons,
+  isLoading = false,
 }: ProgressChildDetailsDrawerProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("details");
@@ -194,20 +196,27 @@ export function ProgressChildDetailsDrawer({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent direction="right" className="max-w-2xl">
         <DrawerHeader className="flex items-start justify-between gap-4">
-          <div>
-            <DrawerTitle>{child ? `${child.firstName} ${child.lastName}` : t("childrenDetails")}</DrawerTitle>
-            {child ? (
-              <StatusBadge status={child.status} className="mt-2" />
-            ) : null}
-            <DrawerDescription>{t("parentDashboardChildDetailsDrawerDescription")}</DrawerDescription>
+          <div className="min-w-0 flex-1 pr-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <DrawerTitle className="mb-0">
+                {child ? `${child.firstName} ${child.lastName}` : t("childrenDetails")}
+              </DrawerTitle>
+              {child ? (
+                <span className="inline-flex shrink-0 items-center">
+                  <StatusBadge status={child.status} />
+                </span>
+              ) : null}
+            </div>
           </div>
-          <DrawerClose className="rounded-md border border-border p-2" aria-label={t("cancel")}>
+          <DrawerClose className="rounded-md border border-border p-2">
             <X size={16} />
           </DrawerClose>
         </DrawerHeader>
 
-        <div className="h-[calc(100%-88px)] overflow-y-auto p-4 pb-8">
-          {!child ? (
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-8">
+          {isLoading && !child ? (
+            <LoadingBlock text={t("parentDashboardChildDrawerLoading")} />
+          ) : !child ? (
             <p className="text-sm text-slate-500">{t("parentDashboardNoChildActivity")}</p>
           ) : (
             <Tabs

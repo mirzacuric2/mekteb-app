@@ -18,6 +18,8 @@ const LANGUAGE_OPTIONS: Array<{ value: Language; label: string }> = [
   { value: "bs", label: "BS" },
 ];
 
+const LANGUAGE_BUTTON_CLASS = "h-8 px-2.5 py-0 text-xs font-semibold leading-none";
+
 export function LanguageSwitcher({ value, onChange, className, compact = false, fullWidth = false }: LanguageSwitcherProps) {
   const [isCompactOpen, setIsCompactOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -42,7 +44,7 @@ export function LanguageSwitcher({ value, onChange, className, compact = false, 
         <Button
           type="button"
           variant="default"
-          className="min-w-[52px] px-3"
+          className={cn("min-w-[44px]", LANGUAGE_BUTTON_CLASS)}
           aria-haspopup="menu"
           aria-expanded={isCompactOpen}
           onClick={() => setIsCompactOpen((prev) => !prev)}
@@ -56,7 +58,7 @@ export function LanguageSwitcher({ value, onChange, className, compact = false, 
                 key={languageOption.value}
                 type="button"
                 variant="outline"
-                className="min-w-[52px] px-3"
+                className={cn("min-w-[44px]", LANGUAGE_BUTTON_CLASS)}
                 onClick={() => {
                   onChange(languageOption.value);
                   setIsCompactOpen(false);
@@ -79,7 +81,7 @@ export function LanguageSwitcher({ value, onChange, className, compact = false, 
           type="button"
           variant={value === languageOption.value ? "default" : "outline"}
           aria-pressed={value === languageOption.value}
-          className={cn(fullWidth ? "flex-1 justify-center" : "")}
+          className={cn(LANGUAGE_BUTTON_CLASS, fullWidth ? "flex-1 justify-center" : "")}
           onClick={() => onChange(languageOption.value)}
         >
           {languageOption.label}

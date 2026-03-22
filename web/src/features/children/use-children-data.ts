@@ -41,7 +41,6 @@ export function useChildrenListQuery({ search, page, pageSize, mineOnly, nivo, s
   );
 }
 
-/** Active children for diploma batch (max pageSize 100 per API); optional nivo narrows the list. */
 export function useChildrenDiplomaCandidatesQuery(open: boolean, nivo: number | undefined) {
   return useAuthedQueryWithParams<ChildrenListResponse>(
     "children-diplomas",

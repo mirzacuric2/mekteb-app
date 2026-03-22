@@ -59,10 +59,10 @@ type DrawerContentProps = {
 };
 
 const directionClass: Record<DrawerDirection, string> = {
-  top: "inset-x-0 top-0 h-[70vh]",
-  right: "inset-y-0 right-0 h-full w-full max-w-xl",
-  bottom: "inset-x-0 bottom-0 h-[70vh]",
-  left: "inset-y-0 left-0 h-full w-full max-w-xl",
+  top: "inset-x-0 top-0 flex h-[70vh] min-h-0 flex-col overflow-hidden",
+  right: "inset-y-0 right-0 flex h-full min-h-0 w-full max-w-xl flex-col overflow-hidden",
+  bottom: "inset-x-0 bottom-0 flex h-[70vh] min-h-0 flex-col overflow-hidden",
+  left: "inset-y-0 left-0 flex h-full min-h-0 w-full max-w-xl flex-col overflow-hidden",
 };
 
 const directionTransformClass: Record<DrawerDirection, { open: string; closed: string }> = {
@@ -102,7 +102,7 @@ export function DrawerContent({ children, direction = "right", className }: Draw
 }
 
 export function DrawerHeader({ children, className }: { children: ReactNode; className?: string }) {
-  return <header className={cn("border-b border-border p-4", className)}>{children}</header>;
+  return <header className={cn("shrink-0 border-b border-border p-4", className)}>{children}</header>;
 }
 
 export function DrawerTitle({ children, className }: { children: ReactNode; className?: string }) {
@@ -114,5 +114,5 @@ export function DrawerDescription({ children, className }: { children: ReactNode
 }
 
 export function DrawerFooter({ children, className }: { children: ReactNode; className?: string }) {
-  return <footer className={cn("border-t border-border p-4", className)}>{children}</footer>;
+  return <footer className={cn("shrink-0 border-t border-border p-4", className)}>{children}</footer>;
 }

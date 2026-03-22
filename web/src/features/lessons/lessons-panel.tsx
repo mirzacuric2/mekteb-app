@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api } from "../../api";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { cn } from "../../lib/utils";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthedQuery } from "../common/use-authed-query";
@@ -13,9 +14,19 @@ import {
   LESSON_NIVO_ORDER,
   LESSONS_API_PATH,
   LESSONS_QUERY_KEY,
+  type LessonNivo,
 } from "./constants";
 import { Lesson } from "./types";
-import { EntityListToolbar } from "../common/components/entity-list-toolbar";
+import {
+  ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME,
+  ENTITY_LIST_TO_TABLE_STACK_CLASSNAME,
+  EntityListToolbar,
+  MANAGEMENT_PAGE_CARD_CLASSNAME,
+  MANAGEMENT_PAGE_CARD_STACK_CLASSNAME,
+} from "../common/components/entity-list-toolbar";
+import { LessonNivoCollapsible } from "./lesson-nivo-collapsible";
 import { LessonFormDialog, LessonFormValues } from "./lesson-form-dialog";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { LoadingBlock } from "../common/components/loading-block";
@@ -29,6 +40,15 @@ export function LessonsPanel({ canManage }: Props) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [deletingLesson, setDeletingLesson] = useState<Lesson | null>(null);
+  const [nivoOpen, setNivoOpen] = useState<Record<LessonNivo, boolean>>(() =>
+    LESSON_NIVO_ORDER.reduce(
+      (acc, nivo) => {
+        acc[nivo] = false;
+        return acc;
+      },
+      {} as Record<LessonNivo, boolean>
+    )
+  );
   const queryClient = useQueryClient();
 
   const getErrorMessage = (error: unknown, fallback: string) => {
@@ -96,71 +116,52 @@ export function LessonsPanel({ canManage }: Props) {
     lessons.isFetching;
 
   return (
-    <Card className="space-y-4">
-      <EntityListToolbar
-        search={search}
-        onSearchChange={setSearch}
-        placeholder={t("lessonsSearchPlaceholder")}
-        actions={
-          canManage ? (
-            <Button
-              className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
-              onClick={() => {
-                setEditingLesson(null);
-                setFormOpen(true);
-              }}
-            >
-              <BookPlus className="h-4 w-4" />
-              <span className="hidden md:inline">{t("lessonsCreate")}</span>
-            </Button>
-          ) : undefined
-        }
-      />
-      {!canManage ? <p className="text-sm text-slate-500">{t("lessonsSuperAdminOnly")}</p> : null}
+    <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, MANAGEMENT_PAGE_CARD_STACK_CLASSNAME)}>
+      <div className={ENTITY_LIST_TO_TABLE_STACK_CLASSNAME}>
+        <EntityListToolbar
+          search={search}
+          onSearchChange={setSearch}
+          placeholder={t("lessonsSearchPlaceholder")}
+          actions={
+            canManage ? (
+              <Button
+                variant="outline"
+                className={ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME}
+                onClick={() => {
+                  setEditingLesson(null);
+                  setFormOpen(true);
+                }}
+              >
+                <BookPlus className={ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME} aria-hidden />
+                <span className={ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME}>{t("lessonsCreate")}</span>
+              </Button>
+            ) : undefined
+          }
+        />
+        {!canManage ? <p className="text-sm text-slate-500">{t("lessonsSuperAdminOnly")}</p> : null}
 
-      <div className="max-h-[calc(100dvh-220px)] space-y-3 overflow-y-auto pr-1 text-sm">
+        <div className="max-h-[calc(100dvh-220px)] space-y-3 overflow-y-auto pr-1 text-sm">
         {isLessonsListLoading ? (
           <LoadingBlock text={t("loadingLessons")} containerClassName="min-h-[240px]" />
         ) : (
           LESSON_NIVO_ORDER.map((group) => (
-            <div key={group} className="space-y-1">
-              <h4 className="font-medium">{LESSON_NIVO_LABEL[group]}</h4>
-              {groupedLessons[group].length ? (
-                groupedLessons[group].map((lesson) => (
-                  <div
-                    key={lesson.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-2"
-                  >
-                    <span>{lesson.title}</span>
-                    {canManage ? (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setEditingLesson(lesson);
-                            setFormOpen(true);
-                          }}
-                        >
-                          {t("edit")}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setDeletingLesson(lesson);
-                          }}
-                        >
-                          {t("delete")}
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                ))
-              ) : (
-                <p className="text-slate-500">{t("lessonsNoResults")}</p>
-              )}
-            </div>
+            <LessonNivoCollapsible
+              key={group}
+              nivo={group}
+              title={LESSON_NIVO_LABEL[group]}
+              open={nivoOpen[group]}
+              onOpenChange={(next) => setNivoOpen((prev) => ({ ...prev, [group]: next }))}
+              lessons={groupedLessons[group]}
+              canManage={canManage}
+              onEditLesson={(lesson) => {
+                setEditingLesson(lesson);
+                setFormOpen(true);
+              }}
+              onDeleteLesson={(lesson) => setDeletingLesson(lesson)}
+            />
           ))
         )}
+        </div>
       </div>
       <LessonFormDialog
         open={formOpen}

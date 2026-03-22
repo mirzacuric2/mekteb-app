@@ -1,13 +1,20 @@
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { cn } from "../../lib/utils";
 import { formatDateTime } from "../../lib/date-time";
-import { useNavigate } from "react-router-dom";
 import { useNotificationsData } from "./use-notifications-data";
 import { useNotificationsMutations } from "./use-notifications-mutations";
 import { getNotificationTargetPath } from "./navigation";
+import {
+  MANAGEMENT_PAGE_CARD_CLASSNAME,
+  MANAGEMENT_PAGE_CARD_STACK_CLASSNAME,
+} from "../common/components/entity-list-toolbar";
 import { Loader } from "../common/components/loader";
 
 export function NotificationsPanel() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const notifications = useNotificationsData();
   const { markAsRead, markAllAsRead, removeNotification } = useNotificationsMutations();
@@ -15,23 +22,23 @@ export function NotificationsPanel() {
   const unreadCount = items.filter((item) => !item.isRead).length;
 
   return (
-    <Card className="space-y-4 p-4">
+    <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, MANAGEMENT_PAGE_CARD_STACK_CLASSNAME)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold">Notifications</h3>
+        <h3 className="text-lg font-semibold">{t("notifications")}</h3>
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" onClick={() => markAllAsRead.mutate()} disabled={unreadCount === 0}>
-            Mark all as read
+            {t("notificationsMarkAllRead")}
           </Button>
         </div>
       </div>
       <ul className="space-y-1 text-sm">
         {notifications.isLoading ? (
           <li className="rounded-md border border-dashed border-border p-3 text-slate-500">
-            <Loader size="sm" text="Loading notifications..." />
+            <Loader size="sm" text={t("notificationsLoading")} />
           </li>
         ) : null}
         {!notifications.isLoading && items.length === 0 ? (
-          <li className="rounded-md border border-dashed border-border p-3 text-slate-500">No notifications found.</li>
+          <li className="rounded-md border border-dashed border-border p-3 text-slate-500">{t("notificationsEmpty")}</li>
         ) : null}
         {items.map((item) => (
           <li key={item.id} className="rounded-md border border-border p-3">
@@ -53,14 +60,14 @@ export function NotificationsPanel() {
               <div className="flex shrink-0 items-center gap-2">
                 {!item.isRead ? (
                   <Button type="button" variant="outline" onClick={() => markAsRead.mutate(item.id)}>
-                    Mark read
+                    {t("notificationsMarkRead")}
                   </Button>
                 ) : null}
                 <Button type="button" variant="outline" onClick={() => navigate(getNotificationTargetPath(item))}>
-                  Open
+                  {t("notificationsOpen")}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => removeNotification.mutate(item.id)}>
-                  Delete
+                  {t("notificationsDelete")}
                 </Button>
               </div>
             </div>

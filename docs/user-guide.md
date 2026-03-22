@@ -4,8 +4,10 @@ This guide explains how to use the Mekteb App interface and core features.
 
 ## 1) Login and Session
 
-- Open the web app login page.
+- Open the web app login page (hero + sign-in card side by side on large screens, stacked on small screens; scroll if the card is taller than the screen).
 - Sign in with your email and password.
+- Change language from the login card or, after sign-in, from the sidebar language control.
+- **Invited accounts:** Open the **verify** link from your email (`/verify?token=…`). The page matches the login layout; enter and confirm your password (no token field—the link supplies it). Then sign in on the login page.
 - After login, you are redirected to the dashboard.
 - Your available actions depend on your role (`SUPER_ADMIN`, `ADMIN`, `BOARD_MEMBER`, `PARENT`, legacy `USER`).
 
@@ -14,10 +16,17 @@ This guide explains how to use the Mekteb App interface and core features.
 - Use the sidebar to switch between sections.
 - Use the breadcrumb at the top to confirm your current page.
 - The top dashboard header stays visible while you scroll page content.
-- Use the header report action to open the reporting modal entry point (progress/comments/absence/homework flow placeholder); desktop shows label + icon, mobile shows icon-only.
+- When your role includes reporting (`ADMIN` / `SUPER_ADMIN`), use the header **Report activities** action to open the reporting modal; desktop shows label + icon, mobile shows icon-only. Parent and board-member accounts do not see this control.
 - Use the header notification bell icon for quick access to `Notifications`; messages are handled from the docked chat launcher.
 - Use language selector in the sidebar footer when needed.
-- Use the Help icon near your profile avatar for quick role-based guidance.
+- Use the Help icon near your profile avatar for quick role-based guidance (content is filtered by your role).
+
+## 2.1) Role handbooks (screens and expectations)
+
+- See [`docs/handbooks/README.md`](./handbooks/README.md) for how documentation is split by role.
+- **Parents / legacy `USER`:** [`docs/handbooks/user.md`](./handbooks/user.md) describes only family-visible screens and avoids administrator workflows.
+- **`BOARD_MEMBER`, `ADMIN`, `SUPER_ADMIN`:** each has a dedicated handbook with per-route notes: [`board-member.md`](./handbooks/board-member.md), [`admin.md`](./handbooks/admin.md), [`super-admin.md`](./handbooks/super-admin.md).
+- In the app, **Help** (`/app/help`) shows the **full role handbook** inline: content is **translated** with the UI language (EN / SV / BS) and **selected by your logged-in role** (parents never see admin/super-admin sections).
 
 ## 3) Common UI Patterns
 
@@ -51,13 +60,13 @@ This guide explains how to use the Mekteb App interface and core features.
 
 ## 6) Lessons
 
-- Lessons can be searched from the lessons page.
-- Lesson create/update/delete actions are restricted by role.
-- If action is not available, your role likely has read-only access.
-- Lesson levels are standardized, so use consistent titles and level assignment.
+- The **Lessons** sidebar section and `/app/lessons` route are available to **`SUPER_ADMIN` only** in the current app; other roles do not navigate there.
+- On that page, catalog entries can be searched and maintained (create/update/delete) by **`SUPER_ADMIN`**.
+- Lesson levels (nivo) are standardized across children and lectures—keep titles and level assignment consistent.
 
 ## 7) Activity Reporting Workflow (Admin/Super Admin)
 
+- **SUPER_ADMIN** sees a **Community** column on the **Reports** and **Homework queue** tables (multi-community visibility). **ADMIN** does not—lists are for their community only.
 - Save lecture attendance reports first (draft stage), then use `Complete lecture` from Activities table when the report is finalized.
 - Attendance entry is optimized for speed: by default all children are marked present, then you toggle off only absences.
 - Homework assignment in report modal is optional and lecture-level (single homework for the selected nivo report).

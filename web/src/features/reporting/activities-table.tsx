@@ -18,6 +18,7 @@ type ActivitiesTableProps = {
   isLoading: boolean;
   page: number;
   totalPages: number;
+  showCommunityColumn?: boolean;
   onPageChange: (page: number) => void;
   onEdit: (activity: ActivityLecture) => void;
   onDelete: (activity: ActivityLecture) => void;
@@ -32,6 +33,7 @@ export function ActivitiesTable({
   isLoading,
   page,
   totalPages,
+  showCommunityColumn = false,
   onPageChange,
   onEdit,
   onDelete,
@@ -42,6 +44,7 @@ export function ActivitiesTable({
 }: ActivitiesTableProps) {
   const { t } = useTranslation();
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const colSpan = showCommunityColumn ? 8 : 7;
 
   useEffect(() => {
     setSelectedIds({});
@@ -76,10 +79,13 @@ export function ActivitiesTable({
       <DataTable
         className="overflow-hidden"
         scrollClassName="overflow-x-auto !overflow-y-hidden"
-        tableClassName="min-w-[900px] border-collapse text-sm md:min-w-0 md:w-full md:table-fixed"
+        tableClassName={`border-collapse text-sm md:w-full md:table-fixed ${
+          showCommunityColumn ? "min-w-[980px]" : "min-w-[900px]"
+        } md:min-w-0`}
         headers={
           <>
-            <th className="w-[6%] whitespace-nowrap border-b border-border px-3 py-3 align-middle font-medium">
+            {/* Percent widths must sum to 100% with `table-fixed` or columns overlap. */}
+            <th className="w-[5%] text-center">
               <div className="flex items-center justify-center">
                 <Checkbox
                   checked={allDraftsSelected}
@@ -96,12 +102,15 @@ export function ActivitiesTable({
                 />
               </div>
             </th>
-            <th className="w-[28%] whitespace-nowrap border-b border-border px-3 py-3 font-medium">{t("activityReportTableTopic")}</th>
-            <th className="w-[9%] whitespace-nowrap border-b border-border px-3 py-3 font-medium">{t("activityReportTableChildren")}</th>
-            <th className="w-[14%] whitespace-nowrap border-b border-border px-3 py-3 font-medium">{t("activityReportTableStatus")}</th>
-            <th className="w-[17%] whitespace-nowrap border-b border-border px-3 py-3 font-medium">{t("activityReportTableUpdatedAt")}</th>
-            <th className="w-[16%] whitespace-nowrap border-b border-border px-3 py-3 font-medium">{t("activityReportTableCompleted")}</th>
-            <th className="w-[10%] whitespace-nowrap border-b border-border px-3 py-3 text-right font-medium">
+            <th className={showCommunityColumn ? "w-[20%]" : "w-[31%]"}>{t("activityReportTableTopic")}</th>
+            {showCommunityColumn ? (
+              <th className="w-[11%]">{t("usersTableCommunity")}</th>
+            ) : null}
+            <th className="w-[7%]">{t("activityReportTableChildren")}</th>
+            <th className="w-[10%]">{t("activityReportTableStatus")}</th>
+            <th className="w-[12%]">{t("activityReportTableUpdatedAt")}</th>
+            <th className="w-[19%]">{t("activityReportTableCompleted")}</th>
+            <th className="w-[16%] !text-right">
               <span className="sr-only">{t("usersTableActions")}</span>
             </th>
           </>
@@ -109,7 +118,7 @@ export function ActivitiesTable({
       >
         {activities.map((activity) => (
           <tr key={activity.id} className="border-b border-border transition-colors hover:bg-slate-50">
-            <td className="px-3 py-2.5">
+            <td>
               <div className="flex items-center justify-center">
                 <Checkbox
                   checked={Boolean(selectedIds[activity.id])}
@@ -124,7 +133,7 @@ export function ActivitiesTable({
                 />
               </div>
             </td>
-            <td className="px-3 py-2.5 font-medium text-slate-900">
+            <td className="min-w-0 font-medium text-slate-900">
               <span className="block truncate" title={activity.topic}>
                 {activity.topic}
               </span>
@@ -137,8 +146,15 @@ export function ActivitiesTable({
                   .join(" • ")}
               </span>
             </td>
-            <td className="px-3 py-2.5">{activity.attendance.length}</td>
-            <td className="px-3 py-2.5">
+            {showCommunityColumn ? (
+              <td className="px-3 py-3">
+                <span className="block truncate" title={activity.community?.name || ""}>
+                  {activity.community?.name?.trim() ? activity.community.name : t("na")}
+                </span>
+              </td>
+            ) : null}
+            <td>{activity.attendance.length}</td>
+            <td>
               <StatusBadge
                 status={activity.status}
                 labelKey={
@@ -148,12 +164,12 @@ export function ActivitiesTable({
                 }
               />
             </td>
-            <td className="whitespace-nowrap px-3 py-2.5">
+            <td className="whitespace-nowrap">
               <span className="block truncate" title={formatDateTime(activity.updatedAt)}>
                 {formatDateTime(activity.updatedAt)}
               </span>
             </td>
-            <td className="whitespace-nowrap px-3 py-2.5">
+            <td className="min-w-0 whitespace-nowrap">
               {activity.completedAt ? (
                 <span className="block truncate" title={formatDateTime(activity.completedAt)}>
                   {formatDateTime(activity.completedAt)}
@@ -161,7 +177,7 @@ export function ActivitiesTable({
               ) : activity.status === LECTURE_STATUS.DRAFT ? (
                 <Button
                   variant="outline"
-                  className="h-8 px-2 text-xs"
+                  className="h-8 shrink-0 whitespace-nowrap px-2.5 text-xs"
                   aria-label={t("activityReportCompleteLecture")}
                   disabled={completingId === activity.id}
                   onClick={() => onComplete(activity)}
@@ -179,7 +195,7 @@ export function ActivitiesTable({
                 <span className="text-slate-400">{t("na")}</span>
               )}
             </td>
-            <td className="px-3 py-2.5 text-right align-middle">
+            <td className="min-w-0 !text-right">
               <div className="flex justify-end gap-1.5">
                 <EntityRowActions onEdit={() => onEdit(activity)} onDelete={() => onDelete(activity)} />
               </div>
@@ -187,11 +203,11 @@ export function ActivitiesTable({
           </tr>
         ))}
         {isLoading ? (
-          <TableLoadingRow colSpan={7} text={t("reportingLoading")} />
+          <TableLoadingRow colSpan={colSpan} text={t("reportingLoading")} />
         ) : null}
         {!activities.length && !isLoading ? (
           <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={7}>
+            <td className="!py-10 !text-center text-slate-500" colSpan={colSpan}>
               {t("activitiesNoResults")}
             </td>
           </tr>

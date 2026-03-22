@@ -6,10 +6,19 @@ import { toast } from "sonner";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ROLE } from "../../types";
 import { Card } from "../../components/ui/card";
+import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { useRoleAccess } from "../auth/use-role-access";
 import { UserPlus } from "lucide-react";
-import { EntityListToolbar } from "../common/components/entity-list-toolbar";
+import {
+  ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME,
+  ENTITY_LIST_TO_TABLE_STACK_CLASSNAME,
+  EntityListToolbar,
+  MANAGEMENT_PAGE_CARD_CLASSNAME,
+  MANAGEMENT_PAGE_CARD_STACK_CLASSNAME,
+} from "../common/components/entity-list-toolbar";
 import { LoadingBlock } from "../common/components/loading-block";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
@@ -203,56 +212,57 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   }, [childIdFromQuery, location.pathname, location.search, navigate, selectedChild?.id]);
 
   return (
-    <Card className="min-w-0 space-y-4 overflow-x-hidden">
-      <EntityListToolbar
-        search={search}
-        onSearchChange={(value) => {
-          setSearch(value);
-          setPage(1);
-        }}
-        placeholder={t("childrenSearchPlaceholder")}
-        actions={
-          canAdminManage ? (
-            <div className="flex shrink-0 items-center gap-2">
+    <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, MANAGEMENT_PAGE_CARD_STACK_CLASSNAME, "overflow-x-hidden")}>
+      <div className={ENTITY_LIST_TO_TABLE_STACK_CLASSNAME}>
+        <EntityListToolbar
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          placeholder={t("childrenSearchPlaceholder")}
+          actions={
+            canAdminManage ? (
               <Button
-                className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
+                variant="outline"
+                className={ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME}
                 onClick={() => {
                   resetForm();
                   setFormOpen(true);
                 }}
               >
-                <UserPlus className="h-4 w-4" />
-                <span className="hidden md:inline">{t("childrenCreate")}</span>
+                <UserPlus className={ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME} aria-hidden />
+                <span className={ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME}>{t("childrenCreate")}</span>
               </Button>
-            </div>
-          ) : undefined
-        }
-      />
-      {children.isLoading ? (
-        <LoadingBlock text={t("childrenLoading")} containerClassName="min-h-[220px]" />
-      ) : (
-        <ChildrenTable
-          children={pagedChildren}
-          isLoading={children.isLoading}
-          page={currentPage}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          onRowClick={(child) => setSelectedChild(child)}
-          onEdit={(child) => {
-            setFormApiError(null);
-            setEditingId(child.id);
-            setEditingChild(child);
-            setFormOpen(true);
-          }}
-          onDelete={(child) => {
-            if (canInactivate && child.status !== CHILD_STATUS.INACTIVE) {
-              setDeletingChild(child);
-            }
-          }}
-          canEdit={canEditChildren}
-          canDelete={canInactivate}
+            ) : undefined
+          }
         />
-      )}
+        {children.isLoading ? (
+          <LoadingBlock text={t("childrenLoading")} containerClassName="min-h-[220px]" />
+        ) : (
+          <ChildrenTable
+            children={pagedChildren}
+            isLoading={children.isLoading}
+            page={currentPage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            onRowClick={(child) => setSelectedChild(child)}
+            onEdit={(child) => {
+              setFormApiError(null);
+              setEditingId(child.id);
+              setEditingChild(child);
+              setFormOpen(true);
+            }}
+            onDelete={(child) => {
+              if (canInactivate && child.status !== CHILD_STATUS.INACTIVE) {
+                setDeletingChild(child);
+              }
+            }}
+            canEdit={canEditChildren}
+            canDelete={canInactivate}
+          />
+        )}
+      </div>
 
       <ChildFormDialog
         open={formOpen}

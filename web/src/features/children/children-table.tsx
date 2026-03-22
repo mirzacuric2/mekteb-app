@@ -1,4 +1,4 @@
-import { DataTable } from "../common/components/data-table";
+import { DataTable, DATA_TABLE_BODY_DENSITY } from "../common/components/data-table";
 import { EntityRowActions } from "../common/components/entity-row-actions";
 import { PaginationControls } from "../common/components/pagination-controls";
 import { StatusBadge } from "../common/components/status-badge";
@@ -40,14 +40,24 @@ export function ChildrenTable({
       <DataTable
         className="overflow-hidden"
         scrollClassName="overflow-x-auto !overflow-y-hidden"
-        tableClassName="w-full min-w-[920px] border-collapse text-sm"
+        tableClassName="w-full min-w-[920px] table-fixed border-collapse text-sm"
+        colgroup={
+          <colgroup>
+            <col style={{ width: "17%" }} />
+            <col style={{ width: "200px" }} />
+            <col style={{ width: "9rem" }} />
+            <col />
+            <col style={{ width: "140px" }} />
+          </colgroup>
+        }
+        bodyDensity={DATA_TABLE_BODY_DENSITY.SPACIOUS}
         headers={
           <>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("usersTableName")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("childrenNivoLabel")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("childrenParentsLabel")}</th>
-            <th className="whitespace-nowrap border-b border-border px-5 py-3.5 font-medium">{t("status")}</th>
-            <th className="w-[140px] whitespace-nowrap border-b border-border px-5 py-3.5 text-right font-medium">
+            <th className="min-w-0">{t("usersTableName")}</th>
+            <th>{t("childrenNivoLabel")}</th>
+            <th className="whitespace-nowrap">{t("status")}</th>
+            <th className="min-w-0">{t("childrenParentsLabel")}</th>
+            <th className="!text-right">
               <span className="sr-only">{t("usersTableActions")}</span>
             </th>
           </>
@@ -59,30 +69,30 @@ export function ChildrenTable({
             className="cursor-pointer border-b border-border transition-colors hover:bg-slate-50"
             onClick={() => onRowClick(child)}
           >
-            <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-900">
-              {child.firstName} {child.lastName}
+            <td className="min-w-0 whitespace-nowrap font-medium text-slate-900">
+              <span className="block truncate" title={`${child.firstName} ${child.lastName}`}>
+                {child.firstName} {child.lastName}
+              </span>
             </td>
-            <td className="whitespace-nowrap px-5 py-3.5">
+            <td className="whitespace-nowrap">
               <NivoProgress nivo={child.nivo} showIndexLabel />
             </td>
-            <td className="px-5 py-3.5 text-slate-700">
+            <td className="whitespace-nowrap">
+              <StatusBadge status={child.status} />
+            </td>
+            <td className="min-w-0 break-words text-slate-700">
               {(child.parents || [])
                 .map((parent) => `${parent.parent?.firstName || ""} ${parent.parent?.lastName || ""}`.trim())
                 .filter(Boolean)
                 .join(", ") || t("na")}
             </td>
-            <td className="whitespace-nowrap px-5 py-3.5">
-              <StatusBadge status={child.status} />
-            </td>
-            <td className="w-[140px] whitespace-nowrap px-5 py-3.5 text-right align-middle">
+            <td className="whitespace-nowrap !text-right">
               {canEdit && canDelete ? (
-                <EntityRowActions
-                  onEdit={() => onEdit(child)}
-                  onDelete={() => onDelete(child)}
-                />
+                <EntityRowActions onEdit={() => onEdit(child)} onDelete={() => onDelete(child)} />
               ) : canEdit ? (
                 <div className="flex w-full justify-end">
                   <Button
+                    type="button"
                     variant="outline"
                     className="px-2"
                     onClick={(event) => {
@@ -103,7 +113,7 @@ export function ChildrenTable({
         ) : null}
         {!children.length && !isLoading ? (
           <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={5}>
+            <td className="!py-10 !text-center text-slate-500" colSpan={5}>
               {t("childrenNoResults")}
             </td>
           </tr>

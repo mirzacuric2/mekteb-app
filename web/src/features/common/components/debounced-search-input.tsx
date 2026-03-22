@@ -33,6 +33,7 @@ export function DebouncedSearchInput({
       value={localValue}
       onChange={(event) => setLocalValue(event.target.value)}
       placeholder={placeholder}
+      className="h-8 py-1"
     />
   );
 }

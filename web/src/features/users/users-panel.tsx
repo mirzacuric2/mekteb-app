@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -7,11 +7,23 @@ import { UserPlus } from "lucide-react";
 import { api } from "../../api";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { cn } from "../../lib/utils";
 import { useSession } from "../auth/session-context";
 import { useAuthedQuery } from "../common/use-authed-query";
+import { useChildByIdQuery } from "../children/use-children-data";
+import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
+import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
+import { Lesson } from "../lessons/types";
 import { EntityDetailsDrawer } from "../common/components/entity-details-drawer";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
-import { EntityListToolbar } from "../common/components/entity-list-toolbar";
+import {
+  ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME,
+  EntityListToolbar,
+  MANAGEMENT_PAGE_CARD_CLASSNAME,
+} from "../common/components/entity-list-toolbar";
+import { Role } from "../common/role";
 import { StatusBadge } from "../common/components/status-badge";
 import { CommunityOption, UserFormDialog } from "../users/user-form-dialog";
 import { UserDetailsDrawerContent } from "./user-details-drawer-content";
@@ -50,6 +62,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+  const [childDrawerId, setChildDrawerId] = useState<string | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserRecord | null>(null);
   const queryClient = useQueryClient();
   const isBoardMember = session?.user.role === ROLE.BOARD_MEMBER;
@@ -105,6 +118,40 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
     }
     return lookup;
   }, [children.data]);
+
+  const childDrawerQuery = useChildByIdQuery(childDrawerId ?? undefined, false);
+  const childForDrawer = childDrawerQuery.data ?? null;
+  const lessonsForChildDrawer = useAuthedQuery<Lesson[]>(
+    LESSONS_QUERY_KEY,
+    LESSONS_API_PATH,
+    Boolean(childForDrawer)
+  );
+  const childDrawerScheduledLessons = useMemo(() => {
+    if (!childForDrawer) return 0;
+    return (lessonsForChildDrawer.data || []).filter((lesson) => lesson.nivo === childForDrawer.nivo).length;
+  }, [lessonsForChildDrawer.data, childForDrawer]);
+
+  useEffect(() => {
+    if (!childDrawerId) return;
+    if (childDrawerQuery.isPending || childDrawerQuery.isFetching) return;
+    if (childDrawerQuery.isError) {
+      toast.error(t("usersChildDrawerLoadFailed"));
+      setChildDrawerId(null);
+      return;
+    }
+    if (childDrawerQuery.isSuccess && !childDrawerQuery.data) {
+      toast.error(t("usersChildDrawerLoadFailed"));
+      setChildDrawerId(null);
+    }
+  }, [
+    childDrawerId,
+    childDrawerQuery.data,
+    childDrawerQuery.isError,
+    childDrawerQuery.isFetching,
+    childDrawerQuery.isPending,
+    childDrawerQuery.isSuccess,
+    t,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil((users.data?.total || 0) / DEFAULT_PAGE_SIZE));
   const currentPage = users.data?.page || page;
@@ -275,10 +322,10 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   };
 
   return (
-    <Card className="min-w-0 flex h-full min-h-0 flex-col gap-1 overflow-hidden p-5">
+    <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, "flex h-full min-h-0 flex-col gap-5 overflow-hidden")}>
       {enabled ? (
         <>
-          <div className="shrink-0 space-y-6 pb-2">
+          <div className="shrink-0">
             <EntityListToolbar
               search={search}
               onSearchChange={(value) => {
@@ -289,15 +336,16 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
               actions={
                 canEdit ? (
                   <Button
-                    className="h-10 w-10 px-0 md:w-auto md:px-3 md:gap-2"
+                    variant="outline"
+                    className={ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME}
                     onClick={() => {
                       setEditingUser(null);
                       setFormApiError(null);
                       setFormOpen(true);
                     }}
                   >
-                    <UserPlus className="h-4 w-4" />
-                    <span className="hidden md:inline">{t("createUser")}</span>
+                    <UserPlus className={ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME} aria-hidden />
+                    <span className={ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME}>{t("createUser")}</span>
                   </Button>
                 ) : null
               }
@@ -433,6 +481,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                 ? `${selectedUser.firstName} ${selectedUser.lastName}`
                 : "User details"
             }
+            headerSubline={selectedUser ? <Role role={selectedUser.role} /> : undefined}
             headerMeta={
               selectedUser ? (
                 <StatusBadge
@@ -440,7 +489,6 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                 />
               ) : undefined
             }
-            description={t("userDetails")}
           >
             {selectedUser ? (
               <UserDetailsDrawerContent
@@ -451,9 +499,25 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                     : null
                 }
                 children={childrenByParentId.get(selectedUser.id) || []}
+                onOpenChild={(id) => setChildDrawerId(id)}
               />
             ) : null}
           </EntityDetailsDrawer>
+
+          <ProgressChildDetailsDrawer
+            open={Boolean(childDrawerId)}
+            isLoading={
+              Boolean(childDrawerId) &&
+              !childForDrawer &&
+              (childDrawerQuery.isPending || childDrawerQuery.isFetching)
+            }
+            onOpenChange={(open) => {
+              if (!open) setChildDrawerId(null);
+            }}
+            child={childForDrawer}
+            summary={null}
+            scheduledLessons={childDrawerScheduledLessons}
+          />
           {canEdit ? (
             <DeleteConfirmDialog
               open={!!deletingUser}

@@ -1,14 +1,15 @@
-import { DataTable } from "../common/components/data-table";
+import { DataTable, DATA_TABLE_BODY_DENSITY } from "../common/components/data-table";
 import { EntityRowActions } from "../common/components/entity-row-actions";
 import { NaValue } from "../common/components/na-value";
 import { PaginationControls } from "../common/components/pagination-controls";
+import { Role as RoleChip } from "../common/role";
 import { StatusBadge } from "../common/components/status-badge";
 import { TableLoadingRow } from "../common/components/table-loading-row";
 import { useTranslation } from "react-i18next";
-import { Role } from "../../types";
+import type { Role as PlatformRole } from "../../types";
 import { UserStatus } from "./user-form-schema";
 
-type UserRole = Role;
+type UserRole = PlatformRole;
 
 export type UserAddressRecord = {
   streetLine1: string;
@@ -71,21 +72,18 @@ export function UsersTable({
           className="overflow-hidden"
           scrollClassName="overflow-x-auto !overflow-y-hidden"
           tableClassName="w-full min-w-[900px] border-collapse text-sm"
+          bodyDensity={DATA_TABLE_BODY_DENSITY.COMFORTABLE}
           headers={
             <>
-              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableName")}</th>
-              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableEmail")}</th>
-              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTablePhone")}</th>
-              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableRole")}</th>
-              {showCommunityColumn ? (
-                <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">
-                  {t("usersTableCommunity")}
-                </th>
-              ) : null}
-              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableChildren")}</th>
-              <th className="whitespace-nowrap border-b border-border px-4 py-3.5 font-medium">{t("usersTableStatus")}</th>
+              <th>{t("usersTableName")}</th>
+              <th>{t("usersTableEmail")}</th>
+              <th>{t("usersTablePhone")}</th>
+              <th>{t("usersTableRole")}</th>
+              {showCommunityColumn ? <th>{t("usersTableCommunity")}</th> : null}
+              <th>{t("usersTableChildren")}</th>
+              <th>{t("usersTableStatus")}</th>
               {canEdit ? (
-                <th className="w-[140px] whitespace-nowrap border-b border-border px-4 py-3.5 font-medium text-right">
+                <th className="w-[140px] !text-right">
                   <span className="sr-only">{t("usersTableActions")}</span>
                 </th>
               ) : null}
@@ -98,37 +96,35 @@ export function UsersTable({
               className="cursor-pointer border-b border-border transition-colors hover:bg-slate-50"
               onClick={() => onRowClick(user)}
             >
-              <td className="px-4 py-3.5 font-medium text-slate-900">
+              <td className="font-medium text-slate-900">
                 <span className="block truncate" title={`${user.firstName} ${user.lastName}`}>
                   {user.firstName} {user.lastName}
                 </span>
               </td>
-              <td className="px-4 py-3.5">
+              <td>
                 <span className="block truncate" title={user.email}>
                   {user.email}
                 </span>
               </td>
-              <td className="px-4 py-3.5">
+              <td>
                 <NaValue value={user.phoneNumber} />
               </td>
-              <td className="px-4 py-3.5">
-                <span className="block truncate" title={user.role}>
-                  {user.role}
-                </span>
+              <td>
+                <RoleChip role={user.role} className="align-middle" />
               </td>
               {showCommunityColumn ? (
-                <td className="px-4 py-3.5">
+                <td>
                   <span className="block truncate" title={user.communityName || ""}>
                     <NaValue value={user.communityName} />
                   </span>
                 </td>
               ) : null}
-              <td className="whitespace-nowrap px-4 py-3.5">{user.childrenCount || 0}</td>
-              <td className="px-4 py-3.5">
+              <td className="whitespace-nowrap">{user.childrenCount || 0}</td>
+              <td>
                 <StatusBadge status={user.status || "INACTIVE"} />
               </td>
               {canEdit ? (
-                <td className="w-[140px] whitespace-nowrap px-4 py-3.5 text-right align-middle">
+                <td className="w-[140px] whitespace-nowrap !text-right">
                   <EntityRowActions onEdit={() => onEdit?.(user)} onDelete={() => onDelete?.(user)} />
                 </td>
               ) : null}
@@ -139,7 +135,7 @@ export function UsersTable({
           ) : null}
           {!users.length && !isLoading ? (
             <tr>
-              <td className="px-4 py-10 text-center text-slate-500" colSpan={tableColSpan}>
+              <td className="!py-10 !text-center text-slate-500" colSpan={tableColSpan}>
                 {t("noUsersFound")}
               </td>
             </tr>

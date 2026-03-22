@@ -14,6 +14,7 @@ type CommunityEventsCalendarProps = {
   canManageEvents: boolean;
   hoverActionsForDesktop: boolean;
   stackWeeklyDays?: boolean;
+  dashboardPreview?: boolean;
   weekPreviewHint?: string;
   showParentWeekSummary?: boolean;
   weekSummaryVariant?: WeekSummaryVariant;
@@ -65,6 +66,7 @@ export function CommunityEventsCalendar({
   canManageEvents,
   hoverActionsForDesktop,
   stackWeeklyDays = false,
+  dashboardPreview = false,
   weekPreviewHint,
   showParentWeekSummary = false,
   weekSummaryVariant = WEEK_SUMMARY_VARIANT.FAMILY,
@@ -90,8 +92,10 @@ export function CommunityEventsCalendar({
     return { label, date, dayItems };
   });
 
+  const dashboardStripDesktop = dashboardPreview && !stackWeeklyDays;
+
   return (
-    <div className="space-y-3">
+    <div className={dashboardPreview ? "min-w-0 space-y-3" : "space-y-3"}>
       <div>
         <div className="flex items-center justify-between gap-2">
           <Button
@@ -137,22 +141,36 @@ export function CommunityEventsCalendar({
         className={
           stackWeeklyDays
             ? "grid grid-cols-1 gap-2"
-            : "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:items-stretch"
+            : dashboardStripDesktop
+              ? "grid grid-cols-1 gap-2 lg:flex lg:min-w-0 lg:flex-nowrap lg:items-stretch lg:gap-2 lg:overflow-x-auto lg:pb-1 lg:[overscroll-behavior-x:contain] [-webkit-overflow-scrolling:touch]"
+              : "flex min-w-0 flex-nowrap items-stretch gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] lg:overflow-x-auto lg:pb-1 lg:[overscroll-behavior-x:contain]"
         }
       >
         {weekDaysWithItems.map((day) => {
+          const hasItems = day.dayItems.length > 0;
+          const communityWeekWrapper =
+            !stackWeeklyDays && !dashboardStripDesktop
+              ? `h-full min-w-0 shrink-0 flex-[1_0_5.5rem] sm:flex-[1_0_6.5rem] ${hasItems ? "lg:min-w-[10rem] lg:flex-[1.45_1_0px]" : "lg:min-w-[7.5rem] lg:flex-[0.9_1_0px]"}`
+              : undefined;
+          const dashboardWrapper = dashboardStripDesktop
+            ? `h-full min-w-0 w-full shrink-0 lg:w-auto ${hasItems ? "lg:min-w-[11rem] lg:flex-[3.75_1_0px]" : "lg:min-w-[7.5rem] lg:flex-[0.42_1_0px]"}`
+            : undefined;
           return (
-            <CommunityEventsWeekDayCard
+            <div
               key={day.label}
-              label={day.label}
-              date={day.date}
-              dayItems={day.dayItems}
-              isToday={sameDay(day.date, new Date())}
-              canManageEvents={canManageEvents}
-              hoverActionsForDesktop={hoverActionsForDesktop}
-              onEditEvent={onEditEvent}
-              onDeleteEvent={onDeleteEvent}
-            />
+              className={stackWeeklyDays ? undefined : dashboardStripDesktop ? dashboardWrapper : communityWeekWrapper}
+            >
+              <CommunityEventsWeekDayCard
+                label={day.label}
+                date={day.date}
+                dayItems={day.dayItems}
+                isToday={sameDay(day.date, new Date())}
+                canManageEvents={canManageEvents}
+                hoverActionsForDesktop={hoverActionsForDesktop}
+                onEditEvent={onEditEvent}
+                onDeleteEvent={onDeleteEvent}
+              />
+            </div>
           );
         })}
       </div>

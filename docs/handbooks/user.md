@@ -1,56 +1,59 @@
-# USER/PARENT Handbook
+# PARENT / family handbook (`PARENT`, legacy `USER`)
 
-`PARENT` (and legacy `USER`) is a parent/family role with access to relevant community information.
+This handbook describes **your** app: what each area is for, what you should expect, and what is intentionally not available on your account. It does **not** document administrator or platform tools.
 
-## Primary Responsibilities
+## How navigation works
 
-- Follow posts and announcements.
-- Track child updates and attendance information.
-- Communicate with admin when needed.
+- **Sidebar:** You have **General** items and, under **Management**, **Children** only. You do **not** see Users, Activities (reports), Lessons, or Communities in the sidebar.
+- **Top bar:** **Messages** (mail icon) opens the chat dock; **Notifications** (bell) opens a short list with a link to the full notifications page. You do **not** see the quick **Report activities** button (that is for `ADMIN` / `SUPER_ADMIN`).
+- **Breadcrumb:** Confirms which section you are in; the dashboard has no breadcrumb by design.
 
-## What You Can Do
+## Screen by screen
 
-- View posts, comments, and reactions.
-- View notifications related to your account.
-- Send messages to admin (depending on policy).
-- Start a message from child homework or lecture comments so context is included automatically.
-- Use the bottom-right chat dock for quick messaging without leaving the current page.
-- Continue existing open threads and review closed-thread history.
-- View your child-related data where available.
-- View child activity history entries with attendance (present/absent), lesson info, homework-done status, and admin comments.
-- Update your linked children details (for example name, SSN, birth date, address).
-- See child lifecycle state (`ACTIVE`, `COMPLETED`, `DISCONTINUED`, `INACTIVE`) in your children list.
-- Child edit modal validates entered values before save (for example valid birth date format and complete address fields when address is used).
-- Change app language from the sidebar footer.
+### Dashboard (`/app/dashboard`)
 
-## What You Cannot Do
+- **Purpose:** Home view after login: community news and your family’s snapshot in one place.
+- **What you see:**
+  - **Progress overview** (KPI-style cards and per-child summaries when you have linked children): linked children, attendance-style signals, homework follow-up, and recent activity—scoped to **your** children only.
+  - **This week for your family** (when your account has a community): a read-only weekly events preview filtered to what applies to your household (and general community events as the product rules allow). You cannot create or edit events here.
+  - **Recent posts:** Latest community posts with a link to open the full **Posts** section.
+- **What you cannot do here:** Run lecture reports, manage other people’s children, or change community settings.
 
-- Create/update/delete platform users.
-- Manage roles or community setup.
-- Access admin-only management actions.
-- Modify lessons catalog.
-- Update child `community` or `nivo` (admin-only fields).
-- Update child parent links (admin-only field).
-- Access children that are not linked to your account.
-- Post new replies in a thread after Imam/Admin closes that thread.
+### Posts (`/app/posts`)
 
-## Recommended Workflow
+- **Purpose:** Read announcements and updates from your community.
+- **What you can do:** Read posts, add **reactions**, add **comments**, and edit **your own** comments.
+- **What you cannot do:** Create new posts, edit others’ posts, or delete posts (community **ADMIN** / `SUPER_ADMIN` handle publishing and moderation).
 
-1. Check dashboard notifications regularly.
-2. Review recent posts and child activity updates.
-3. Use context message actions from child progress/homework when asking about specific updates.
-4. If a thread is closed, start a new thread for follow-up.
-5. Report account issues to admin quickly.
-6. Keep login credentials secure and updated.
+### Children (`/app/children`)
 
-## Privacy and Safety
+- **Purpose:** List and review **children linked to your account** (not the whole community roster).
+- **What you can do:** Open a child row to see details in the **side drawer** (progress, homework, attendance-related history where the school has recorded it). You can **edit** allowed fields for your children (for example name, SSN, birth date, address) through the edit flow when offered.
+- **What you cannot do:** Create children, inactivate them, change **community** or **nivo**, or change **parent links**—those are admin-only. You cannot open children you are not linked to.
+- **Tip:** URLs can include `?childId=<uuid>` so a shared link can open the same drawer.
 
-- Keep your password private.
-- Log out on shared devices.
-- Do not share sensitive child information outside authorized channels.
+### Notifications (`/app/notifications`)
 
-## Quick Self-Help
+- **Purpose:** Timeline of alerts for your account (posts, homework, attendance, messages-related routing, etc., as configured in the product).
+- **What you can do:** Review items, open linked destinations when provided, mark as read.
+- **What you cannot do:** See other users’ private notifications.
 
-- If a page is unavailable, your role may not include that access.
-- If information seems old, refresh and check again after a moment.
-- If you cannot sign in, verify credentials and contact admin support.
+### Help (`/app/help`)
+
+- **Purpose:** Short, in-app reminders aligned with **your** role. You will **not** see `ADMIN` or `SUPER_ADMIN`-only tips on this page while logged in as a parent.
+
+### Messages (chat dock, not a separate page)
+
+- **Purpose:** Talk to Imam/Admin (and receive replies) without leaving your current screen.
+- **What you can do:** Open threads from the launcher, send messages in **open** threads, start **new** threads (including from homework/lecture-comment context where the app offers it).
+- **What you should know:** If Imam/Admin **locks** a thread, it becomes read-only; start a **new** thread for follow-up.
+
+## If something is missing
+
+- **“Forbidden” or missing buttons:** Your role is not allowed that action, or the server rejected the request—this is expected for parent accounts on management features.
+- **Empty lists:** You may have no linked children yet, or no new posts/notifications—ask your community admin if data should appear.
+
+## Quick reminders
+
+- Keep login details private; log out on shared devices.
+- Use **Help** and this handbook for **parent** scope only; do not expect admin documentation while logged in as a parent.

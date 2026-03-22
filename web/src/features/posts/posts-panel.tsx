@@ -4,7 +4,12 @@ import { Save, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { cn } from "../../lib/utils";
 import { Input } from "../../components/ui/input";
+import {
+  MANAGEMENT_PAGE_CARD_CLASSNAME,
+  MANAGEMENT_PAGE_CARD_STACK_CLASSNAME,
+} from "../common/components/entity-list-toolbar";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { Loader } from "../common/components/loader";
 import { PostCard } from "./post-card";
@@ -78,7 +83,7 @@ export function PostsPanel({ canPublish }: Props) {
 
   return (
     <div className="space-y-4">
-      <Card className="space-y-4 p-4">
+      <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, MANAGEMENT_PAGE_CARD_STACK_CLASSNAME)}>
         {canPublish ? (
           <form className="space-y-3 rounded-md border border-border bg-slate-50 p-3" onSubmit={submitPost}>
             <div>

@@ -5,6 +5,7 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { api } from "../../api";
 import { Card } from "../../components/ui/card";
+import { cn } from "../../lib/utils";
 import { Select } from "../../components/ui/select";
 import { Tabs } from "../../components/ui/tabs";
 import { ActivityReportDialog } from "./activity-report-dialog";
@@ -12,7 +13,14 @@ import { ActivitiesTable } from "./activities-table";
 import { HomeworkQueueTable } from "./homework-queue-table";
 import { HOMEWORK_QUEUE_STATUS_FILTER, LECTURE_STATUS } from "./reporting.constants";
 import { ActivityLecture, HomeworkQueueItem } from "./types";
-import { EntityListToolbar } from "../common/components/entity-list-toolbar";
+import { useSession } from "../auth/session-context";
+import {
+  ENTITY_LIST_TO_TABLE_STACK_CLASSNAME,
+  ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME,
+  EntityListToolbar,
+  MANAGEMENT_PAGE_CARD_CLASSNAME,
+} from "../common/components/entity-list-toolbar";
+import { ROLE } from "../../types";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { useActivitiesQuery } from "./use-activities-data";
@@ -27,7 +35,9 @@ type ActivitiesPanelProps = {
 
 export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
   const { t } = useTranslation();
+  const { session } = useSession();
   const queryClient = useQueryClient();
+  const showCommunityColumn = session?.user.role === ROLE.SUPER_ADMIN;
   const [activeTab, setActiveTab] = useState("activities");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -134,7 +144,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
   };
 
   return (
-    <Card className="min-w-0 flex flex-col gap-1 overflow-x-hidden p-4">
+    <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, "flex flex-col gap-1 overflow-x-hidden")}>
       {enabled ? (
         <>
           <Tabs
@@ -146,8 +156,8 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
             ]}
           >
             {activeTab === "activities" ? (
-              <>
-                <div className="grid gap-2 pb-1 md:grid-cols-3">
+              <div className={ENTITY_LIST_TO_TABLE_STACK_CLASSNAME}>
+                <div className="grid gap-2 md:grid-cols-3">
                   <EntityListToolbar
                     search={search}
                     onSearchChange={(value) => {
@@ -157,6 +167,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     placeholder={t("activitiesSearchPlaceholder")}
                   />
                   <Select
+                    className={ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME}
                     value={reportNivo ? String(reportNivo) : ""}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -172,6 +183,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     ))}
                   </Select>
                   <Select
+                    className={ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME}
                     value={reportStatus || ""}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -190,6 +202,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   isLoading={activities.isLoading}
                   page={currentPage}
                   totalPages={totalPages}
+                  showCommunityColumn={showCommunityColumn}
                   onPageChange={setPage}
                   onEdit={(activity) => {
                     setEditingActivity(activity);
@@ -217,10 +230,10 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     }
                   }}
                 />
-              </>
+              </div>
             ) : (
-              <>
-                <div className="grid gap-2 pb-1 md:grid-cols-3">
+              <div className={ENTITY_LIST_TO_TABLE_STACK_CLASSNAME}>
+                <div className="grid gap-2 md:grid-cols-3">
                   <EntityListToolbar
                     search={homeworkSearch}
                     onSearchChange={(value) => {
@@ -230,6 +243,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     placeholder={t("homeworkQueueSearchPlaceholder")}
                   />
                   <Select
+                    className={ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME}
                     value={homeworkNivo ? String(homeworkNivo) : ""}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -246,6 +260,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     ))}
                   </Select>
                   <Select
+                    className={ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME}
                     value={homeworkLectureId}
                     onChange={(event) => {
                       setHomeworkLectureId(event.target.value);
@@ -271,6 +286,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     isLoading={homework.isLoading}
                     page={homeworkCurrentPage}
                     totalPages={homeworkTotalPages}
+                    showCommunityColumn={showCommunityColumn}
                     savingKey={savingHomeworkKey}
                     isBulkSaving={isBulkUpdatingHomework}
                     onPageChange={setHomeworkPage}
@@ -314,7 +330,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     }}
                   />
                 )}
-              </>
+              </div>
             )}
           </Tabs>
 

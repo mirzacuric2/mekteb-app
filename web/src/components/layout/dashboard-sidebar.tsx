@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ClipboardList,
@@ -13,6 +13,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import { Role } from "../../features/common/role";
 import { dashboardSections, SectionKey } from "../../features/dashboard/sections";
 import { cn } from "../../lib/utils";
 import { ROLE } from "../../types";
@@ -69,7 +70,6 @@ export function DashboardSidebar({
   const compactLogoSrc = "/branding/logo-small.svg";
   const shouldUseCompactLogo = !isMobile && !open;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const roleLabel = useMemo(() => role.replace("_", " "), [role]);
   const shouldUseSingleCommunityLabel = role === ROLE.ADMIN || role === ROLE.BOARD_MEMBER;
   const sectionIcons: Record<SectionKey, ReactNode> = {
     dashboard: <LayoutDashboard className="h-4 w-4 shrink-0" />,
@@ -246,7 +246,9 @@ export function DashboardSidebar({
                 <User className="h-4 w-4 text-slate-500" />
                 <span className="truncate font-medium">{fullName}</span>
               </div>
-              <p className="px-2 pb-2 text-xs text-slate-500">{roleLabel}</p>
+              <div className="px-2 pb-2">
+                <Role role={role} />
+              </div>
               <button
                 type="button"
                 className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"

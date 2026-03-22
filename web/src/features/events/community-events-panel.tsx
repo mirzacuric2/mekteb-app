@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
+import { MANAGEMENT_PAGE_CARD_CLASSNAME } from "../common/components/entity-list-toolbar";
 import { Loader } from "../common/components/loader";
 import { CommunityEventFormDialog, mapEventFormValuesToCreatePayload, mapEventFormValuesToUpdatePayload } from "./community-event-form-dialog";
 import { CommunityEventsCalendar } from "./community-events-calendar";
@@ -166,14 +167,14 @@ export function CommunityEventsPanel({
 
   if (!communityId) {
     return (
-      <Card>
+      <Card className={MANAGEMENT_PAGE_CARD_CLASSNAME}>
         <p className="text-sm text-slate-500">{t("communityNotAssigned")}</p>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       {!dashboardPreview ? (
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -193,9 +194,9 @@ export function CommunityEventsPanel({
               }}
               aria-label={t("eventsCreateEvent")}
               title={t("eventsCreateEvent")}
-              className="h-9 w-9 px-0 sm:h-10 sm:w-auto sm:px-3"
+              className="h-8 w-8 shrink-0 gap-1.5 px-0 py-0 text-xs sm:h-8 sm:w-auto sm:px-2.5 sm:text-sm"
             >
-              <CalendarPlus2 className="h-4 w-4" />
+              <CalendarPlus2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">{t("eventsCreateEvent")}</span>
             </Button>
           ) : null}
@@ -203,7 +204,7 @@ export function CommunityEventsPanel({
       ) : null}
 
       {showEventsLoader ? (
-        <Card>
+        <Card className={MANAGEMENT_PAGE_CARD_CLASSNAME}>
           <Loader size="sm" text={t("eventsLoading")} />
         </Card>
       ) : showMonthView ? (
@@ -253,6 +254,7 @@ export function CommunityEventsPanel({
           canManageEvents={canManageEvents}
           hoverActionsForDesktop={hoverActionsForDesktop}
           stackWeeklyDays={stackWeeklyDays}
+          dashboardPreview={dashboardPreview}
           weekPreviewHint={dashboardPreview ? t("eventsDashboardCommunityCalendarDescription") : undefined}
           showParentWeekSummary={showWeekSummaryAboveDays}
           weekSummaryVariant={dashboardPreview ? WEEK_SUMMARY_VARIANT.FAMILY : WEEK_SUMMARY_VARIANT.COMMUNITY}

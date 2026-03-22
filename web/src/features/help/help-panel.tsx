@@ -1,8 +1,9 @@
-import { BookOpen, ShieldCheck, UserRound, Users } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../../components/ui/card";
 import { useSession } from "../auth/session-context";
 import { ROLE } from "../../types";
+import { HelpHandbookCard } from "./handbook";
 
 export function HelpPanel() {
   const { session } = useSession();
@@ -29,7 +30,11 @@ export function HelpPanel() {
         </ul>
       </Card>
 
-      {(role === ROLE.SUPER_ADMIN || role === ROLE.ADMIN || role === ROLE.USER || role === ROLE.BOARD_MEMBER) && (
+      {(role === ROLE.SUPER_ADMIN ||
+        role === ROLE.ADMIN ||
+        role === ROLE.USER ||
+        role === ROLE.PARENT ||
+        role === ROLE.BOARD_MEMBER) && (
         <Card className="space-y-2">
           <h4 className="text-base font-semibold">{t("helpCommonBasicsTitle")}</h4>
           <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
@@ -41,50 +46,7 @@ export function HelpPanel() {
         </Card>
       )}
 
-      {role === ROLE.SUPER_ADMIN && (
-        <Card className="space-y-2">
-          <h4 className="flex items-center gap-2 text-base font-semibold">
-            <ShieldCheck className="h-4 w-4 text-slate-500" />
-            {t("helpSuperAdminTitle")}
-          </h4>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
-            <li>{t("helpSuperAdmin1")}</li>
-            <li>{t("helpSuperAdmin2")}</li>
-            <li>{t("helpSuperAdmin3")}</li>
-            <li>{t("helpSuperAdmin4")}</li>
-          </ul>
-        </Card>
-      )}
-
-      {role === ROLE.ADMIN && (
-        <Card className="space-y-2">
-          <h4 className="flex items-center gap-2 text-base font-semibold">
-            <Users className="h-4 w-4 text-slate-500" />
-            {t("helpAdminTitle")}
-          </h4>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
-            <li>{t("helpAdmin1")}</li>
-            <li>{t("helpAdmin2")}</li>
-            <li>{t("helpAdmin3")}</li>
-            <li>{t("helpAdmin4")}</li>
-          </ul>
-        </Card>
-      )}
-
-      {(role === ROLE.USER || role === ROLE.BOARD_MEMBER) && (
-        <Card className="space-y-2">
-          <h4 className="flex items-center gap-2 text-base font-semibold">
-            <UserRound className="h-4 w-4 text-slate-500" />
-            {t("helpUserTitle")}
-          </h4>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
-            <li>{t("helpUser1")}</li>
-            <li>{t("helpUser2")}</li>
-            <li>{t("helpUser3")}</li>
-            <li>{t("helpUser4")}</li>
-          </ul>
-        </Card>
-      )}
+      <HelpHandbookCard />
 
       <Card className="space-y-2">
         <h4 className="text-base font-semibold">{t("helpTroubleshootingTitle")}</h4>

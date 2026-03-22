@@ -57,7 +57,7 @@ export function NotificationBellMenu() {
           <div className="max-h-[360px] space-y-1 overflow-y-auto px-1 pb-2">
             {recentItems.length === 0 ? (
               <div className="rounded-md border border-dashed border-slate-200 px-3 py-5 text-center text-sm text-slate-500">
-                No notifications yet.
+                {t("notificationsBellEmpty")}
               </div>
             ) : (
               recentItems.map((item) => (
@@ -93,7 +93,7 @@ export function NotificationBellMenu() {
               navigate("/app/notifications");
             }}
           >
-            See all
+            {t("notificationsSeeAll")}
           </Button>
         </div>
       ) : null}

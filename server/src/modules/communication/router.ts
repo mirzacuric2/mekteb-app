@@ -719,6 +719,7 @@ export function communicationRouter() {
         : {}),
     };
     const include = {
+      community: { select: { id: true, name: true } },
       attendance: {
         include: {
           child: {
@@ -1229,7 +1230,17 @@ export function communicationRouter() {
       prisma.attendance.findMany({
         where,
         include: {
-          lecture: { select: { id: true, topic: true, status: true, completedAt: true, updatedAt: true, createdAt: true } },
+          lecture: {
+            select: {
+              id: true,
+              topic: true,
+              status: true,
+              completedAt: true,
+              updatedAt: true,
+              createdAt: true,
+              community: { select: { id: true, name: true } },
+            },
+          },
           child: { select: { id: true, firstName: true, lastName: true, nivo: true } },
           lesson: { select: { id: true, title: true, nivo: true } },
         },

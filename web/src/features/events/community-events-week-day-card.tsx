@@ -40,7 +40,7 @@ export function CommunityEventsWeekDayCard({
   const visibleDayItems = isExpanded ? dayItems : dayItems.slice(0, DAY_PREVIEW_EVENT_LIMIT);
 
   return (
-    <div className="lg:min-w-0" style={{ flexGrow: dayItems.length ? 1.45 : 0.9, flexBasis: 0 }}>
+    <div className="h-full min-w-0 w-full">
       <Card
         className={
           dayItems.length
@@ -63,7 +63,7 @@ export function CommunityEventsWeekDayCard({
 
         <div className={`space-y-2 ${dayItems.length ? "max-h-[280px] overflow-y-auto pr-1" : ""}`}>
           {!dayItems.length ? (
-            <p className="text-xs text-slate-500">{t("eventsNoEvents")}</p>
+            <p className="break-words text-xs leading-snug text-slate-500">{t("eventsNoEvents")}</p>
           ) : (
             visibleDayItems.map((item) => {
               const event = item.event;
@@ -85,7 +85,15 @@ export function CommunityEventsWeekDayCard({
                           style={{ backgroundColor: badgeColor }}
                           aria-hidden
                         />
-                        <p className="line-clamp-1 text-xs font-semibold leading-tight text-slate-900 break-words">{event.title}</p>
+                        <p
+                          className={
+                            canManageEvents
+                              ? "line-clamp-1 text-xs font-semibold leading-tight text-slate-900 break-words"
+                              : "text-xs font-semibold leading-snug text-slate-900 break-words"
+                          }
+                        >
+                          {event.title}
+                        </p>
                       </div>
                     </div>
                     {canManageEvents ? (

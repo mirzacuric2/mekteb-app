@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../../components/ui/button";
 
 type EntityRowActionsProps = {
@@ -8,6 +9,7 @@ type EntityRowActionsProps = {
 };
 
 export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [mobileMenuDirection, setMobileMenuDirection] = useState<"up" | "down">("down");
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -24,37 +26,40 @@ export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
   }, []);
 
   return (
-    <div ref={rootRef} className="relative flex w-full justify-end gap-2">
-      <div className="hidden gap-2 md:flex">
+    <div ref={rootRef} className="relative flex w-full justify-end gap-1.5">
+      <div className="hidden gap-1.5 md:flex">
         <Button
+          type="button"
           variant="outline"
-          className="px-2"
+          className="h-8 w-8 shrink-0 px-0 py-0"
           onClick={(event) => {
             event.stopPropagation();
             onEdit();
           }}
-          aria-label="Edit"
+          aria-label={t("edit")}
         >
-          <Pencil size={16} />
+          <Pencil className="h-4 w-4" aria-hidden />
         </Button>
         <Button
+          type="button"
           variant="outline"
-          className="px-2"
+          className="h-8 w-8 shrink-0 px-0 py-0"
           onClick={(event) => {
             event.stopPropagation();
             onDelete();
           }}
-          aria-label="Delete"
+          aria-label={t("delete")}
         >
-          <Trash2 size={16} />
+          <Trash2 className="h-4 w-4" aria-hidden />
         </Button>
       </div>
 
       <div className="md:hidden">
         <Button
+          type="button"
           variant="outline"
-          className="px-2"
-          aria-label="More actions"
+          className="h-8 w-8 shrink-0 px-0 py-0"
+          aria-label={t("usersTableActions")}
           onClick={(event) => {
             event.stopPropagation();
             if (!open && rootRef.current) {
@@ -67,7 +72,7 @@ export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
             setOpen((prev) => !prev);
           }}
         >
-          <MoreHorizontal size={16} />
+          <MoreHorizontal className="h-4 w-4" aria-hidden />
         </Button>
         {open ? (
           <div
@@ -86,7 +91,7 @@ export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
               }}
             >
               <Pencil size={14} />
-              <span>Edit</span>
+              <span>{t("edit")}</span>
             </button>
             <button
               type="button"
@@ -98,7 +103,7 @@ export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
               }}
             >
               <Trash2 size={14} />
-              <span>Delete</span>
+              <span>{t("delete")}</span>
             </button>
           </div>
         ) : null}

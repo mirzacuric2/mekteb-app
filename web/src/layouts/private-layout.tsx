@@ -196,7 +196,7 @@ function PrivateLayoutShell() {
                 {canReportActivities ? (
                   <Button
                     type="button"
-                    className="ml-1 whitespace-nowrap"
+                    className="ml-1 h-10 whitespace-nowrap px-3.5 shadow-sm sm:px-4"
                     aria-label={t("reportActivities")}
                     onClick={() => setIsQuickReportOpen(true)}
                   >

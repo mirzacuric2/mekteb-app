@@ -49,10 +49,6 @@ export function isValidIsoDateString(value: string) {
   return date.toISOString().slice(0, 10) === value;
 }
 
-/**
- * ISO 8601 week (Monday-based; week 1 contains the first Thursday).
- * Use a date in the target week (e.g. the week's Thursday) for a stable ISO week-year.
- */
 export function getIsoWeekYearAndNumber(input: Date): { isoYear: number; week: number } {
   const d = new Date(input.getFullYear(), input.getMonth(), input.getDate());
   d.setHours(0, 0, 0, 0);

@@ -13,6 +13,7 @@ type HomeworkQueueTableProps = {
   isLoading: boolean;
   page: number;
   totalPages: number;
+  showCommunityColumn?: boolean;
   savingKey?: string;
   isBulkSaving?: boolean;
   onPageChange: (page: number) => void;
@@ -25,6 +26,7 @@ export function HomeworkQueueTable({
   isLoading,
   page,
   totalPages,
+  showCommunityColumn = false,
   savingKey,
   isBulkSaving,
   onPageChange,
@@ -33,6 +35,7 @@ export function HomeworkQueueTable({
 }: HomeworkQueueTableProps) {
   const { t } = useTranslation();
   const [selectedKeys, setSelectedKeys] = useState<Record<string, boolean>>({});
+  const colSpan = showCommunityColumn ? 5 : 4;
 
   const keys = useMemo(() => new Set(items.map((item) => item.id)), [items]);
   const selectedItems = useMemo(() => items.filter((item) => selectedKeys[item.id]), [items, selectedKeys]);
@@ -57,10 +60,10 @@ export function HomeworkQueueTable({
       <DataTable
         className="overflow-hidden"
         scrollClassName="overflow-x-auto !overflow-y-hidden"
-        tableClassName="min-w-[640px] border-collapse text-sm md:min-w-0 md:w-full md:table-fixed"
+        tableClassName={`${showCommunityColumn ? "min-w-[760px]" : "min-w-[640px]"} border-collapse text-sm md:min-w-0 md:w-full md:table-fixed`}
         headers={
           <>
-            <th className="w-[7%] whitespace-nowrap border-b border-border px-3 py-3 align-middle font-medium">
+            <th className="w-[7%] !text-center">
               <div className="flex items-center justify-center">
                 <Checkbox
                   checked={allSelectableSelected}
@@ -77,9 +80,12 @@ export function HomeworkQueueTable({
                 />
               </div>
             </th>
-            <th className="w-[35%] whitespace-nowrap border-b border-border px-3 py-3 font-medium">{t("usersTableName")}</th>
-            <th className="w-[26%] whitespace-nowrap border-b border-border px-3 py-3 font-medium">{t("activityReportLessonPerChild")}</th>
-            <th className="w-[32%] whitespace-nowrap border-b border-border px-3 py-3 font-medium">{t("homeworkQueueDoneLabel")}</th>
+            <th className="w-[30%]">{t("usersTableName")}</th>
+            {showCommunityColumn ? (
+              <th className="w-[18%]">{t("usersTableCommunity")}</th>
+            ) : null}
+            <th className="w-[24%]">{t("activityReportLessonPerChild")}</th>
+            <th className="w-[28%]">{t("homeworkQueueDoneLabel")}</th>
           </>
         }
       >
@@ -87,7 +93,7 @@ export function HomeworkQueueTable({
           const rowKey = item.id;
           return (
             <tr key={rowKey} className="border-b border-border transition-colors hover:bg-slate-50">
-              <td className="px-3 py-2.5 align-middle">
+              <td>
                 <div className="flex items-center justify-center">
                   <Checkbox
                     checked={Boolean(selectedKeys[rowKey])}
@@ -103,17 +109,24 @@ export function HomeworkQueueTable({
                   />
                 </div>
               </td>
-              <td className="px-3 py-2.5 font-medium text-slate-900">
+              <td className="font-medium text-slate-900">
                 <span className="block truncate" title={`${item.child.firstName} ${item.child.lastName}`}>
                   {item.child.firstName} {item.child.lastName}
                 </span>
               </td>
-              <td className="px-3 py-2.5">
+              {showCommunityColumn ? (
+                <td>
+                  <span className="block truncate" title={item.lecture.community?.name || ""}>
+                    {item.lecture.community?.name?.trim() ? item.lecture.community.name : t("na")}
+                  </span>
+                </td>
+              ) : null}
+              <td>
                 <span className="block truncate" title={item.lesson.title}>
                   {item.lesson.title}
                 </span>
               </td>
-              <td className="px-3 py-2.5">
+              <td>
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={item.done}
@@ -130,11 +143,11 @@ export function HomeworkQueueTable({
           );
         })}
         {isLoading ? (
-          <TableLoadingRow colSpan={4} text={t("reportingLoading")} />
+          <TableLoadingRow colSpan={colSpan} text={t("reportingLoading")} />
         ) : null}
         {!isLoading && !keys.size ? (
           <tr>
-            <td className="px-5 py-10 text-center text-slate-500" colSpan={4}>
+            <td className="!py-10 !text-center text-slate-500" colSpan={colSpan}>
               {t("homeworkQueueNoResults")}
             </td>
           </tr>

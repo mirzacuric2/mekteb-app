@@ -1,73 +1,73 @@
-# ADMIN Handbook
+# ADMIN handbook
 
-ADMIN manages users and content within assigned community scope.
+`ADMIN` is the **community Imam/operator** role: full management inside **your** community. This handbook is **not** shown to parent-only accounts; it assumes you already manage users and teaching workflows daily.
 
-## Primary Responsibilities
+## How navigation works
 
-- Manage parents/users in your community.
-- Manage children and attendance/lesson activities in your community.
-- Publish posts and communicate with families.
+- **Sidebar — General:** Dashboard, Posts, Help, Notifications.
+- **Sidebar — Management:** **Users**, **Children**, **Activities**, **Community** (singular label when you are fixed to one community). You do **not** see **Lessons** (`SUPER_ADMIN` only).
+- **Top bar:** **Report activities** opens the lecture reporting dialog quickly from any page (same capability as `SUPER_ADMIN` within scope).
 
-## What You Can Do
+## Screen by screen
 
-- Create/update/delete `BOARD_MEMBER` and `PARENT` accounts in your community.
-- View users and children in your community.
-- Configure **diploma PDFs** on **Community → Diplomas** (tab): **PDF template** card (upload/replace background PDF, save/remove) and **Text positions and style** (click-to-place preview, typography/colors, sample output). **Default imam line** can be left empty to suggest the first assigned community admin as `First ef. Last`. Use **Generate diplomas** for ceremony date / nivo filter / imam override / child selection and a merged PDF download. Generation is in the browser; **template and layout are stored per community**, not the generated files.
-- Create children with required `SSN`, `community`, `nivo`, and at least one linked parent.
-- Update children in your community, including `nivo`, parent links, and optional child address.
-- When assigning child parents, you can select parent accounts in `PENDING`, `ACTIVE`, or `INACTIVE` status.
-- Any community user except `SUPER_ADMIN` can be linked as a child parent when needed.
-- Mark children as `COMPLETED` when they finish lessons.
-- Mark children as `DISCONTINUED` when they stop attending before completion.
-- Inactivate children in your community when needed (separate from completion, keeps history).
-- Use child create/update modal with inline validation for required fields (SSN, name, birth date, parent links, community for super admin context, and complete address if any address value is entered).
-- Create/update/delete posts for your community.
-- Manage lectures/attendance entries.
-- Use `Report activities` for bulk child reporting:
-  - select one `Nivo`,
-  - review all active children in that nivo,
-  - preselect a default lesson and override per child when needed (default auto-applies; no extra apply button),
-  - mark each child as absent/present,
-  - capture attendance comment separately from homework title/description/done state.
-- Use the `Activities` page in sidebar to review saved reports in a table and trigger edit/delete/complete actions.
-- Mark reports as `Completed` only when all attendance rows are final and each row has a lesson selected.
-- Use the `Homework queue` tab inside Activities for follow-up between lectures (bulk monitor pending homework and update done/title/description per child+lesson).
-- Homework queue follow-up is lecture-driven: select `Nivo` then `Lecture`, then mark homework done one child at a time.
-- Editing from the `Activities` page opens the report modal prefilled for update.
-- Submit one report to save attendance/progress details for all listed children in one action.
-- Send and receive messages.
-- Reply to parent context threads (homework and lecture comments) directly from the global chat dock.
-- Lock a conversation thread with the explicit `Lock thread` action (type `CLOSE` to confirm) when communication is complete; closed threads remain visible for audit/history.
-- Keep parent-facing information timely and accurate.
+### Dashboard (`/app/dashboard`)
 
-## What You Cannot Do
+- **Purpose:** Operational snapshot: family-style progress cards when applicable, **this week** events (read-only on the dashboard; editing happens under **Community → Events**), and **recent posts** with a shortcut to **Posts**.
+- **Expectation:** Use it for pulse checks; deep work happens in management sections.
 
-- Create or manage `SUPER_ADMIN` users.
-- Promote users outside role policy.
-- Perform cross-community privileged operations.
-- Manage lessons catalog if restricted to super admin.
-- Modify children outside your assigned community.
+### Posts (`/app/posts`)
 
-## Recommended Workflow
+- **Purpose:** Community announcements.
+- **What you can do:** **Create**, **edit**, and **delete** posts for your community; moderate comments (delete unsuitable comments); community members react and comment.
+- **Note:** `SUPER_ADMIN` can also edit/delete posts when operating across communities; day-to-day publishing is yours.
 
-1. Keep user records complete and active status correct.
-2. Keep children records and parent links up to date.
-3. Save attendance reports as draft, then finalize with `Complete lecture` when ready.
-4. Use Homework queue daily to clear pending homework before the next lecture.
-5. Publish timely posts and use messaging for direct parent communication.
-6. Review notifications, respond in active threads, and close completed threads.
+### Users (`/app/users`)
 
-## Best Practices
+- **Purpose:** Directory and lifecycle for accounts in **your** community.
+- **What you can do:** Create and manage `BOARD_MEMBER` and `PARENT` (and legacy `USER`) accounts per policy; open drawers for detail; exclude yourself from the table list (`excludeMe`) so you do not delete your own login from the grid flow.
+- **What you cannot do:** Create `SUPER_ADMIN`; assign platform `ADMIN` to a community (that is `SUPER_ADMIN` only).
 
-- Validate data before saving.
-- Avoid duplicate users/children.
-- Confirm destructive actions in dialogs before deletion.
+### Children (`/app/children`)
 
-## Daily Checklist
+- **Purpose:** Full **community** child roster (paginated table, search, row actions).
+- **What you can do:** Create/update children with required **SSN**, **nivo**, **community**, and **≥1 parent**; adjust **nivo** and **parent links**; mark **completed** / **discontinued** / **inactive** per lifecycle rules; open the **drawer** for progress and history.
+- **Parent vs admin fields:** Parents linked to a child may edit a subset of fields; you maintain authoritative placement and links.
 
-- Check new messages and reply to urgent questions.
-- Validate attendance updates before marking lecture completed.
-- Review pending rows in Homework queue and update done/title/description after parent/child follow-up.
-- Review warning comments after reporting and follow up with parents when needed.
-- Confirm new users are assigned to the correct community.
-- Review data for typos and missing required fields.
+### Activities (`/app/activities`)
+
+- **Purpose:** **Reports** table + **Homework queue** tab for lecture attendance and follow-up.
+- **What you can do:** Run **Report activities** (from header or here) to capture attendance and homework state per **nivo**; save drafts; **complete** lectures when every row is final and lessons are chosen; use **Homework queue** to clear pending homework by **nivo** + **lecture**.
+- **Scope:** Lists are **single-community**; you do **not** see a **Community** column (that is for `SUPER_ADMIN` multi-community views).
+
+### Community (`/app/communities`)
+
+- **Purpose:** Single-community **hub** (your assignment): compact summary, **Edit** basic info (modal without board-member bulk fields in that entry), tabs such as **Overview**, **Board members**, **Events**, **Diplomas**.
+- **Overview:** Stats and donuts for users/children and nivo-level signals—community-scoped.
+- **Board members:** Adjust board roster where permitted; changes save per current UX (auto-save pattern).
+- **Events:** Weekly/month calendar; create/update/delete events you are allowed to manage (recurrence supported per product docs).
+- **Diplomas:** Configure PDF template and text layout; generate merged PDFs in the browser for ceremonies (see README feature notes for limits).
+
+### Notifications (`/app/notifications`)
+
+- Same as other roles but includes items triggered by your administrative actions and community engagement.
+
+### Help (`/app/help`)
+
+- Shows **ADMIN**-specific hints only when logged in as `ADMIN` (not to parents).
+
+### Messages
+
+- Chat dock: reply to parents, including context threads; **Lock thread** when a conversation should end (parents must start a new thread afterward).
+
+## Boundaries
+
+- All mutations are **community-scoped**; you cannot touch another community’s records.
+- **Lessons** catalog changes are **`SUPER_ADMIN`** only.
+- **Imam assignment** on communities may be read-only in UI for you; super admin governs platform admins.
+
+## Daily checklist (condensed)
+
+- Messages and urgent parent threads.
+- Attendance drafts → **Complete lecture** when verified.
+- Homework queue cleared before the next session.
+- Posts and events kept current.

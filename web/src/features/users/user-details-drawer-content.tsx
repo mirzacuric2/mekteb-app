@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tabs } from "../../components/ui/tabs";
 import { NaValue } from "../common/components/na-value";
-import { EntityDetailItem, EntityDetailSection } from "../common/components/entity-detail-components";
-import { UserAddressRecord, UserRecord } from "./users-table";
+import {
+  EntityDetailSection,
+  EntityDetailTable,
+  EntityDetailTableRow,
+} from "../common/components/entity-detail-components";
+import { UserRecord } from "./users-table";
+import { formatAddressLine } from "../communities/community-utils";
 import { LESSON_NIVO_LABEL, LessonNivo } from "../lessons/constants";
 import { formatDateTime } from "../../lib/date-time";
 
@@ -18,20 +24,10 @@ type Props = {
   user: UserRecord;
   communityName?: string | null;
   children: ChildSummary[];
+  onOpenChild?: (childId: string) => void;
 };
 
-function formatAddress(address?: UserAddressRecord | null) {
-  if (!address) return null;
-  return {
-    streetLine1: address.streetLine1,
-    streetLine2: address.streetLine2 || "",
-    cityLine: `${address.postalCode} ${address.city}`.trim(),
-    state: address.state || "",
-    country: address.country,
-  };
-}
-
-export function UserDetailsDrawerContent({ user, communityName, children }: Props) {
+export function UserDetailsDrawerContent({ user, communityName, children, onOpenChild }: Props) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("basic");
 
@@ -41,45 +37,34 @@ export function UserDetailsDrawerContent({ user, communityName, children }: Prop
 
   const tabOptions = useMemo(
     () => [
-      { key: "basic", label: "Basic info" },
-      { key: "children", label: "Children" },
-      { key: "address", label: "Address" },
+      { key: "basic", label: t("basicInfo") },
+      { key: "children", label: t("usersTableChildren") },
     ],
-    []
+    [t]
   );
-  const addressLines = formatAddress(user.address);
+  const addressText = user.address ? formatAddressLine(user.address).trim() : "";
+
   return (
     <Tabs value={activeTab} onChange={setActiveTab} tabs={tabOptions}>
       {activeTab === "basic" ? (
-        <EntityDetailSection>
-          <div className="divide-y divide-border">
-            <div className="py-2">
-              <EntityDetailItem label={t("email")} value={user.email} />
-            </div>
-            <div className="py-2">
-              <EntityDetailItem label={t("role")} value={user.role} />
-            </div>
-            <div className="py-2">
-              <EntityDetailItem label={t("usersTablePhone")} value={<NaValue value={user.phoneNumber} />} />
-            </div>
-            <div className="py-2">
-              <EntityDetailItem label={t("community")} value={<NaValue value={communityName} />} />
-            </div>
-            <div className="py-2">
-              <EntityDetailItem label={t("ssn")} value={<NaValue value={user.ssn} />} />
-            </div>
+        <div className="space-y-3">
+          <EntityDetailTable>
+            <EntityDetailTableRow label={t("email")} value={user.email} />
+            <EntityDetailTableRow label={t("usersTablePhone")} value={<NaValue value={user.phoneNumber} />} />
+            <EntityDetailTableRow label={t("community")} value={<NaValue value={communityName} />} />
+            <EntityDetailTableRow label={t("ssn")} value={<NaValue value={user.ssn} />} />
             {user.createdAt ? (
-              <div className="py-2">
-                <EntityDetailItem label={t("created")} value={formatDateTime(user.createdAt)} />
-              </div>
+              <EntityDetailTableRow label={t("created")} value={formatDateTime(user.createdAt)} />
             ) : null}
             {user.updatedAt ? (
-              <div className="py-2">
-                <EntityDetailItem label={t("updated")} value={formatDateTime(user.updatedAt)} />
-              </div>
+              <EntityDetailTableRow label={t("updated")} value={formatDateTime(user.updatedAt)} />
             ) : null}
-          </div>
-        </EntityDetailSection>
+            <EntityDetailTableRow
+              label={t("address")}
+              value={<NaValue value={addressText || undefined} className="break-words" />}
+            />
+          </EntityDetailTable>
+        </div>
       ) : null}
 
       {activeTab === "children" ? (
@@ -87,53 +72,46 @@ export function UserDetailsDrawerContent({ user, communityName, children }: Prop
           {children.length ? (
             children.map((child, index) => {
               const childName = `${child.firstName || ""} ${child.lastName || ""}`.trim();
+              const title = `${t("usersTableChildren")} ${index + 1}`;
+              const table = (
+                <EntityDetailTable>
+                  <EntityDetailTableRow label={t("usersTableName")} value={<NaValue value={childName} />} />
+                  <EntityDetailTableRow
+                    label={t("childrenNivoLabel")}
+                    value={<NaValue value={child.nivo ? LESSON_NIVO_LABEL[child.nivo] : undefined} />}
+                  />
+                </EntityDetailTable>
+              );
+              if (onOpenChild) {
+                return (
+                  <button
+                    key={child.id}
+                    type="button"
+                    className="w-full rounded-lg border border-border bg-white p-4 text-left transition-colors hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    onClick={() => onOpenChild(child.id)}
+                    aria-label={`${t("parentDashboardViewDetails")}: ${childName || title}`}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+                        {t("parentDashboardViewDetails")}
+                        <ChevronRight className="h-4 w-4" aria-hidden />
+                      </span>
+                    </div>
+                    {table}
+                  </button>
+                );
+              }
               return (
-                <EntityDetailSection key={child.id} title={`Child ${index + 1}`}>
-                  <div className="divide-y divide-border">
-                    <div className="py-2">
-                      <EntityDetailItem label="Name" value={<NaValue value={childName} />} />
-                    </div>
-                    <div className="py-2">
-                      <EntityDetailItem label="Nivo" value={<NaValue value={child.nivo ? LESSON_NIVO_LABEL[child.nivo] : undefined} />} />
-                    </div>
-                  </div>
+                <EntityDetailSection key={child.id} title={title}>
+                  {table}
                 </EntityDetailSection>
               );
             })
           ) : (
-            <EntityDetailSection>
-              <EntityDetailItem label="Status" value="No children assigned." />
-            </EntityDetailSection>
-          )}
-        </div>
-      ) : null}
-
-      {activeTab === "address" ? (
-        <div className="space-y-3">
-          {addressLines ? (
-            <EntityDetailSection>
-              <div className="divide-y divide-border">
-                <div className="py-2">
-                  <EntityDetailItem label="Street line 1" value={<NaValue value={addressLines.streetLine1} />} />
-                </div>
-                <div className="py-2">
-                  <EntityDetailItem label="Street line 2" value={<NaValue value={addressLines.streetLine2} />} />
-                </div>
-                <div className="py-2">
-                  <EntityDetailItem label="City / Postal" value={<NaValue value={addressLines.cityLine} />} />
-                </div>
-                <div className="py-2">
-                  <EntityDetailItem label="State" value={<NaValue value={addressLines.state} />} />
-                </div>
-                <div className="py-2">
-                  <EntityDetailItem label="Country" value={<NaValue value={addressLines.country} />} />
-                </div>
-              </div>
-            </EntityDetailSection>
-          ) : (
-            <EntityDetailSection>
-              <EntityDetailItem label="Status" value={<NaValue />} />
-            </EntityDetailSection>
+            <EntityDetailTable>
+              <EntityDetailTableRow label={t("usersTableChildren")} value={t("noChildrenAdded")} />
+            </EntityDetailTable>
           )}
         </div>
       ) : null}
