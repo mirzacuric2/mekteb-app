@@ -30,9 +30,9 @@
 
 ### Children (`/app/children`)
 
-- **Purpose:** Same **Children** screen as parents: the list is scoped to **children linked to your user as a parent/guardian** (plus the same search/pagination patterns). If you have no linked children, the list can be empty even though you serve on the board.
-- **What you can do:** Open rows and the **drawer** for read-only insight on those linked records.
-- **What you cannot do:** Create, edit, or inactivate children (`canEditChildren` is false for `BOARD_MEMBER`). For community-wide child operations, use **ADMIN** workflows or the **Community → Overview** metrics (which use community-scoped summaries on the backend), not a full roster on this page.
+- **Purpose:** **Directory-style** view of **every child in your community** (same roster `ADMIN` sees for listing), with search and pagination.
+- **What you can do:** Open rows and the **drawer** for read-only insight (progress, details, timeline) on any listed child.
+- **What you cannot do:** Create, edit, or inactivate children (`canEditChildren` / `canInactivate` are false for `BOARD_MEMBER`). Bulk lesson grading and other write actions stay `ADMIN` / `SUPER_ADMIN` only. To change records, coordinate with an **ADMIN**.
 
 ### Community / Community detail (`/app/communities` or `/app/communities/:id`)
 

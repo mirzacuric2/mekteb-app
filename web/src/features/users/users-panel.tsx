@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
 import { UserPlus } from "lucide-react";
 import { api } from "../../api";
 import { Button } from "../../components/ui/button";
@@ -56,6 +57,8 @@ type UserAddressInput = {
 };
 export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { session } = useSession();
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
@@ -63,16 +66,11 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
-  const [childDrawerId, setChildDrawerId] = useState<string | null>(null);
+  const childIdFromQuery = useMemo(() => new URLSearchParams(location.search).get("childId") || null, [location.search]);
   const [deletingUser, setDeletingUser] = useState<UserRecord | null>(null);
   const queryClient = useQueryClient();
-  const isBoardMember = session?.user.role === ROLE.BOARD_MEMBER;
   const users = useUsersListQuery({ search, page, pageSize: DEFAULT_PAGE_SIZE, excludeMe: true }, enabled);
-  const children = useAuthedQuery<ChildMetaRecord[]>(
-    "children-users-meta",
-    isBoardMember ? "/children?communityScope=1" : "/children",
-    enabled
-  );
+  const children = useAuthedQuery<ChildMetaRecord[]>("children-users-meta", "/children", enabled);
   const communities = useAuthedQuery<CommunityRecord[]>("communities-users", "/communities", enabled);
 
   const communityById = useMemo(() => {
@@ -120,7 +118,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
     return lookup;
   }, [children.data]);
 
-  const childDrawerQuery = useChildByIdQuery(childDrawerId ?? undefined, false);
+  const childDrawerQuery = useChildByIdQuery(childIdFromQuery ?? undefined, false);
   const childForDrawer = childDrawerQuery.data ?? null;
   const lessonsForChildDrawer = useAuthedQuery<Lesson[]>(
     LESSONS_QUERY_KEY,
@@ -132,25 +130,39 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
     return (lessonsForChildDrawer.data || []).filter((lesson) => lesson.nivo === childForDrawer.nivo).length;
   }, [lessonsForChildDrawer.data, childForDrawer]);
 
+  const clearChildDrawerQueryParams = useCallback(() => {
+    const next = new URLSearchParams(location.search);
+    next.delete("childId");
+    next.delete("tab");
+    navigate(
+      {
+        pathname: location.pathname,
+        search: next.toString() ? `?${next.toString()}` : "",
+      },
+      { replace: true }
+    );
+  }, [location.pathname, location.search, navigate]);
+
   useEffect(() => {
-    if (!childDrawerId) return;
+    if (!childIdFromQuery) return;
     if (childDrawerQuery.isPending || childDrawerQuery.isFetching) return;
     if (childDrawerQuery.isError) {
       toast.error(t("usersChildDrawerLoadFailed"));
-      setChildDrawerId(null);
+      clearChildDrawerQueryParams();
       return;
     }
     if (childDrawerQuery.isSuccess && !childDrawerQuery.data) {
       toast.error(t("usersChildDrawerLoadFailed"));
-      setChildDrawerId(null);
+      clearChildDrawerQueryParams();
     }
   }, [
-    childDrawerId,
+    childIdFromQuery,
     childDrawerQuery.data,
     childDrawerQuery.isError,
     childDrawerQuery.isFetching,
     childDrawerQuery.isPending,
     childDrawerQuery.isSuccess,
+    clearChildDrawerQueryParams,
     t,
   ]);
 
@@ -509,24 +521,36 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                     : null
                 }
                 children={childrenByParentId.get(selectedUser.id) || []}
-                onOpenChild={(id) => setChildDrawerId(id)}
+                onOpenChild={(id) => {
+                  const next = new URLSearchParams(location.search);
+                  next.set("childId", id);
+                  next.delete("tab");
+                  navigate(
+                    {
+                      pathname: location.pathname,
+                      search: next.toString() ? `?${next.toString()}` : "",
+                    },
+                    { replace: true }
+                  );
+                }}
               />
             ) : null}
           </EntityDetailsDrawer>
 
           <ProgressChildDetailsDrawer
-            open={Boolean(childDrawerId)}
+            open={Boolean(childIdFromQuery)}
             isLoading={
-              Boolean(childDrawerId) &&
+              Boolean(childIdFromQuery) &&
               !childForDrawer &&
               (childDrawerQuery.isPending || childDrawerQuery.isFetching)
             }
             onOpenChange={(open) => {
-              if (!open) setChildDrawerId(null);
+              if (!open) clearChildDrawerQueryParams();
             }}
             child={childForDrawer}
             summary={null}
             scheduledLessons={childDrawerScheduledLessons}
+            childrenFetchMineOnly={false}
           />
           {canEdit ? (
             <DeleteConfirmDialog

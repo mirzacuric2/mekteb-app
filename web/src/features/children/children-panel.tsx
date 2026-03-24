@@ -9,7 +9,8 @@ import { Card } from "../../components/ui/card";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { useRoleAccess } from "../auth/use-role-access";
-import { UserPlus } from "lucide-react";
+import { useSession } from "../auth/session-context";
+import { ListChecks, UserPlus } from "lucide-react";
 import {
   ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME,
   ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME,
@@ -34,6 +35,7 @@ import { useCreateChildMutation, useInactivateChildMutation, useUpdateChildMutat
 import { ChildFormDialog, ChildParentOption } from "./child-form-dialog";
 import { ChildFormValues } from "./child-form-schema";
 import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
+import { BulkLessonOutcomeDialog } from "./bulk-lesson-outcome-dialog";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
 import { Lesson } from "../lessons/types";
@@ -52,19 +54,31 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   const [selectedChild, setSelectedChild] = useState<ChildRecord | null>(null);
   const [formApiError, setFormApiError] = useState<{ field?: string; message: string } | null>(null);
   const [page, setPage] = useState(1);
+  const [bulkGradingOpen, setBulkGradingOpen] = useState(false);
   const suppressQueryOpenRef = useRef(false);
   const queryClient = useQueryClient();
-  const { canAdminManage, canEditChildren, canInactivate, canChooseCommunity, isParent, isUser, isBoardMember } =
-    useRoleAccess();
+  const { ready: sessionReady, session } = useSession();
+  const {
+    canAdminManage,
+    canSetChildLessonOutcomes,
+    canEditChildren,
+    canInactivate,
+    canChooseCommunity,
+    isParent,
+    isUser,
+  } = useRoleAccess();
   const searchTerm = search.trim();
-  const mineOnly = isParent || isUser || isBoardMember;
+  /** Parents/users: linked children only. Board + admins: full community list (board is read-only in UI). */
+  const mineOnly = isParent || isUser;
+  const childrenListEnabled = sessionReady && Boolean(session);
   const children = useChildrenListQuery({
     search: searchTerm,
     page,
     pageSize: DEFAULT_PAGE_SIZE,
     mineOnly,
+    enabled: childrenListEnabled,
   });
-  const childById = useChildByIdQuery(childIdFromQuery, mineOnly);
+  const childById = useChildByIdQuery(childIdFromQuery, mineOnly, childrenListEnabled);
   const users = useChildrenParentOptionsQuery(canAdminManage);
   const communities = useChildrenCommunityOptionsQuery(canChooseCommunity);
   const parentOptions: ChildParentOption[] = (users.data || [])
@@ -195,11 +209,17 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   useEffect(() => {
     const selectedChildId = selectedChild?.id;
     if (selectedChildId === childIdFromQuery) return;
+    /** Keep `?childId=` until hydration fills `selectedChild` (deep links / slow fetch). */
+    if (!selectedChildId && childIdFromQuery) return;
     const nextParams = new URLSearchParams(location.search);
     if (selectedChildId) {
       nextParams.set("childId", selectedChildId);
+      if (selectedChildId !== childIdFromQuery) {
+        nextParams.delete("tab");
+      }
     } else {
       nextParams.delete("childId");
+      nextParams.delete("tab");
     }
     navigate(
       {
@@ -223,22 +243,37 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
           }}
           placeholder={t("childrenSearchPlaceholder")}
           actions={
-            canAdminManage ? (
-              <Button
-                variant="outline"
-                className={ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME}
-                onClick={() => {
-                  resetForm();
-                  setFormOpen(true);
-                }}
-              >
-                <UserPlus className={ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME} aria-hidden />
-                <span className={ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME}>{t("childrenCreate")}</span>
-              </Button>
+            canAdminManage || canSetChildLessonOutcomes ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {canSetChildLessonOutcomes ? (
+                  <Button
+                    variant="outline"
+                    className={ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME}
+                    title={t("bulkLessonOutcomeToolbarHint")}
+                    onClick={() => setBulkGradingOpen(true)}
+                  >
+                    <ListChecks className={ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME} aria-hidden />
+                    <span className={ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME}>{t("bulkLessonOutcomeToolbar")}</span>
+                  </Button>
+                ) : null}
+                {canAdminManage ? (
+                  <Button
+                    variant="outline"
+                    className={ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME}
+                    onClick={() => {
+                      resetForm();
+                      setFormOpen(true);
+                    }}
+                  >
+                    <UserPlus className={ENTITY_LIST_TOOLBAR_CREATE_ICON_CLASSNAME} aria-hidden />
+                    <span className={ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME}>{t("childrenCreate")}</span>
+                  </Button>
+                ) : null}
+              </div>
             ) : undefined
           }
         />
-        {children.isLoading ? (
+        {!childrenListEnabled || children.isLoading ? (
           <LoadingBlock text={t("childrenLoading")} containerClassName="min-h-[220px]" />
         ) : (
           <ChildrenTable
@@ -302,6 +337,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
           }
         }}
       />
+      <BulkLessonOutcomeDialog open={bulkGradingOpen} onOpenChange={setBulkGradingOpen} />
       <ProgressChildDetailsDrawer
         open={!!selectedChild}
         onOpenChange={(open) => {
@@ -311,6 +347,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
             if (childIdFromQuery) {
               const nextParams = new URLSearchParams(location.search);
               nextParams.delete("childId");
+              nextParams.delete("tab");
               navigate(
                 {
                   pathname: location.pathname,
@@ -324,6 +361,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
         child={selectedChild}
         summary={null}
         scheduledLessons={selectedChildScheduledLessons}
+        childrenFetchMineOnly={mineOnly}
       />
       <DeleteConfirmDialog
         open={!!deletingChild}

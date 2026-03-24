@@ -411,10 +411,7 @@ export function usersRouter() {
     const pageSize = query.data.pageSize ?? 10;
     const searchTerm = query.data.q?.trim();
     const mineOnly = query.data.mine === 1;
-    const communityScope = query.data.communityScope === 1;
-    const isBoardMember = req.user!.role === Role.BOARD_MEMBER;
-    const isLinkedChildrenOnlyRole =
-      req.user!.role === Role.USER || req.user!.role === Role.PARENT || (isBoardMember && !communityScope);
+    const isLinkedChildrenOnlyRole = req.user!.role === Role.USER || req.user!.role === Role.PARENT;
     const isSuperAdmin = req.user!.role === Role.SUPER_ADMIN;
     const requestorCommunityId = req.user!.communityId;
     if (!isSuperAdmin && !isLinkedChildrenOnlyRole && !mineOnly && !requestorCommunityId) {
@@ -473,6 +470,15 @@ export function usersRouter() {
           },
         },
         orderBy: { markedAt: "desc" as const },
+      },
+      lessonOutcomes: {
+        select: {
+          lessonId: true,
+          passed: true,
+          mark: true,
+          updatedAt: true,
+          markedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
       },
     };
     const childrenOrderBy = [{ status: "asc" as const }, { firstName: "asc" as const }, { lastName: "asc" as const }];
@@ -824,6 +830,134 @@ export function usersRouter() {
       },
     });
       return res.json(updated);
+    }
+  );
+
+  const lessonOutcomePatchSchema = z
+    .object({
+      passed: z.boolean().nullable().optional(),
+      mark: z.number().int().min(1).max(10).nullable().optional(),
+    })
+    .refine((body) => body.passed !== undefined || body.mark !== undefined, {
+      message: "At least one of passed or mark is required",
+    });
+
+  const lessonOutcomeBulkSchema = z
+    .object({
+      lessonId: z.string().uuid(),
+      items: z
+        .array(
+          z.object({
+            childId: z.string().uuid(),
+            passed: z.boolean(),
+            mark: z.union([z.number().int().min(1).max(10), z.null()]),
+          })
+        )
+        .min(1)
+        .max(150),
+    })
+    .refine((body) => new Set(body.items.map((item) => item.childId)).size === body.items.length, {
+      message: "Duplicate childId in items",
+    });
+
+  // Bulk lesson pass/mark: ADMIN and SUPER_ADMIN only.
+  router.post(
+    "/children/lesson-outcomes/bulk",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
+    async (req: AppRequest, res) => {
+      const parsed = lessonOutcomeBulkSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid payload" });
+      }
+
+      const lesson = await prisma.lesson.findUnique({ where: { id: parsed.data.lessonId } });
+      if (!lesson) return res.status(404).json({ message: "Lesson not found" });
+
+      const childIds = [...new Set(parsed.data.items.map((item) => item.childId))];
+      const children = await prisma.child.findMany({ where: { id: { in: childIds } } });
+      if (children.length !== childIds.length) {
+        return res.status(404).json({ message: "One or more children not found" });
+      }
+
+      for (const child of children) {
+        if (!canAccessCommunity(req, child.communityId)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+        if (child.nivo !== lesson.nivo) {
+          return res.status(400).json({ message: "Child nivo does not match lesson nivo" });
+        }
+      }
+
+      await prisma.$transaction(
+        parsed.data.items.map((item) =>
+          prisma.childLessonOutcome.upsert({
+            where: {
+              childId_lessonId: { childId: item.childId, lessonId: parsed.data.lessonId },
+            },
+            create: {
+              childId: item.childId,
+              lessonId: parsed.data.lessonId,
+              passed: item.passed,
+              mark: item.mark,
+              markedById: req.user!.id,
+            },
+            update: {
+              passed: item.passed,
+              mark: item.mark,
+              markedById: req.user!.id,
+            },
+          })
+        )
+      );
+
+      return res.json({ updated: parsed.data.items.length });
+    }
+  );
+
+  // Lesson pass/mark: ADMIN and SUPER_ADMIN only (not board/parent).
+  router.patch(
+    "/children/:childId/lesson-outcomes/:lessonId",
+    requireAuth,
+    requireAnyRole(Role.SUPER_ADMIN, Role.ADMIN),
+    async (req: AppRequest, res) => {
+      const parsed = lessonOutcomePatchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid payload" });
+      }
+
+      const child = await prisma.child.findUnique({ where: { id: req.params.childId } });
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessCommunity(req, child.communityId)) return res.status(403).json({ message: "Forbidden" });
+
+      const lesson = await prisma.lesson.findUnique({ where: { id: req.params.lessonId } });
+      if (!lesson) return res.status(404).json({ message: "Lesson not found" });
+      if (lesson.nivo !== child.nivo) {
+        return res.status(400).json({ message: "Lesson nivo does not match child nivo" });
+      }
+
+      const outcome = await prisma.childLessonOutcome.upsert({
+        where: {
+          childId_lessonId: { childId: req.params.childId, lessonId: req.params.lessonId },
+        },
+        create: {
+          childId: req.params.childId,
+          lessonId: req.params.lessonId,
+          passed: parsed.data.passed !== undefined ? parsed.data.passed : null,
+          mark: parsed.data.mark !== undefined ? parsed.data.mark : null,
+          markedById: req.user!.id,
+        },
+        update: {
+          ...(parsed.data.passed !== undefined ? { passed: parsed.data.passed } : {}),
+          ...(parsed.data.mark !== undefined ? { mark: parsed.data.mark } : {}),
+          markedById: req.user!.id,
+        },
+        include: {
+          markedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      return res.json(outcome);
     }
   );
 

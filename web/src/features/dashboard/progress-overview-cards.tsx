@@ -1,10 +1,11 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo } from "react";
 import { BookCheck, BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { Card } from "../../components/ui/card";
-import { HOMEWORK_STATUS } from "./progress-overview.constants";
 import { useProgressOverview } from "./use-progress-overview";
 import { ProgressChildDetailsDrawer } from "./progress-child-details-drawer";
+import { CHILD_DRAWER_TAB } from "./child-drawer-tab.constants";
 
 type ProgressOverviewCardsProps = {
   enabled: boolean;
@@ -81,7 +82,8 @@ function ProgressMetricCard({
 export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
   const { t } = useTranslation();
   const metrics = useProgressOverview(enabled);
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const childIdFromUrl = searchParams.get("childId");
   const sortedChildSummaries = [...metrics.childSummaries].sort((a, b) => {
     if (a.hasPerformanceRecords !== b.hasPerformanceRecords) return a.hasPerformanceRecords ? -1 : 1;
     if (a.pendingHomeworkCount !== b.pendingHomeworkCount) return b.pendingHomeworkCount - a.pendingHomeworkCount;
@@ -89,13 +91,45 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
     return a.childName.localeCompare(b.childName, undefined, { sensitivity: "base" });
   });
   const selectedChild = useMemo(
-    () => metrics.children.find((child) => child.id === selectedChildId) || null,
-    [metrics.children, selectedChildId]
+    () => (childIdFromUrl ? metrics.children.find((child) => child.id === childIdFromUrl) || null : null),
+    [metrics.children, childIdFromUrl]
   );
   const selectedSummary = useMemo(
-    () => metrics.childSummaries.find((summary) => summary.childId === selectedChildId) || null,
-    [metrics.childSummaries, selectedChildId]
+    () => (childIdFromUrl ? metrics.childSummaries.find((summary) => summary.childId === childIdFromUrl) || null : null),
+    [metrics.childSummaries, childIdFromUrl]
   );
+
+  useEffect(() => {
+    if (!enabled || metrics.isLoading || metrics.isError || !childIdFromUrl) return;
+    if (metrics.children.some((c) => c.id === childIdFromUrl)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("childId");
+        next.delete("tab");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [childIdFromUrl, enabled, metrics.children, metrics.isError, metrics.isLoading, setSearchParams]);
+
+  const openChildDrawer = (childId: string, tab: (typeof CHILD_DRAWER_TAB)[keyof typeof CHILD_DRAWER_TAB]) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("childId", childId);
+    if (tab === CHILD_DRAWER_TAB.BASIC_INFO) {
+      next.delete("tab");
+    } else {
+      next.set("tab", tab);
+    }
+    setSearchParams(next, { replace: true });
+  };
+
+  const closeChildDrawer = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("childId");
+    next.delete("tab");
+    setSearchParams(next, { replace: true });
+  };
 
   if (!enabled) return null;
 
@@ -132,7 +166,7 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
                   key={`overall-${summary.childId}`}
                   type="button"
                   className="w-full rounded-md border border-slate-200 bg-white/70 p-1.5 text-left transition-colors hover:bg-white"
-                  onClick={() => setSelectedChildId(summary.childId)}
+                  onClick={() => openChildDrawer(summary.childId, CHILD_DRAWER_TAB.LECTURE_PROGRESS)}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-slate-900">{summary.childName}</p>
@@ -166,12 +200,12 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
           {sortedChildSummaries.length ? (
             <div className="space-y-2">
               {sortedChildSummaries.map((summary) => {
-                const hasTrackedHomework = summary.knownHomeworkCount > 0;
+                const hasTrackedHomework = summary.reportedHomeworkCount > 0;
                 const hasPendingHomework = summary.pendingHomeworkCount > 0;
                 const childHomeworkSubline = hasTrackedHomework
                   ? t("parentDashboardChildHomeworkDoneCompactLine", {
                       done: summary.homeworkDoneCount,
-                      known: summary.knownHomeworkCount,
+                      known: summary.reportedHomeworkCount,
                     })
                   : t("parentDashboardHomeworkUnknown");
                 return (
@@ -179,7 +213,7 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
                     key={`homework-${summary.childId}`}
                     type="button"
                     className="w-full rounded-md border border-slate-200 bg-white/70 p-1.5 text-left transition-colors hover:bg-white"
-                    onClick={() => setSelectedChildId(summary.childId)}
+                    onClick={() => openChildDrawer(summary.childId, CHILD_DRAWER_TAB.HOMEWORK_PROGRESS)}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-slate-900">{summary.childName}</p>
@@ -210,13 +244,15 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
         </ProgressMetricCard>
       </div>
       <ProgressChildDetailsDrawer
-        open={Boolean(selectedChildId)}
+        open={Boolean(childIdFromUrl)}
+        isLoading={Boolean(childIdFromUrl && !selectedChild && metrics.isLoading)}
         onOpenChange={(open) => {
-          if (!open) setSelectedChildId(null);
+          if (!open) closeChildDrawer();
         }}
         child={selectedChild}
         summary={selectedSummary}
         scheduledLessons={metrics.scheduledLessons}
+        childrenFetchMineOnly
       />
     </section>
   );

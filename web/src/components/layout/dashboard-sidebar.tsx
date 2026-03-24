@@ -1,4 +1,13 @@
-import { ReactNode, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   ClipboardList,
@@ -48,6 +57,8 @@ type Props = {
   onLanguageChange: (language: "en" | "sv" | "bs") => void;
 };
 
+const USER_MENU_WIDTH_PX = 224;
+
 export function DashboardSidebar({
   activeKey,
   onNavigate,
@@ -71,7 +82,55 @@ export function DashboardSidebar({
   const compactLogoSrc = "/branding/logo-small.svg";
   const shouldUseCompactLogo = !isMobile && !open;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [userMenuPlacement, setUserMenuPlacement] = useState<{ left: number; top: number } | null>(null);
+  const userMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const userMenuPanelRef = useRef<HTMLDivElement>(null);
   const shouldUseSingleCommunityLabel = role === ROLE.ADMIN || role === ROLE.BOARD_MEMBER;
+
+  const updateUserMenuPosition = useCallback(() => {
+    const button = userMenuButtonRef.current;
+    if (!button || !isUserMenuOpen) return;
+    const rect = button.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - USER_MENU_WIDTH_PX - 8);
+    const left = Math.min(Math.max(8, rect.left), maxLeft);
+    const top = rect.top - 8;
+    setUserMenuPlacement({ left, top });
+  }, [isUserMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!isUserMenuOpen) return;
+    updateUserMenuPosition();
+  }, [isUserMenuOpen, updateUserMenuPosition, open, isMobile]);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      setUserMenuPlacement(null);
+      return;
+    }
+    window.addEventListener("resize", updateUserMenuPosition);
+    return () => window.removeEventListener("resize", updateUserMenuPosition);
+  }, [isUserMenuOpen, updateUserMenuPosition]);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (userMenuButtonRef.current?.contains(target)) return;
+      if (userMenuPanelRef.current?.contains(target)) return;
+      setIsUserMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown, { passive: true });
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isUserMenuOpen]);
   const sectionIcons: Record<SectionKey, ReactNode> = {
     dashboard: <LayoutDashboard className="h-4 w-4 shrink-0" />,
     posts: <Newspaper className="h-4 w-4 shrink-0" />,
@@ -125,28 +184,6 @@ export function DashboardSidebar({
                       {sectionIcons[section.key]}
                       {!open && !isMobile ? null : (
                         <span>{section.key === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(section.labelKey)}</span>
-                      )}
-                    </span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("accountNav")}</SidebarGroupLabel>
-          <SidebarMenu>
-            {dashboardSections
-              .filter((section) => section.key === "settings")
-              .map((section) => (
-                <SidebarMenuItem key={section.key}>
-                  <SidebarMenuButton isActive={activeKey === section.key} onClick={() => onNavigate(section.key)}>
-                    <span className="flex items-center gap-2">
-                      {sectionIcons[section.key]}
-                      {!open && !isMobile ? null : (
-                        <span>
-                          {section.key === "communities" && shouldUseSingleCommunityLabel ? t("community") : t(section.labelKey)}
-                        </span>
                       )}
                     </span>
                   </SidebarMenuButton>
@@ -233,8 +270,11 @@ export function DashboardSidebar({
           )}
         >
           <button
+            ref={userMenuButtonRef}
             type="button"
             aria-label="Open user options"
+            aria-expanded={isUserMenuOpen}
+            aria-haspopup="menu"
             className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white hover:opacity-90"
             onClick={() => setIsUserMenuOpen((value) => !value)}
           >
@@ -259,41 +299,59 @@ export function DashboardSidebar({
             </div>
           )}
 
-          {isUserMenuOpen ? (
-            <div
-              className={cn(
-                "absolute bottom-12 z-20 w-56 rounded-md border border-border bg-white p-2 shadow-lg",
-                isCollapsedDesktop ? "left-12" : "left-0"
-              )}
-            >
-              <div className="flex items-center gap-2 px-2 py-1 text-sm text-slate-700">
-                <User className="h-4 w-4 text-slate-500" />
-                <span className="truncate font-medium">{fullName}</span>
-              </div>
-              <div className="px-2 pb-2">
-                <Role role={role} />
-              </div>
-              <button
-                type="button"
-                className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
-                onClick={() => {
-                  setIsUserMenuOpen(false);
-                  onNavigate("settings");
-                }}
-              >
-                <Settings className="h-4 w-4 text-slate-500" />
-                <span>{t("settings")}</span>
-              </button>
-              <button
-                type="button"
-                className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
-                onClick={onLogout}
-              >
-                <LogOut className="h-4 w-4 text-slate-500" />
-                <span>{t("logout")}</span>
-              </button>
-            </div>
-          ) : null}
+          {isUserMenuOpen
+            ? createPortal(
+                <div
+                  ref={userMenuPanelRef}
+                  role="menu"
+                  className={cn(
+                    "fixed left-[var(--user-menu-left,0px)] top-[var(--user-menu-top,0px)] z-[100] w-56 -translate-y-full rounded-md border border-border bg-white p-2 shadow-lg",
+                    !userMenuPlacement && "pointer-events-none opacity-0"
+                  )}
+                  style={
+                    userMenuPlacement
+                      ? ({
+                          "--user-menu-left": `${userMenuPlacement.left}px`,
+                          "--user-menu-top": `${userMenuPlacement.top}px`,
+                        } as CSSProperties)
+                      : undefined
+                  }
+                >
+                  <div className="flex items-center gap-2 px-2 py-1 text-sm text-slate-700">
+                    <User className="h-4 w-4 shrink-0 text-slate-500" />
+                    <span className="min-w-0 truncate font-medium">{fullName}</span>
+                  </div>
+                  <div className="px-2 pb-2">
+                    <Role role={role} />
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onNavigate("settings");
+                    }}
+                  >
+                    <Settings className="h-4 w-4 shrink-0 text-slate-500" />
+                    <span>{t("settings")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onLogout();
+                    }}
+                  >
+                    <LogOut className="h-4 w-4 shrink-0 text-slate-500" />
+                    <span>{t("logout")}</span>
+                  </button>
+                </div>,
+                document.body
+              )
+            : null}
         </div>
       </SidebarFooter>
     </>

@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
-import { Check, CircleDashed, Clock3, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useChildByIdQuery } from "../children/use-children-data";
+import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Drawer,
@@ -8,20 +10,18 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "../../components/ui/drawer";
-import { Card } from "../../components/ui/card";
 import { Tabs } from "../../components/ui/tabs";
 import { NaValue } from "../common/components/na-value";
 import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
-import { LESSON_NIVO_LABEL, LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
+import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
 import { Lesson } from "../lessons/types";
-import { ChildAttendanceRecord, ChildRecord } from "../children/types";
+import { ChildLessonOutcome, ChildRecord } from "../children/types";
 import { NivoProgress } from "../children/nivo-progress";
 import { ChildProgressSummary } from "./use-progress-overview";
 import { LECTURE_STATUS } from "../reporting/reporting.constants";
-import { formatDate, formatDateTime } from "../../lib/date-time";
+import { formatDate } from "../../lib/date-time";
 import { EntityDetailTable, EntityDetailTableRow } from "../common/components/entity-detail-components";
-import { Button } from "../../components/ui/button";
 import {
   HOMEWORK_PROGRESS_STATUS,
   HomeworkProgressItem,
@@ -31,6 +31,16 @@ import { useOpenImamChat } from "../messages/use-open-imam-chat";
 import { MESSAGE_CONTEXT_TYPE } from "../messages/types";
 import { useRoleAccess } from "../auth/use-role-access";
 import { LoadingBlock } from "../common/components/loading-block";
+import { isPersistedLessonOutcomeKey } from "./progress-lesson-outcome.constants";
+import { hasReportedHomework } from "./attendance-homework";
+import { LectureProgressLessonCard, type LectureProgressLessonItem } from "./lecture-progress-lesson-card";
+import {
+  CHILD_DRAWER_TAB,
+  CHILD_DRAWER_TAB_QUERY_KEY,
+  DEFAULT_CHILD_DRAWER_TAB,
+  parseChildDrawerTab,
+  type ChildDrawerTab,
+} from "./child-drawer-tab.constants";
 
 type ProgressChildDetailsDrawerProps = {
   open: boolean;
@@ -39,18 +49,15 @@ type ProgressChildDetailsDrawerProps = {
   summary: ChildProgressSummary | null;
   scheduledLessons: number;
   isLoading?: boolean;
-};
-
-type LectureProgressItem = {
-  key: string;
-  title: string;
-  reports: number;
-  completedReports: number;
-  presentReports: number;
-  knownHomeworkReports: number;
-  homeworkDoneReports: number;
-  comments: string[];
-  lastReportedAt: string | null;
+  /**
+   * When true, active tab is read/written as query `tab` (`basic-info` default; omit param when default).
+   */
+  syncTabToSearchParams?: boolean;
+  /**
+   * `mine` flag for GET /children while the drawer is open so lesson outcomes / attendance stay in sync after save.
+   * Dashboard linked view: `true`. Children management (admin/board full list): `false`. Users drawer child: `false`.
+   */
+  childrenFetchMineOnly: boolean;
 };
 
 function toEventDate(occurredAt: string | null, fallback: string) {
@@ -65,17 +72,75 @@ export function ProgressChildDetailsDrawer({
   summary,
   scheduledLessons,
   isLoading = false,
+  syncTabToSearchParams = true,
+  childrenFetchMineOnly,
 }: ProgressChildDetailsDrawerProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState("details");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [localTab, setLocalTab] = useState<ChildDrawerTab>(DEFAULT_CHILD_DRAWER_TAB);
+  const prevChildIdRef = useRef<string | null>(null);
+
+  const activeTab = syncTabToSearchParams
+    ? parseChildDrawerTab(searchParams.get(CHILD_DRAWER_TAB_QUERY_KEY))
+    : localTab;
+
+  const setActiveTab = (key: string) => {
+    const nextTab = parseChildDrawerTab(key);
+    if (syncTabToSearchParams) {
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          if (nextTab === DEFAULT_CHILD_DRAWER_TAB) {
+            p.delete(CHILD_DRAWER_TAB_QUERY_KEY);
+          } else {
+            p.set(CHILD_DRAWER_TAB_QUERY_KEY, nextTab);
+          }
+          return p;
+        },
+        { replace: true }
+      );
+    } else {
+      setLocalTab(nextTab);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      prevChildIdRef.current = null;
+      return;
+    }
+    if (!child?.id) return;
+    const prev = prevChildIdRef.current;
+    if (prev && prev !== child.id) {
+      if (syncTabToSearchParams) {
+        setSearchParams(
+          (prevParams) => {
+            const p = new URLSearchParams(prevParams);
+            p.delete(CHILD_DRAWER_TAB_QUERY_KEY);
+            return p;
+          },
+          { replace: true }
+        );
+      } else {
+        setLocalTab(DEFAULT_CHILD_DRAWER_TAB);
+      }
+    }
+    prevChildIdRef.current = child.id;
+  }, [child?.id, open, setSearchParams, syncTabToSearchParams]);
+
   const { openImamChat } = useOpenImamChat();
-  const { isParent, isUser, isBoardMember } = useRoleAccess();
+  const { isParent, isUser, isBoardMember, canSetChildLessonOutcomes } = useRoleAccess();
   const canMessageImam = isParent || isUser || isBoardMember;
+  const childRefreshQuery = useChildByIdQuery(child?.id, childrenFetchMineOnly, open && Boolean(child?.id));
+  const resolvedChild = useMemo(() => {
+    if (!child) return null;
+    return childRefreshQuery.data ?? child;
+  }, [child, childRefreshQuery.data]);
   const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, open && Boolean(child));
   const effectiveSummary = useMemo(() => {
     if (summary) return summary;
-    if (!child) return null;
-    const childAttendance = child.attendance || [];
+    if (!resolvedChild) return null;
+    const childAttendance = resolvedChild.attendance || [];
     const reportedLecturesCount = childAttendance.length;
     const completedLecturesCount = childAttendance.filter((record) => record.lecture.status === LECTURE_STATUS.COMPLETED).length;
     const presentInTrackedLessons = childAttendance.filter((record) => record.present).length;
@@ -88,12 +153,12 @@ export function ProgressChildDetailsDrawer({
       presentInTrackedLessons,
       trackedLessons: reportedLecturesCount,
     };
-  }, [child, summary]);
+  }, [resolvedChild, summary]);
 
   const lectureProgressItems = useMemo(() => {
-    if (!child) return [];
-    const reportMap = new Map<string, LectureProgressItem>();
-    for (const record of child.attendance || []) {
+    if (!resolvedChild) return [];
+    const reportMap = new Map<string, LectureProgressLessonItem>();
+    for (const record of resolvedChild.attendance || []) {
       const reportKey = record.lesson?.id || `topic:${(record.lesson?.title || record.lecture.topic).trim().toLowerCase()}`;
       const reportTitle = record.lesson?.title || record.lecture.topic;
       const previous = reportMap.get(reportKey);
@@ -105,14 +170,15 @@ export function ProgressChildDetailsDrawer({
       const trimmedComment = record.comment?.trim();
       if (trimmedComment && !mergedComments.includes(trimmedComment)) mergedComments.push(trimmedComment);
 
+      const homeworkListRow = hasReportedHomework(record);
       reportMap.set(reportKey, {
         key: reportKey,
         title: reportTitle,
         reports: (previous?.reports || 0) + 1,
         completedReports: (previous?.completedReports || 0) + (record.lecture.status === LECTURE_STATUS.COMPLETED ? 1 : 0),
         presentReports: (previous?.presentReports || 0) + (record.present ? 1 : 0),
-        knownHomeworkReports: (previous?.knownHomeworkReports || 0) + (typeof record.homeworkDone === "boolean" ? 1 : 0),
-        homeworkDoneReports: (previous?.homeworkDoneReports || 0) + (record.homeworkDone === true ? 1 : 0),
+        knownHomeworkReports: (previous?.knownHomeworkReports || 0) + (homeworkListRow ? 1 : 0),
+        homeworkDoneReports: (previous?.homeworkDoneReports || 0) + (homeworkListRow && record.homeworkDone === true ? 1 : 0),
         comments: mergedComments,
         lastReportedAt:
           previous?.lastReportedAt && new Date(previous.lastReportedAt).getTime() > new Date(nextLastReportedAt).getTime()
@@ -121,7 +187,7 @@ export function ProgressChildDetailsDrawer({
       });
     }
 
-    const nivoLessons = (lessonsQuery.data || []).filter((lesson) => lesson.nivo === child.nivo);
+    const nivoLessons = (lessonsQuery.data || []).filter((lesson) => lesson.nivo === resolvedChild.nivo);
     const lessonRows = nivoLessons.map((lesson) => reportMap.get(lesson.id) || {
       key: lesson.id,
       title: lesson.title,
@@ -141,16 +207,23 @@ export function ProgressChildDetailsDrawer({
       .sort((a, b) => new Date(b.lastReportedAt || 0).getTime() - new Date(a.lastReportedAt || 0).getTime());
 
     return [...lessonRows, ...extraRows];
-  }, [child, lessonsQuery.data]);
+  }, [resolvedChild, lessonsQuery.data]);
+
+  const outcomeByLessonId = useMemo(() => {
+    const map = new Map<string, ChildLessonOutcome>();
+    for (const row of resolvedChild?.lessonOutcomes || []) {
+      map.set(row.lessonId, row);
+    }
+    return map;
+  }, [resolvedChild?.lessonOutcomes]);
 
   const homeworkProgressItems = useMemo(() => {
-    if (!child) return [];
-    const rows: HomeworkProgressItem[] = [...(child.attendance || [])]
-      .filter((record) => {
-        return Boolean(record.homeworkTitle?.trim() || record.homeworkDescription?.trim());
-      })
+    if (!resolvedChild) return [];
+    const rows: HomeworkProgressItem[] = [...(resolvedChild.attendance || [])]
+      .filter((record) => hasReportedHomework(record))
       .map((record) => ({
-        key: record.lectureId,
+        key: `${record.lectureId}:${record.markedAt}`,
+        lectureId: record.lectureId,
         title: record.homeworkTitle?.trim() || record.lesson?.title || record.lecture.topic,
         lessonTitle: record.lesson?.title || record.lecture.topic,
         homeworkDescription: record.homeworkDescription?.trim() || null,
@@ -166,31 +239,31 @@ export function ProgressChildDetailsDrawer({
       .sort((a, b) => new Date(b.lastReportedAt || 0).getTime() - new Date(a.lastReportedAt || 0).getTime());
 
     return rows;
-  }, [child]);
+  }, [resolvedChild]);
 
   const parentsText = useMemo(() => {
-    if (!child) return null;
+    if (!resolvedChild) return null;
     return (
-      (child.parents || [])
+      (resolvedChild.parents || [])
         .map((parent) => `${parent.parent?.firstName || ""} ${parent.parent?.lastName || ""}`.trim())
         .filter(Boolean)
         .join(", ") || null
     );
-  }, [child]);
+  }, [resolvedChild]);
 
   const addressText = useMemo(() => {
-    if (!child) return null;
-    if (!child.address) return null;
+    if (!resolvedChild) return null;
+    if (!resolvedChild.address) return null;
     return [
-      child.address.streetLine1,
-      child.address.streetLine2 || "",
-      `${child.address.postalCode} ${child.address.city}`.trim(),
-      child.address.state || "",
-      child.address.country,
+      resolvedChild.address.streetLine1,
+      resolvedChild.address.streetLine2 || "",
+      `${resolvedChild.address.postalCode} ${resolvedChild.address.city}`.trim(),
+      resolvedChild.address.state || "",
+      resolvedChild.address.country,
     ]
       .filter(Boolean)
       .join(", ");
-  }, [child]);
+  }, [resolvedChild]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -199,11 +272,11 @@ export function ProgressChildDetailsDrawer({
           <div className="min-w-0 flex-1 pr-2">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <DrawerTitle className="mb-0">
-                {child ? `${child.firstName} ${child.lastName}` : t("childrenDetails")}
+                {resolvedChild ? `${resolvedChild.firstName} ${resolvedChild.lastName}` : t("childrenDetails")}
               </DrawerTitle>
-              {child ? (
+              {resolvedChild ? (
                 <span className="inline-flex shrink-0 items-center">
-                  <StatusBadge status={child.status} />
+                  <StatusBadge status={resolvedChild.status} />
                 </span>
               ) : null}
             </div>
@@ -213,32 +286,32 @@ export function ProgressChildDetailsDrawer({
           </DrawerClose>
         </DrawerHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-8">
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-6 sm:p-4 sm:pb-8">
           {isLoading && !child ? (
             <LoadingBlock text={t("parentDashboardChildDrawerLoading")} />
-          ) : !child ? (
+          ) : !resolvedChild ? (
             <p className="text-sm text-slate-500">{t("parentDashboardNoChildActivity")}</p>
           ) : (
             <Tabs
               value={activeTab}
               onChange={setActiveTab}
               tabs={[
-                { key: "details", label: t("childrenDetails") },
-                { key: "progress", label: t("parentDashboardLectureProgressTab") },
-                { key: "homework", label: t("parentDashboardHomeworkProgressTab") },
+                { key: CHILD_DRAWER_TAB.BASIC_INFO, label: t("childrenDetails") },
+                { key: CHILD_DRAWER_TAB.LECTURE_PROGRESS, label: t("parentDashboardLectureProgressTab") },
+                { key: CHILD_DRAWER_TAB.HOMEWORK_PROGRESS, label: t("parentDashboardHomeworkProgressTab") },
               ]}
             >
-              {activeTab === "details" ? (
+              {activeTab === CHILD_DRAWER_TAB.BASIC_INFO ? (
                 <div className="space-y-3">
                   <EntityDetailTable>
-                    <EntityDetailTableRow label={t("usersTableName")} value={`${child.firstName} ${child.lastName}`} />
-                    <EntityDetailTableRow label={t("ssn")} value={<NaValue value={child.ssn} />} />
-                    <EntityDetailTableRow label={t("birthDate")} value={formatDate(child.birthDate)} />
+                    <EntityDetailTableRow label={t("usersTableName")} value={`${resolvedChild.firstName} ${resolvedChild.lastName}`} />
+                    <EntityDetailTableRow label={t("ssn")} value={<NaValue value={resolvedChild.ssn} />} />
+                    <EntityDetailTableRow label={t("birthDate")} value={formatDate(resolvedChild.birthDate)} />
                     <EntityDetailTableRow
                       label={t("childrenNivoLabel")}
                       value={
                         <div className="inline-flex flex-col items-start gap-1">
-                          <NivoProgress nivo={child.nivo} showIndexLabel />
+                          <NivoProgress nivo={resolvedChild.nivo} showIndexLabel />
                         </div>
                       }
                     />
@@ -246,124 +319,22 @@ export function ProgressChildDetailsDrawer({
                     <EntityDetailTableRow label={t("address")} value={<NaValue value={addressText} />} />
                   </EntityDetailTable>
                 </div>
-              ) : activeTab === "progress" ? (
-                <div className="space-y-3">
+              ) : activeTab === CHILD_DRAWER_TAB.LECTURE_PROGRESS ? (
+                <div className="space-y-2 max-md:space-y-1.5">
                   {lectureProgressItems.map((item, idx) => {
-                    const isComplete = item.reports > 0 && item.completedReports === item.reports;
-                    const isInProgress = item.reports > 0 && item.completedReports < item.reports;
-                    const hasHomeworkPending =
-                      item.knownHomeworkReports > 0 && item.homeworkDoneReports < item.knownHomeworkReports;
-                    const statusLabel = isComplete
-                      ? hasHomeworkPending
-                        ? t("parentDashboardLectureStateCompletedHomeworkPending")
-                        : t("parentDashboardLectureStateCompletedAllDone")
-                      : isInProgress
-                        ? t("parentDashboardLectureStateInProgress")
-                        : t("parentDashboardLectureStateNotStarted");
+                    const outcome = isPersistedLessonOutcomeKey(item.key) ? outcomeByLessonId.get(item.key) : undefined;
                     return (
-                      <div key={item.key} className="relative pl-8 sm:pl-9">
-                        {idx < lectureProgressItems.length - 1 ? (
-                          <span className="absolute left-3 top-7 h-[calc(100%+8px)] w-px bg-slate-200 sm:left-[13px]" />
-                        ) : null}
-                        <span
-                          className={`absolute left-0 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full border sm:h-7 sm:w-7 ${
-                            isComplete && !hasHomeworkPending
-                              ? "border-emerald-200 bg-emerald-100 text-emerald-700"
-                              : isInProgress || hasHomeworkPending
-                                ? "border-amber-200 bg-amber-100 text-amber-700"
-                                : "border-slate-200 bg-slate-100 text-slate-500"
-                          }`}
-                        >
-                          {isComplete && !hasHomeworkPending ? (
-                            <Check className="h-4 w-4" />
-                          ) : isInProgress || hasHomeworkPending ? (
-                            <Clock3 className="h-4 w-4" />
-                          ) : (
-                            <CircleDashed className="h-4 w-4" />
-                          )}
-                        </span>
-                        <Card className="rounded-lg border border-border/70 p-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-                              <p className="text-sm font-medium text-slate-900">{item.title}</p>
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-xs leading-5 ${
-                                  isComplete && !hasHomeworkPending
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : isInProgress || hasHomeworkPending
-                                      ? "bg-amber-100 text-amber-700"
-                                      : "bg-slate-100 text-slate-700"
-                                }`}
-                              >
-                                {statusLabel}
-                              </span>
-                            </div>
-                          </div>
-                          {item.reports > 0 ? (
-                            <>
-                              <p className="mt-1 text-xs text-slate-500">
-                                {t("parentDashboardLectureAttendanceReports", {
-                                  present: item.presentReports,
-                                  total: item.reports,
-                                })}
-                              </p>
-                              <p className="mt-1 text-xs text-slate-500">
-                                {item.knownHomeworkReports > 0
-                                  ? t("parentDashboardLectureHomeworkReports", {
-                                      done: item.homeworkDoneReports,
-                                      total: item.knownHomeworkReports,
-                                    })
-                                  : t("parentDashboardHomeworkUnknown")}
-                              </p>
-                              {item.comments.length ? (
-                                <div className="mt-1 text-xs text-slate-600">
-                                  <p>{t("parentDashboardLectureImamComments", { count: item.comments.length })}</p>
-                                  <div className="mt-1 space-y-0.5">
-                                    {item.comments.slice(0, 2).map((comment) => (
-                                      <p key={comment} className="break-words">
-                                        - {comment}
-                                      </p>
-                                    ))}
-                                    {item.comments.length > 2 ? (
-                                      <p className="text-slate-500">
-                                        {t("parentDashboardLectureMoreComments", { count: item.comments.length - 2 })}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                  {canMessageImam ? (
-                                    <div className="mt-2">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="h-8 px-2 py-1 text-xs"
-                                        onClick={() =>
-                                          openImamChat({
-                                            type: MESSAGE_CONTEXT_TYPE.LECTURE_COMMENT,
-                                            childId: child.id,
-                                            label: `${child.firstName} ${child.lastName} - ${item.title}`,
-                                            preview: item.comments[0] || undefined,
-                                          })
-                                        }
-                                      >
-                                        Message imam
-                                      </Button>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : (
-                                <p className="mt-1 text-xs text-slate-500">{t("parentDashboardNoComment")}</p>
-                              )}
-                              <p className="mt-1 text-xs text-slate-500">
-                                {item.lastReportedAt
-                                  ? t("parentDashboardLastReportAt", { date: formatDateTime(item.lastReportedAt) })
-                                  : t("parentDashboardNoActivityFallback")}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="mt-1 text-xs text-slate-500">{t("parentDashboardNoActivityFallback")}</p>
-                          )}
-                        </Card>
-                      </div>
+                      <LectureProgressLessonCard
+                        key={item.key}
+                        item={item}
+                        index={idx}
+                        totalItems={lectureProgressItems.length}
+                        child={resolvedChild}
+                        outcome={outcome}
+                        canMessageImam={canMessageImam}
+                        canSetChildLessonOutcomes={canSetChildLessonOutcomes}
+                        openImamChat={openImamChat}
+                      />
                     );
                   })}
                 </div>
@@ -375,9 +346,9 @@ export function ProgressChildDetailsDrawer({
                       ? (item) =>
                           openImamChat({
                             type: MESSAGE_CONTEXT_TYPE.HOMEWORK,
-                            childId: child.id,
-                            lectureId: item.key,
-                            label: `${child.firstName} ${child.lastName} - ${item.title}`,
+                            childId: resolvedChild.id,
+                            lectureId: item.lectureId,
+                            label: `${resolvedChild.firstName} ${resolvedChild.lastName} - ${item.title}`,
                             preview: item.homeworkDescription || undefined,
                           })
                       : undefined

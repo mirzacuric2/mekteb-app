@@ -14,7 +14,9 @@ export const HOMEWORK_PROGRESS_STATUS = {
 export type HomeworkProgressStatus = (typeof HOMEWORK_PROGRESS_STATUS)[keyof typeof HOMEWORK_PROGRESS_STATUS];
 
 export type HomeworkProgressItem = {
+  /** Stable key for list rendering (may include report timestamp). */
   key: string;
+  lectureId: string;
   title: string;
   lessonTitle?: string | null;
   homeworkDescription?: string | null;
@@ -67,11 +69,11 @@ export function ProgressHomeworkTimeline({ items, onMessageImam }: ProgressHomew
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-8 px-2 py-1 text-xs"
+                  className="h-8 gap-1.5 px-2 py-1 text-xs"
                   onClick={() => onMessageImam(item)}
                 >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  Message imam
+                  <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                  {t("parentDashboardMessageImam")}
                 </Button>
               </div>
             ) : null}

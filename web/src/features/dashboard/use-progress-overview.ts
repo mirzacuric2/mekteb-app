@@ -10,6 +10,7 @@ import {
   PROGRESS_OVERVIEW_SCHEDULED_LESSONS,
 } from "./progress-overview.constants";
 import { LECTURE_STATUS } from "../reporting/reporting.constants";
+import { hasReportedHomework } from "./attendance-homework";
 
 export type LatestProgressState = {
   childId: string;
@@ -35,7 +36,8 @@ export type ChildProgressSummary = {
   completedLecturesCount: number;
   reportedLecturesCount: number;
   homeworkCompletionRate: number;
-  knownHomeworkCount: number;
+  /** Rows with homework title/description (same scope as child drawer Homework tab). */
+  reportedHomeworkCount: number;
   homeworkDoneCount: number;
   currentLectureTitle: string | null;
   currentLectureStatus: LectureStatus | null;
@@ -68,10 +70,6 @@ function toHomeworkStatus(record: ChildAttendanceRecord): HomeworkStatus {
   if (record.homeworkDone === true) return HOMEWORK_STATUS.DONE;
   if (record.homeworkDone === false) return HOMEWORK_STATUS.PENDING;
   return HOMEWORK_STATUS.UNKNOWN;
-}
-
-function hasReportedHomework(record: ChildAttendanceRecord) {
-  return Boolean(record.homeworkTitle?.trim() || record.homeworkDescription?.trim());
 }
 
 function byLatestAttendance(a: ChildAttendanceRecord, b: ChildAttendanceRecord) {
@@ -152,15 +150,15 @@ export function useProgressOverview(enabled: boolean) {
       const childLectureCompletionRate = toPercent(childCompletedLecturesCount, childReportedLecturesCount);
       const currentLectureRecord =
         childAttendance.find((entry) => entry.lecture.status === LECTURE_STATUS.DRAFT) || latestChildRecord || null;
-      const childHomeworkEntries = childCompletedAttendance.filter((entry) => hasReportedHomework(entry));
-      const pendingHomeworkCount = childHomeworkEntries.filter((entry) => entry.homeworkDone === false).length;
-      const childKnownHomeworkEntries = childHomeworkEntries.filter((entry) => typeof entry.homeworkDone === "boolean");
-      const childHomeworkDoneEntries = childKnownHomeworkEntries.filter((entry) => entry.homeworkDone === true);
-      const childHomeworkCompletionRate = toPercent(childHomeworkDoneEntries.length, childKnownHomeworkEntries.length);
+      const childReportedHomeworkEntries = childAttendance.filter((entry) => hasReportedHomework(entry));
+      const reportedHomeworkCount = childReportedHomeworkEntries.length;
+      const homeworkDoneCount = childReportedHomeworkEntries.filter((entry) => entry.homeworkDone === true).length;
+      const pendingHomeworkCount = childReportedHomeworkEntries.filter((entry) => entry.homeworkDone !== true).length;
+      const childHomeworkCompletionRate = toPercent(homeworkDoneCount, reportedHomeworkCount);
       const childProgressMetrics = [
         childRecentAttendance.length ? childLectureCompletionRate : null,
         childRecentAttendance.length ? childAttendanceRate : null,
-        childKnownHomeworkEntries.length ? childHomeworkCompletionRate : null,
+        reportedHomeworkCount > 0 ? childHomeworkCompletionRate : null,
       ].filter((value): value is number => typeof value === "number");
       const childOverallProgressRate = toAverage(childProgressMetrics);
       const hasPerformanceRecords = childProgressMetrics.length > 0;
@@ -190,8 +188,8 @@ export function useProgressOverview(enabled: boolean) {
         completedLecturesCount: childCompletedLecturesCount,
         reportedLecturesCount: childReportedLecturesCount,
         homeworkCompletionRate: childHomeworkCompletionRate,
-        knownHomeworkCount: childKnownHomeworkEntries.length,
-        homeworkDoneCount: childHomeworkDoneEntries.length,
+        reportedHomeworkCount,
+        homeworkDoneCount,
         currentLectureTitle: currentLectureRecord
           ? currentLectureRecord.lesson?.title || currentLectureRecord.lecture.topic
           : null,
@@ -225,8 +223,8 @@ export function useProgressOverview(enabled: boolean) {
     const childrenWithPendingHomework = childSummaries.filter((summary) => summary.pendingHomeworkCount > 0).length;
     const totalPendingHomework = childSummaries.reduce((sum, summary) => sum + summary.pendingHomeworkCount, 0);
     const homeworkDoneRecords = childSummaries.reduce((sum, summary) => sum + summary.homeworkDoneCount, 0);
-    const recentHomeworkRecords = childSummaries.reduce((sum, summary) => sum + summary.knownHomeworkCount, 0);
-    const homeworkCompletionRate = toPercent(homeworkDoneRecords, recentHomeworkRecords);
+    const reportedHomeworkRowsTotal = childSummaries.reduce((sum, summary) => sum + summary.reportedHomeworkCount, 0);
+    const homeworkCompletionRate = toPercent(homeworkDoneRecords, reportedHomeworkRowsTotal);
     const childSummariesWithRecords = childSummaries.filter((summary) => summary.hasPerformanceRecords);
     const overallProgressRate = toAverage(childSummariesWithRecords.map((summary) => summary.overallProgressRate));
     const childrenOnTrackRate = toPercent(childrenOnTrack, childSummariesWithRecords.length);
@@ -243,7 +241,7 @@ export function useProgressOverview(enabled: boolean) {
       scheduledLessons: PROGRESS_OVERVIEW_SCHEDULED_LESSONS,
       trackedLessons: recentAttendance.length,
       presentInTrackedLessons: presentInRecentLessons,
-      recentHomeworkRecords,
+      reportedHomeworkRowsTotal,
       homeworkDoneRecords,
       childrenWithWarnings,
       childrenOnTrack,

@@ -17,6 +17,8 @@ export function useRoleAccess() {
     const isBoardMember = role === ROLE.BOARD_MEMBER;
 
     const canAdminManage = role ? ADMIN_ROLES.includes(role) : false;
+    /** Imam lesson pass/mark; must stay `ADMIN` / `SUPER_ADMIN` only (not board/parent). */
+    const canSetChildLessonOutcomes = isSuperAdmin || isAdmin;
     const canParentEdit = role ? PARENT_EDIT_ROLES.includes(role) : false;
     const canEditChildren = canAdminManage || canParentEdit;
     const canInactivate = canAdminManage;
@@ -30,6 +32,7 @@ export function useRoleAccess() {
       isUser,
       isBoardMember,
       canAdminManage,
+      canSetChildLessonOutcomes,
       canParentEdit,
       canEditChildren,
       canInactivate,

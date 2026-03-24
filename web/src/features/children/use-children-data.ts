@@ -23,9 +23,19 @@ type ChildrenListParams = {
   mineOnly?: boolean;
   nivo?: number;
   status?: ChildStatus;
+  /** When false, skips fetch (e.g. wait for session so BOARD_MEMBER sends `mine=1`). */
+  enabled?: boolean;
 };
 
-export function useChildrenListQuery({ search, page, pageSize, mineOnly, nivo, status }: ChildrenListParams) {
+export function useChildrenListQuery({
+  search,
+  page,
+  pageSize,
+  mineOnly,
+  nivo,
+  status,
+  enabled = true,
+}: ChildrenListParams) {
   return useAuthedQueryWithParams<ChildrenListResponse>(
     "children",
     "/children",
@@ -37,7 +47,7 @@ export function useChildrenListQuery({ search, page, pageSize, mineOnly, nivo, s
       nivo,
       status,
     },
-    true
+    enabled
   );
 }
 
@@ -55,7 +65,12 @@ export function useChildrenDiplomaCandidatesQuery(open: boolean, nivo: number | 
   );
 }
 
-export function useChildByIdQuery(childId: string | undefined, mineOnly?: boolean) {
+export function useChildByIdQuery(
+  childId: string | undefined,
+  mineOnly?: boolean,
+  /** When false, skips fetch until session is ready (children panel) or other gating. */
+  enabled = true
+) {
   const query = useAuthedQueryWithParams<ChildrenListResponse>(
     "children-by-id",
     "/children",
@@ -65,7 +80,7 @@ export function useChildByIdQuery(childId: string | undefined, mineOnly?: boolea
       pageSize: 1,
       mine: mineOnly ? 1 : undefined,
     },
-    Boolean(childId)
+    Boolean(childId) && enabled
   );
 
   return {

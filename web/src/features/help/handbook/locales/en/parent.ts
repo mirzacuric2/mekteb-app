@@ -19,7 +19,7 @@ export const parentHandbookEn: HelpHandbookContent = {
       title: "Dashboard",
       bullets: [
         "Home after login: community news and your family snapshot.",
-        "Progress overview: when you have linked children, you see KPI-style cards and per-child summaries (attendance signals, homework, recent activity) for your children only.",
+        "Progress overview: when you have linked children, you see KPI-style cards and per-child summaries (attendance signals, homework, recent activity) for your children only. Tapping a child under overall progress opens the drawer on the lecture-progress tab; under homework completion it opens on the homework-progress tab. The URL uses ?childId=…&tab=… so you can refresh or share the same view.",
         "This week for your family: read-only weekly events when your account has a community. You cannot create or edit events here.",
         "Recent posts: latest community posts with a link to the full Posts section.",
         "You cannot run lecture reports, manage other people’s children, or change community settings from here.",
@@ -42,7 +42,7 @@ export const parentHandbookEn: HelpHandbookContent = {
         "Open a row to see details in the side drawer: progress, homework, and attendance-related history when recorded.",
         "You can edit allowed fields (for example name, SSN, birth date, address) when the edit action is shown.",
         "You cannot create or inactivate children, change community or nivo, or change parent links—those are admin-only.",
-        "Shared links can use ?childId=<id> to open the same drawer.",
+        "Shared links can use ?childId=<id> to open the same drawer; add &tab=basic-info, lecture-progress, or homework-progress to land on a tab (default is basic-info when tab is omitted).",
       ],
     },
     {

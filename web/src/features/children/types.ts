@@ -37,6 +37,14 @@ export type ChildParent = {
   };
 };
 
+export type ChildLessonOutcome = {
+  lessonId: string;
+  passed: boolean | null;
+  mark: number | null;
+  updatedAt: string;
+  markedBy: { id: string; firstName: string; lastName: string } | null;
+};
+
 export type ChildAttendanceRecord = {
   lectureId: string;
   childId: string;
@@ -75,6 +83,7 @@ export type ChildRecord = {
   address?: ChildAddress | null;
   parents: ChildParent[];
   attendance?: ChildAttendanceRecord[];
+  lessonOutcomes?: ChildLessonOutcome[];
 };
 
 export type ChildrenListResponse = {

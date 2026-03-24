@@ -13,7 +13,7 @@ type Props = {
 
 export function Tabs({ value, onChange, tabs, children }: Props) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="border-b border-border">
         <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-none">
         {tabs.map((tab) => {

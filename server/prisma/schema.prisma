@@ -172,6 +172,7 @@ model User {
   notifications  Notification[]
   boardMemberships CommunityBoardMember[]
   createdEvents Event[] @relation("EventCreatedBy")
+  childLessonOutcomesMarked ChildLessonOutcome[] @relation("ChildLessonOutcomeMarkedBy")
 }
 
 model CommunityBoardMember {
@@ -221,6 +222,7 @@ model Child {
   attendance   Attendance[]
   homework     Homework[]
   events       EventChild[]
+  lessonOutcomes ChildLessonOutcome[]
 
   @@index([communityId, status])
 }
@@ -352,8 +354,27 @@ model Lesson {
   updatedAt DateTime @updatedAt
   attendance Attendance[]
   homework   Homework[]
+  childOutcomes ChildLessonOutcome[]
 
   @@unique([title, nivo])
+}
+
+model ChildLessonOutcome {
+  childId     String
+  lessonId    String
+  passed      Boolean?
+  mark        Int?
+  markedById  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  child    Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  markedBy User?  @relation("ChildLessonOutcomeMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
+
+  @@id([childId, lessonId])
+  @@index([lessonId])
+  @@index([childId])
 }
 
 model Homework {

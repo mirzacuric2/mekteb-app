@@ -19,7 +19,7 @@ export const parentHandbookBs: HelpHandbookContent = {
       title: "Kontrolna ploča",
       bullets: [
         "Početak nakon prijave: vijesti zajednice i pregled vaše porodice.",
-        "Pregled napretka: kada imate povezanu djecu, vidite kartice sa pokazateljima i sažetke po djetetu (prisustvo, zadaće, nedavna aktivnost) samo za vašu djecu.",
+        "Pregled napretka: kada imate povezanu djecu, vidite kartice sa pokazateljima i sažetke po djetetu (prisustvo, zadaće, nedavna aktivnost) samo za vašu djecu. Dodir na dijete pod ukupnim napretkom otvara ladicu na tabu lecture-progress; pod zadacom na homework-progress. URL koristi ?childId=…&tab=… da možete osvježiti ili podijeliti isti prikaz.",
         "Ova sedmica za vašu porodicu: pregled sedmičnih događaja samo za čitanje kada nalog ima zajednicu. Ovdje ne možete kreirati ni uređivati događaje.",
         "Nedavne objave: najnovije objave sa linkom ka cijeloj sekciji Objave.",
         "Ne možete pokretati izvještaje o lekcijama, upravljati tuđom djecom ni mijenjati postavke zajednice odavde.",
@@ -42,7 +42,7 @@ export const parentHandbookBs: HelpHandbookContent = {
         "Otvorite red za detalje u bočnoj ladici: napredak, zadaće i historiju prisustva kada je evidentirana.",
         "Možete uređivati dozvoljena polja (npr. ime, JMB, datum rođenja, adresa) kada je prikazana akcija uređivanja.",
         "Ne možete kreirati ni deaktivirati djecu, mijenjati zajednicu ili nivo, niti veze roditelja—to je samo za administratore.",
-        "Dijeljeni linkovi mogu koristiti ?childId=<id> da otvore istu ladicu.",
+        "Dijeljeni linkovi mogu koristiti ?childId=<id> da otvore istu ladicu; dodajte &tab=basic-info, lecture-progress ili homework-progress za određeni tab (podrazumijevano je basic-info ako tab nedostaje).",
       ],
     },
     {
