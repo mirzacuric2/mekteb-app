@@ -19,7 +19,24 @@ import { useBulkLessonOutcomeChildrenQuery } from "./use-bulk-lesson-outcome-chi
 import { useBulkLessonOutcomesMutation } from "./use-bulk-lesson-outcomes-mutation";
 import { Switch } from "../../components/ui/switch";
 import { Input } from "../../components/ui/input";
+import axios from "axios";
+import {
+  lessonRollupHasDraftReports,
+  rollupLessonActivityFromAttendance,
+} from "../dashboard/lesson-activity-readiness";
 type RowState = { passed: boolean; markInput: string };
+
+const LESSON_ACTIVITY_INCOMPLETE_CODE = "LESSON_ACTIVITY_INCOMPLETE";
+
+function isLessonActivityIncompleteApiError(err: unknown): boolean {
+  if (!axios.isAxiosError(err) || err.response?.status !== 400) return false;
+  const data = err.response.data;
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    (data as { code?: string }).code === LESSON_ACTIVITY_INCOMPLETE_CODE
+  );
+}
 
 function defaultRowForChild(child: ChildRecord, lid: string): RowState {
   const outcome = child.lessonOutcomes?.find((o) => o.lessonId === lid);
@@ -55,7 +72,6 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
     [lessonsForNivo, lessonId]
   );
 
-  // Stable when data is missing — `data || []` would be a new [] every render and retrigger the sync effect forever.
   const children = useMemo(() => childrenQuery.data ?? [], [childrenQuery.data]);
 
   useEffect(() => {
@@ -111,6 +127,23 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
     setMarkErrors({});
   };
 
+  const handleSetAllPassed = () => {
+    if (!lessonId) return;
+    const blocked = children.filter((child) => {
+      const rollup = rollupLessonActivityFromAttendance(child.attendance, lessonId);
+      return lessonRollupHasDraftReports(rollup);
+    });
+    if (blocked.length > 0) {
+      toast.error(
+        t("bulkLessonOutcomePassAllBlockedIncomplete", {
+          count: blocked.length,
+        })
+      );
+      return;
+    }
+    setPassedForAllChildren(true);
+  };
+
   const handleSave = async () => {
     if (!lessonId) {
       toast.error(t("bulkLessonOutcomePickLesson"));
@@ -136,6 +169,18 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
         }
         mark = n;
       }
+      const rollup = rollupLessonActivityFromAttendance(child.attendance, lessonId);
+      const outcomeAlreadyPassed =
+        child.lessonOutcomes?.find((o) => o.lessonId === lessonId)?.passed === true;
+      const allowRowOutcomeEdits = !lessonRollupHasDraftReports(rollup) || outcomeAlreadyPassed;
+      if (!allowRowOutcomeEdits && (row.passed || mark !== null)) {
+        toast.error(
+          t("bulkLessonOutcomePassBlockedIncomplete", {
+            name: `${child.firstName} ${child.lastName}`.trim(),
+          })
+        );
+        return;
+      }
       items.push({ childId: child.id, passed: row.passed, mark });
     }
 
@@ -149,8 +194,12 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
       const result = await bulkMutation.mutateAsync({ lessonId, items });
       toast.success(t("bulkLessonOutcomeSaved", { count: result.updated }));
       onOpenChange(false);
-    } catch {
-      toast.error(t("bulkLessonOutcomeSaveFailed"));
+    } catch (err) {
+      if (isLessonActivityIncompleteApiError(err)) {
+        toast.error(t("lessonOutcomePassBlockedActivityIncomplete"));
+      } else {
+        toast.error(t("bulkLessonOutcomeSaveFailed"));
+      }
     }
   };
 
@@ -250,7 +299,7 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
                     variant="outline"
                     className="h-8 px-2.5 text-xs"
                     disabled={bulkMutation.isPending}
-                    onClick={() => setPassedForAllChildren(true)}
+                    onClick={handleSetAllPassed}
                   >
                     {t("bulkLessonOutcomeAllPassed")}
                   </Button>
@@ -280,6 +329,18 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
                   <tbody>
                     {children.map((child) => {
                       const row = rows[child.id] ?? defaultRowForChild(child, lessonId);
+                      const rollup = rollupLessonActivityFromAttendance(child.attendance, lessonId);
+                      const outcomeAlreadyPassed =
+                        child.lessonOutcomes?.find((o) => o.lessonId === lessonId)?.passed === true;
+                      const allowRowEdits = !lessonRollupHasDraftReports(rollup) || outcomeAlreadyPassed;
+                      const draftBlocksGrading =
+                        lessonRollupHasDraftReports(rollup) && !outcomeAlreadyPassed;
+                      const passedSwitchDisabled =
+                        bulkMutation.isPending || (!allowRowEdits && !row.passed);
+                      const draftBlockTitle =
+                        passedSwitchDisabled && draftBlocksGrading && !bulkMutation.isPending
+                          ? t("lessonOutcomeGradingBlockedHint")
+                          : undefined;
                       return (
                         <tr key={child.id} className="border-b border-border/80 last:border-0">
                           <td className="px-3 py-2 font-medium text-slate-900">
@@ -290,7 +351,8 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
                               <Switch
                                 checked={row.passed}
                                 onCheckedChange={(v) => updateRow(child.id, { passed: v })}
-                                disabled={bulkMutation.isPending}
+                                disabled={passedSwitchDisabled}
+                                title={draftBlockTitle}
                                 id={`bulk-passed-${child.id}`}
                                 aria-label={t("lessonOutcomePassedAria")}
                               />
@@ -307,7 +369,12 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
                               placeholder="1–10"
                               value={row.markInput}
                               onChange={(e) => updateRow(child.id, { markInput: e.target.value })}
-                              disabled={bulkMutation.isPending}
+                              disabled={bulkMutation.isPending || !allowRowEdits}
+                              title={
+                                !allowRowEdits && draftBlocksGrading && !bulkMutation.isPending
+                                  ? t("lessonOutcomeGradingBlockedHint")
+                                  : undefined
+                              }
                               aria-label={t("lessonOutcomeMarkLabel")}
                             />
                             {markErrors[child.id] ? (

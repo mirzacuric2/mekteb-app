@@ -9,7 +9,6 @@ export type PatchChildLessonOutcomePayload = {
   mark: number | null;
 };
 
-/** Backend: `ADMIN` / `SUPER_ADMIN` only; use only with `canSetChildLessonOutcomes` in UI. */
 export function usePatchChildLessonOutcome() {
   const queryClient = useQueryClient();
 

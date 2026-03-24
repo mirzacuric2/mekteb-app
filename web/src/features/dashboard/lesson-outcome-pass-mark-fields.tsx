@@ -5,7 +5,6 @@ import { cn } from "../../lib/utils";
 import { Input } from "../../components/ui/input";
 import { Switch } from "../../components/ui/switch";
 
-/** Shared field names for forms that include pass + mark (1–10). */
 export type LessonOutcomePassMarkFieldValues = {
   passed: boolean;
   markInput: string;
@@ -19,10 +18,11 @@ type LessonOutcomePassMarkFieldsProps = {
   idsPrefix: string;
   onMarkChange?: () => void;
   compact?: boolean;
-  /** Merged onto the root wrapper (e.g. layout overrides for a drawer). */
   className?: string;
-  /** Placed after the mark input on the same row as label + field (e.g. submit). */
   markRowTrailing?: ReactNode;
+  onPassedWillChange?: (next: boolean, previous: boolean) => boolean;
+  onPassedPersist?: (next: boolean, previous: boolean) => Promise<void>;
+  blockPassedTrueUntilActivityReady?: boolean;
 };
 
 export function LessonOutcomePassMarkFields({
@@ -35,6 +35,9 @@ export function LessonOutcomePassMarkFields({
   compact,
   className,
   markRowTrailing,
+  onPassedWillChange,
+  onPassedPersist,
+  blockPassedTrueUntilActivityReady,
 }: LessonOutcomePassMarkFieldsProps) {
   const { t } = useTranslation();
   const markRegister = register("markInput");
@@ -56,8 +59,17 @@ export function LessonOutcomePassMarkFields({
               <Switch
                 id={`${idsPrefix}-passed`}
                 checked={field.value}
-                onCheckedChange={field.onChange}
-                disabled={disabled}
+                onCheckedChange={(checked) => {
+                  const previous = field.value;
+                  if (onPassedWillChange && !onPassedWillChange(checked, previous)) return;
+                  field.onChange(checked);
+                  if (onPassedPersist) {
+                    void onPassedPersist(checked, previous).catch(() => {
+                      field.onChange(previous);
+                    });
+                  }
+                }}
+                disabled={disabled || (blockPassedTrueUntilActivityReady === true && !field.value)}
                 aria-label={t("lessonOutcomePassedAria")}
               />
             )}

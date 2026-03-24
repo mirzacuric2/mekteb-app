@@ -8,6 +8,7 @@ import { sendEmail } from "../../email.js";
 import { buildVerificationEmailContent, resolveVerificationLogoUrl } from "../../email/verification-email.js";
 import { canAccessCommunity } from "../../common/access.js";
 import { AppRequest } from "../../types.js";
+import { assertChildLessonOutcomeNoDraftReports } from "./lesson-outcome-activity-guard.js";
 
 export function usersRouter() {
   const router = Router();
@@ -889,6 +890,13 @@ export function usersRouter() {
         }
       }
 
+      for (const item of parsed.data.items) {
+        const guard = await assertChildLessonOutcomeNoDraftReports(prisma, item.childId, parsed.data.lessonId);
+        if (!guard.ok && (item.passed || item.mark != null)) {
+          return res.status(400).json({ message: guard.message, code: "LESSON_ACTIVITY_INCOMPLETE" });
+        }
+      }
+
       await prisma.$transaction(
         parsed.data.items.map((item) =>
           prisma.childLessonOutcome.upsert({
@@ -934,6 +942,32 @@ export function usersRouter() {
       if (!lesson) return res.status(404).json({ message: "Lesson not found" });
       if (lesson.nivo !== child.nivo) {
         return res.status(400).json({ message: "Lesson nivo does not match child nivo" });
+      }
+
+      const existingOutcome = await prisma.childLessonOutcome.findUnique({
+        where: { childId_lessonId: { childId: req.params.childId, lessonId: req.params.lessonId } },
+      });
+      const nextPassed =
+        parsed.data.passed !== undefined ? parsed.data.passed : (existingOutcome?.passed ?? null);
+      const draftGuard = await assertChildLessonOutcomeNoDraftReports(
+        prisma,
+        req.params.childId,
+        req.params.lessonId
+      );
+      const noDraftReports = draftGuard.ok;
+
+      if (nextPassed === true && !noDraftReports) {
+        return res.status(400).json({ message: draftGuard.message, code: "LESSON_ACTIVITY_INCOMPLETE" });
+      }
+
+      const existingPassedTrue = existingOutcome?.passed === true;
+      if (!noDraftReports && !existingPassedTrue) {
+        if (parsed.data.mark !== undefined && parsed.data.mark !== null) {
+          return res.status(400).json({
+            message: draftGuard.message,
+            code: "LESSON_ACTIVITY_INCOMPLETE",
+          });
+        }
       }
 
       const outcome = await prisma.childLessonOutcome.upsert({

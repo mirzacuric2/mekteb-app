@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { AlertCircle, Check, Circle, Clock3, MessageSquare, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, Circle, Clock3, MessageSquare, XCircle } from "lucide-react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { ChildLessonOutcome, ChildRecord } from "../children/types";
 import { MESSAGE_CONTEXT_TYPE, MessageContextDraft } from "../messages/types";
 import { formatDateTime } from "../../lib/date-time";
+import { isLessonActivityReadyForPassedOutcome, lessonRollupHasDraftReports } from "./lesson-activity-readiness";
 import { isPersistedLessonOutcomeKey } from "./progress-lesson-outcome.constants";
 import { ProgressLessonOutcomeGrading } from "./progress-lesson-outcome-grading";
 
@@ -14,9 +15,7 @@ export type LectureProgressLessonItem = {
   reports: number;
   completedReports: number;
   presentReports: number;
-  /** Attendance rows with homework title/description (same scope as Homework progress tab for this lesson). */
   knownHomeworkReports: number;
-  /** Subset of those rows marked done (`homeworkDone === true`). */
   homeworkDoneReports: number;
   comments: string[];
   lastReportedAt: string | null;
@@ -49,6 +48,9 @@ export function LectureProgressLessonCard({
   const hasHomeworkPending =
     item.knownHomeworkReports > 0 && item.homeworkDoneReports < item.knownHomeworkReports;
 
+  const attendanceRate = item.reports > 0 ? item.presentReports / item.reports : 1;
+  const attendanceBelowHalf = item.reports > 0 && attendanceRate < 0.5;
+
   const activityStatusLabel = isComplete
     ? hasHomeworkPending
       ? t("parentDashboardLectureStateCompletedHomeworkPending")
@@ -58,25 +60,28 @@ export function LectureProgressLessonCard({
       : t("parentDashboardLectureStateNotStarted");
 
   const imamPassed = outcome?.passed;
-  /** Imam "completed" must not hide outstanding homework in the badge or green styling. */
   const imamMarkedComplete = imamPassed === true;
-  const statusLabel =
-    imamMarkedComplete && hasHomeworkPending
-      ? t("parentDashboardLectureStateCompletedHomeworkPending")
-      : imamMarkedComplete
-        ? t("lessonOutcomePassed")
-        : imamPassed === false
-          ? t("lessonOutcomeNotPassed")
-          : activityStatusLabel;
+  const statusLabel = imamMarkedComplete
+    ? t("lessonOutcomePassed")
+    : imamPassed === false
+      ? t("lessonOutcomeNotPassed")
+      : activityStatusLabel;
 
-  const showGreenPass = imamMarkedComplete && !hasHomeworkPending;
+  const showGreenPass = imamMarkedComplete;
   const showNotPassed = imamPassed === false;
-  /** Reports look fully done, but Imam set not completed — use attention styling, not alarm red. */
-  const activityReportsFullyDone =
+  const activityReportsFullyDone = isLessonActivityReadyForPassedOutcome({
+    reports: item.reports,
+    completedReports: item.completedReports,
+    presentReports: item.presentReports,
+    knownHomeworkReports: item.knownHomeworkReports,
+    homeworkDoneReports: item.homeworkDoneReports,
+  });
+  const lessonOutcomeGradingAllowedNoDrafts =
     item.reports > 0 &&
-    isComplete &&
-    item.presentReports === item.reports &&
-    !hasHomeworkPending;
+    !lessonRollupHasDraftReports({
+      reports: item.reports,
+      completedReports: item.completedReports,
+    });
   const softImamNotPassed = showNotPassed && activityReportsFullyDone;
   const hardImamNotPassed = showNotPassed && !softImamNotPassed;
   const showActivityWarning =
@@ -111,6 +116,9 @@ export function LectureProgressLessonCard({
       ) : null}
       <span
         className={`absolute left-0 top-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border sm:top-1 sm:h-7 sm:w-7 ${iconWrapClass}`}
+        {...(showGreenPass
+          ? { "aria-label": t("lessonOutcomePassedAria") }
+          : { "aria-hidden": true as const })}
       >
         {showGreenPass ? (
           <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2.5} aria-hidden />
@@ -130,9 +138,9 @@ export function LectureProgressLessonCard({
             {item.title}
           </p>
           <span
-            className={`inline-flex w-fit max-w-full min-w-0 break-words rounded-md px-2 py-1 text-left text-[11px] font-medium leading-snug sm:shrink-0 sm:rounded-full sm:py-0.5 sm:text-xs sm:leading-5 ${badgeClass}`}
+            className={`inline-flex w-fit max-w-full min-w-0 shrink-0 break-words rounded-md px-2 py-1 text-left text-[11px] font-medium leading-snug sm:rounded-full sm:py-0.5 sm:text-xs sm:leading-5 ${badgeClass}`}
           >
-            {statusLabel}
+            <span className="min-w-0">{statusLabel}</span>
           </span>
         </div>
         {softImamNotPassed ? (
@@ -157,9 +165,6 @@ export function LectureProgressLessonCard({
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 max-md:mb-1.5 md:mb-0 md:text-[10px] md:text-slate-500">
                   {t("parentDashboardLectureSectionActivity")}
                 </p>
-                <p className="mt-1 text-[11px] leading-snug text-slate-500 sm:text-xs">
-                  {t("parentDashboardLectureActivityIntro", { count: item.reports })}
-                </p>
                 <dl className="mt-1.5 space-y-1 text-xs sm:mt-2 sm:space-y-1">
                   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 sm:flex sm:w-auto sm:justify-start sm:gap-x-2 md:flex md:w-full md:justify-between md:gap-3">
                     <dt className="min-w-0 text-slate-600">{t("parentDashboardLectureMetricLectureComplete")}</dt>
@@ -169,22 +174,50 @@ export function LectureProgressLessonCard({
                   </div>
                   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 sm:flex sm:w-auto sm:justify-start sm:gap-x-2 md:flex md:w-full md:justify-between md:gap-3">
                     <dt className="min-w-0 text-slate-600">{t("parentDashboardLectureMetricAttendance")}</dt>
-                    <dd className="text-right tabular-nums font-medium text-slate-900 sm:text-left md:text-right">
-                      {item.presentReports}/{item.reports}
+                    <dd className="flex items-center justify-end gap-1 text-right font-medium text-slate-900 sm:justify-start md:justify-end">
+                      {attendanceBelowHalf ? (
+                        <span
+                          className="inline-flex shrink-0"
+                          role="img"
+                          aria-label={t("parentDashboardLectureAttendanceWarningAria")}
+                          title={t("parentDashboardLectureAttendanceWarningAria")}
+                        >
+                          <AlertTriangle
+                            className="h-3 w-3 text-rose-600 sm:h-3.5 sm:w-3.5"
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
+                        </span>
+                      ) : null}
+                      <span className="tabular-nums leading-none">
+                        {item.presentReports}/{item.reports}
+                      </span>
                     </dd>
                   </div>
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 sm:flex sm:w-auto sm:justify-start sm:gap-x-2 md:flex md:w-full md:justify-between md:gap-3">
-                    <dt className="min-w-0 text-slate-600">{t("parentDashboardLectureMetricHomework")}</dt>
-                    <dd className="text-right font-medium text-slate-900 sm:text-left md:text-right">
-                      {item.knownHomeworkReports > 0 ? (
-                        <span className="tabular-nums">
+                  {item.knownHomeworkReports > 0 ? (
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 sm:flex sm:w-auto sm:justify-start sm:gap-x-2 md:flex md:w-full md:justify-between md:gap-3">
+                      <dt className="min-w-0 text-slate-600">{t("parentDashboardLectureMetricHomework")}</dt>
+                      <dd className="flex items-center justify-end gap-1 text-right font-medium text-slate-900 sm:justify-start md:justify-end">
+                        {hasHomeworkPending ? (
+                          <span
+                            className="inline-flex shrink-0"
+                            role="img"
+                            aria-label={t("parentDashboardLectureHomeworkPendingAria")}
+                            title={t("parentDashboardLectureHomeworkPendingAria")}
+                          >
+                            <AlertTriangle
+                              className="h-3 w-3 text-amber-600 sm:h-3.5 sm:w-3.5"
+                              strokeWidth={2.5}
+                              aria-hidden
+                            />
+                          </span>
+                        ) : null}
+                        <span className="tabular-nums leading-none">
                           {item.homeworkDoneReports}/{item.knownHomeworkReports}
                         </span>
-                      ) : (
-                        <span className="text-slate-500">{t("parentDashboardHomeworkUnknown")}</span>
-                      )}
-                    </dd>
-                  </div>
+                      </dd>
+                    </div>
+                  ) : null}
                 </dl>
               </div>
 
@@ -265,7 +298,12 @@ export function LectureProgressLessonCard({
         )}
 
         {canSetChildLessonOutcomes && isPersistedLessonOutcomeKey(item.key) && item.reports > 0 ? (
-          <ProgressLessonOutcomeGrading childId={child.id} lessonId={item.key} outcome={outcome} />
+          <ProgressLessonOutcomeGrading
+            childId={child.id}
+            lessonId={item.key}
+            outcome={outcome}
+            activityReadyForPassedOutcome={lessonOutcomeGradingAllowedNoDrafts}
+          />
         ) : null}
       </Card>
     </div>
