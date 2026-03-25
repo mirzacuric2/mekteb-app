@@ -16,7 +16,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <SessionProvider>
         <BrowserRouter>
           <App />
-          <Toaster richColors position="top-right" />
+          <Toaster richColors position="bottom-right" />
         </BrowserRouter>
       </SessionProvider>
     </QueryClientProvider>

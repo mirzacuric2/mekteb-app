@@ -9,6 +9,7 @@ import { ComboboxChips } from "../../components/ui/combobox-chips";
 import { StatusBadge } from "../common/components/status-badge";
 import { NivoProgress } from "./nivo-progress";
 import { CHILD_FORM_DEFAULT_VALUES, ChildFormValues } from "./child-form-schema";
+import { CHILD_FORM_CONSTRAINTS } from "./child-form.constants";
 import { useChildForm } from "./use-child-form";
 import { ChildrenCommunityOption } from "./use-children-data";
 
@@ -55,6 +56,16 @@ export function ChildFormDialog({
     onSubmit,
   });
 
+  const minBirthDate = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 30);
+    return d.toISOString().slice(0, 10);
+  }, []);
+  const maxBirthDate = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - CHILD_FORM_CONSTRAINTS.minAge);
+    return d.toISOString().slice(0, 10);
+  }, []);
   const nivo = watch("nivo");
   const parentIds = watch("parentIds");
   const communityId = watch("communityId");
@@ -115,6 +126,9 @@ export function ChildFormDialog({
               </div>
               <div>
                 <Input
+                  type="date"
+                  min={minBirthDate}
+                  max={maxBirthDate}
                   placeholder={t("childrenBirthDatePlaceholder")}
                   {...register("birthDate", {
                     onChange: () => clearErrors("birthDate"),
@@ -137,6 +151,13 @@ export function ChildFormDialog({
                     ))}
                   </Select>
                   {errors.communityId ? <p className="mt-1 text-xs text-red-600">{errors.communityId.message}</p> : null}
+                </div>
+              ) : mode === "edit" && communityId ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">{t("community")}</label>
+                  <p className="rounded-md border border-border bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    {communityOptions.find((c) => c.id === communityId)?.name || communityId}
+                  </p>
                 </div>
               ) : null}
               {canAdminManage ? (

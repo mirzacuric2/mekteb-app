@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LESSON_NIVO, LessonNivo } from "../lessons/constants";
-import { isValidIsoDateString } from "../../lib/date-time";
+import { isAtLeastAge, isValidIsoDateString } from "../../lib/date-time";
 import { CHILD_FORM_CONSTRAINTS } from "./child-form.constants";
 
 export const childFormSchema = z
@@ -29,7 +29,11 @@ export const childFormSchema = z
       .string()
       .trim()
       .min(1, "Birth date is required.")
-      .refine((value) => isValidIsoDateString(value), "Birth date must be valid (YYYY-MM-DD)."),
+      .refine((value) => isValidIsoDateString(value), "Birth date must be valid (YYYY-MM-DD).")
+      .refine(
+        (value) => isAtLeastAge(value, CHILD_FORM_CONSTRAINTS.minAge),
+        `Child must be at least ${CHILD_FORM_CONSTRAINTS.minAge} years old.`,
+      ),
     communityId: z.string().trim(),
     parentIds: z.array(z.string().trim()),
     streetLine1: z.string().trim(),

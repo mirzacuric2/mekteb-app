@@ -11,10 +11,6 @@ export async function openNivoBookPreview(nivo: number) {
     : "application/pdf";
   const blob = new Blob([response.data], { type: contentType });
   const objectUrl = URL.createObjectURL(blob);
-  const previewWindow = window.open(objectUrl, "_blank", "noopener,noreferrer");
-  if (!previewWindow) {
-    URL.revokeObjectURL(objectUrl);
-    throw new Error("Unable to open preview window");
-  }
+  window.open(objectUrl, "_blank", "noopener,noreferrer");
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), PREVIEW_URL_REVOKE_DELAY_MS);
 }

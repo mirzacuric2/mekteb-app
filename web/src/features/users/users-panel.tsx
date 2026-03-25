@@ -10,8 +10,12 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { cn } from "../../lib/utils";
 import { useSession } from "../auth/session-context";
+import { useRoleAccess } from "../auth/use-role-access";
 import { useAuthedQuery } from "../common/use-authed-query";
-import { useChildByIdQuery } from "../children/use-children-data";
+import { ChildFormDialog, ChildParentOption } from "../children/child-form-dialog";
+import { ChildFormValues } from "../children/child-form-schema";
+import { useChildByIdQuery, useChildrenCommunityOptionsQuery, useChildrenParentOptionsQuery } from "../children/use-children-data";
+import { useCreateChildMutation, useInactivateChildMutation, useUpdateChildMutation } from "../children/use-children-mutations";
 import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
 import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
 import { Lesson } from "../lessons/types";
@@ -26,11 +30,11 @@ import {
 } from "../common/components/entity-list-toolbar";
 import { Role } from "../common/role";
 import { StatusBadge } from "../common/components/status-badge";
-import { CommunityOption, UserFormDialog } from "../users/user-form-dialog";
+import { CommunityOption, LinkableChildOption, UserFormDialog } from "../users/user-form-dialog";
 import { UserDetailsDrawerContent } from "./user-details-drawer-content";
 import { UserRecord, UsersTable } from "./users-table";
 import { EditableRole, ROLE } from "../../types";
-import { LessonNivo } from "../lessons/constants";
+import { LESSON_NIVO, LessonNivo } from "../lessons/constants";
 import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { useUsersListQuery } from "./use-users-data";
 import { UserFormValues, UserStatus } from "./user-form-schema";
@@ -44,8 +48,19 @@ type ChildMetaRecord = {
   id: string;
   firstName?: string;
   lastName?: string;
+  ssn?: string;
+  birthDate?: string;
   nivo?: LessonNivo;
+  communityId?: string;
   parents?: { parentId: string }[];
+  address?: {
+    streetLine1: string;
+    streetLine2?: string | null;
+    postalCode: string;
+    city: string;
+    state?: string | null;
+    country: string;
+  } | null;
 };
 type UserAddressInput = {
   streetLine1: string;
@@ -68,10 +83,19 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const childIdFromQuery = useMemo(() => new URLSearchParams(location.search).get("childId") || null, [location.search]);
   const [deletingUser, setDeletingUser] = useState<UserRecord | null>(null);
+  const [addChildForUser, setAddChildForUser] = useState<UserRecord | null>(null);
+  const [editingChildFromDrawer, setEditingChildFromDrawer] = useState<ChildMetaRecord | null>(null);
+  const [childFormApiError, setChildFormApiError] = useState<{ field?: string; message: string } | null>(null);
   const queryClient = useQueryClient();
+  const { canAdminManage, canChooseCommunity, isSuperAdmin } = useRoleAccess();
   const users = useUsersListQuery({ search, page, pageSize: DEFAULT_PAGE_SIZE, excludeMe: true }, enabled);
   const children = useAuthedQuery<ChildMetaRecord[]>("children-users-meta", "/children", enabled);
   const communities = useAuthedQuery<CommunityRecord[]>("communities-users", "/communities", enabled);
+  const childParentUsers = useChildrenParentOptionsQuery(canAdminManage && Boolean(addChildForUser));
+  const childCommunities = useChildrenCommunityOptionsQuery(canAdminManage && Boolean(addChildForUser));
+  const createChildFromDrawer = useCreateChildMutation();
+  const updateChildFromDrawer = useUpdateChildMutation(editingChildFromDrawer?.id || null);
+  const inactivateChildFromDrawer = useInactivateChildMutation();
 
   const communityById = useMemo(() => {
     const lookup = new Map<string, string>();
@@ -117,6 +141,14 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
     }
     return lookup;
   }, [children.data]);
+
+  useEffect(() => {
+    if (!selectedUser) return;
+    const fresh = (users.data?.items || []).find((u) => u.id === selectedUser.id);
+    if (fresh && fresh !== selectedUser) {
+      setSelectedUser(fresh);
+    }
+  }, [users.data?.items, selectedUser]);
 
   const childDrawerQuery = useChildByIdQuery(childIdFromQuery ?? undefined, false);
   const childForDrawer = childDrawerQuery.data ?? null;
@@ -243,7 +275,6 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
     onSuccess: async (createdUser) => {
       setFormApiError(null);
       setFormOpen(false);
-      setEditingUser(null);
       await queryClient.invalidateQueries({ queryKey: ["users"] });
       if (createdUser.invitationEmailSent) {
         toast.success(t("usersToastCreatedWithEmail"));
@@ -298,7 +329,6 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
     onSuccess: async () => {
       setFormApiError(null);
       setFormOpen(false);
-      setEditingUser(null);
       await queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success(t("usersToastUpdated"));
     },
@@ -319,9 +349,24 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
     onError: (error) => toast.error(getApiMessage(error, "Failed to delete user.")),
   });
 
+  const linkableChildrenForUser: LinkableChildOption[] = useMemo(() => {
+    if (!editingUser) return [];
+    const userCommunityId = editingUser.communityId;
+    if (!userCommunityId) return [];
+    const linkedIds = new Set((childrenByParentId.get(editingUser.id) || []).map((c) => c.id));
+    return (children.data || [])
+      .filter((c) => !linkedIds.has(c.id))
+      .filter((c) => !isSuperAdmin || c.communityId === userCommunityId)
+      .map((c) => ({
+        value: c.id,
+        label: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.id,
+      }));
+  }, [editingUser, children.data, childrenByParentId, isSuperAdmin]);
+
   const createChildrenForUser = async (
     userId: string,
-    childrenPayload: UserFormValues["children"]
+    childrenPayload: UserFormValues["children"],
+    communityId?: string,
   ) => {
     if (!childrenPayload.length) return;
 
@@ -334,8 +379,116 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
           birthDate: child.birthDate,
           nivo: child.nivo,
           parentIds: [userId],
+          communityId: isSuperAdmin ? communityId : undefined,
         })
       )
+    );
+  };
+
+  const updateExistingChildren = async (
+    childrenPayload: UserFormValues["children"]
+  ) => {
+    if (!childrenPayload.length) return;
+
+    await Promise.all(
+      childrenPayload.map((child) =>
+        api.patch(`/children/${child.existingChildId}`, {
+          firstName: child.firstName,
+          lastName: child.lastName,
+          ssn: child.ssn,
+          birthDate: child.birthDate,
+          nivo: child.nivo,
+        })
+      )
+    );
+  };
+
+  const linkChildrenToUser = async (userId: string, childIds: string[]) => {
+    if (!childIds.length) return;
+    const allChildren = children.data || [];
+    await Promise.all(
+      childIds.map((childId) => {
+        const child = allChildren.find((c) => c.id === childId);
+        const currentParentIds = (child?.parents || []).map((p) => p.parentId);
+        if (currentParentIds.includes(userId)) return Promise.resolve();
+        return api.patch(`/children/${childId}`, {
+          parentIds: [...currentParentIds, userId],
+        });
+      })
+    );
+  };
+
+  const drawerChildParentOptions: ChildParentOption[] = useMemo(
+    () =>
+      (childParentUsers.data || [])
+        .filter((u) => u.role !== ROLE.SUPER_ADMIN)
+        .map((u) => ({
+          value: u.id,
+          label: `${u.firstName} ${u.lastName}`.trim(),
+          status: u.status,
+          communityId: u.communityId,
+        })),
+    [childParentUsers.data]
+  );
+
+  const handleChildFormSubmit = (values: ChildFormValues) => {
+    setChildFormApiError(null);
+    const addressPayload =
+      values.streetLine1.trim() && values.postalCode.trim() && values.city.trim() && values.country.trim()
+        ? {
+            streetLine1: values.streetLine1.trim(),
+            streetLine2: values.streetLine2.trim() || undefined,
+            postalCode: values.postalCode.trim(),
+            city: values.city.trim(),
+            state: values.stateValue.trim() || undefined,
+            country: values.country.trim(),
+          }
+        : undefined;
+
+    const onSuccess = async () => {
+      setAddChildForUser(null);
+      setEditingChildFromDrawer(null);
+      setChildFormApiError(null);
+      await queryClient.invalidateQueries({ queryKey: ["children-users-meta"] });
+      await queryClient.invalidateQueries({ queryKey: ["children-by-id"] });
+      toast.success(editingChildFromDrawer ? t("childrenUpdated") : t("childrenCreated"));
+    };
+    const onError = (error: unknown) => {
+      const fallback = editingChildFromDrawer ? t("childrenUpdateFailed") : t("childrenCreateFailed");
+      const apiFieldError = getApiFieldError(error, fallback);
+      setChildFormApiError(apiFieldError);
+      toast.error(apiFieldError.message);
+    };
+
+    if (editingChildFromDrawer) {
+      updateChildFromDrawer.mutate(
+        {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          ssn: values.ssn.trim(),
+          birthDate: values.birthDate,
+          nivo: canAdminManage ? values.nivo : undefined,
+          communityId: canAdminManage && canChooseCommunity ? values.communityId || undefined : undefined,
+          parentIds: canAdminManage ? values.parentIds : undefined,
+          address: addressPayload || null,
+        },
+        { onSuccess, onError }
+      );
+      return;
+    }
+
+    createChildFromDrawer.mutate(
+      {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        ssn: values.ssn.trim(),
+        birthDate: values.birthDate,
+        nivo: values.nivo,
+        communityId: isSuperAdmin ? values.communityId || undefined : undefined,
+        parentIds: values.parentIds,
+        address: addressPayload,
+      },
+      { onSuccess, onError }
     );
   };
 
@@ -377,6 +530,7 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
             isLoading={usersLoading}
             page={page}
             totalPages={totalPages}
+            totalItems={users.data?.total}
             showCommunityColumn={session?.user.role === ROLE.SUPER_ADMIN}
             canEdit={canEdit}
             onPageChange={setPage}
@@ -411,6 +565,12 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
               submitting={createUser.isPending || updateUser.isPending}
               apiError={formApiError}
               defaultPreferredLanguage={normalizeUserUiLanguage(i18n.language)}
+              readonlyCommunityName={
+                session?.user.role !== ROLE.SUPER_ADMIN && editingUser?.communityId
+                  ? communityById.get(editingUser.communityId) || null
+                  : null
+              }
+              linkableChildren={editingUser ? linkableChildrenForUser : undefined}
               initialValues={
                 editingUser
                   ? {
@@ -436,6 +596,16 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                         state: editingUser.address?.state || "",
                         country: editingUser.address?.country || "",
                       },
+                      children: (childrenByParentId.get(editingUser.id) || []).map((child) => ({
+                        existingChildId: child.id,
+                        firstName: child.firstName || "",
+                        lastName: child.lastName || "",
+                        ssn: child.ssn || "",
+                        birthDate: child.birthDate
+                          ? new Date(child.birthDate).toISOString().slice(0, 10)
+                          : "",
+                        nivo: child.nivo || LESSON_NIVO.First,
+                      })),
                     }
                   : undefined
               }
@@ -463,7 +633,17 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                     },
                     {
                       onSuccess: async () => {
-                        await createChildrenForUser(editingUser.id, values.children);
+                        try {
+                          const existingUpdates = values.children.filter((c) => c.existingChildId);
+                          const newChildren = values.children.filter((c) => !c.existingChildId);
+                          await updateExistingChildren(existingUpdates);
+                          await createChildrenForUser(editingUser.id, newChildren, values.communityId || undefined);
+                          if (values.linkedChildIds.length > 0) {
+                            await linkChildrenToUser(editingUser.id, values.linkedChildIds);
+                          }
+                        } catch (err) {
+                          toast.error(getApiMessage(err, t("childrenCreateFailed")));
+                        }
                         await queryClient.invalidateQueries({ queryKey: ["children-users-meta"] });
                       },
                     }
@@ -486,7 +666,11 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                   {
                     onSuccess: async (createdUser) => {
                       if (!createdUser?.id) return;
-                      await createChildrenForUser(createdUser.id, values.children);
+                      try {
+                        await createChildrenForUser(createdUser.id, values.children, values.communityId || undefined);
+                      } catch (err) {
+                        toast.error(getApiMessage(err, t("childrenCreateFailed")));
+                      }
                       await queryClient.invalidateQueries({ queryKey: ["children-users-meta"] });
                     },
                   }
@@ -503,13 +687,32 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
             title={
               selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : t("usersDrawerTitleFallback")
             }
-            headerSubline={selectedUser ? <Role role={selectedUser.role} /> : undefined}
             headerMeta={
               selectedUser ? (
                 <StatusBadge
                   status={selectedUser.status || "INACTIVE"}
                 />
               ) : undefined
+            }
+            editLabel={t("edit")}
+            deleteLabel={t("delete")}
+            deleteConfirmMessage={
+              selectedUser
+                ? t("usersDeleteDescription", { name: `${selectedUser.firstName} ${selectedUser.lastName}` })
+                : undefined
+            }
+            onEdit={
+              canEdit && selectedUser && selectedUser.role !== ROLE.SUPER_ADMIN
+                ? () => {
+                    setEditingUser(selectedUser);
+                    setFormOpen(true);
+                  }
+                : undefined
+            }
+            onDelete={
+              canEdit && selectedUser && selectedUser.role !== ROLE.SUPER_ADMIN
+                ? () => deleteUser.mutate(selectedUser.id)
+                : undefined
             }
           >
             {selectedUser ? (
@@ -521,6 +724,19 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                     : null
                 }
                 children={childrenByParentId.get(selectedUser.id) || []}
+                onAddChild={
+                  canEdit
+                    ? () => setAddChildForUser(selectedUser)
+                    : undefined
+                }
+                onEditChild={
+                  canEdit
+                    ? (childId) => {
+                        const child = (children.data || []).find((c) => c.id === childId);
+                        if (child) setEditingChildFromDrawer(child);
+                      }
+                    : undefined
+                }
                 onOpenChild={(id) => {
                   const next = new URLSearchParams(location.search);
                   next.set("childId", id);
@@ -551,7 +767,69 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
             summary={null}
             scheduledLessons={childDrawerScheduledLessons}
             childrenFetchMineOnly={false}
+            onEdit={
+              canEdit && childForDrawer
+                ? () => {
+                    const fullChild = (children.data || []).find((c) => c.id === childForDrawer.id);
+                    if (fullChild) setEditingChildFromDrawer(fullChild);
+                  }
+                : undefined
+            }
+            onDelete={
+              canEdit && childForDrawer
+                ? () => {
+                    inactivateChildFromDrawer.mutate(childForDrawer.id, {
+                      onSuccess: async () => {
+                        await queryClient.invalidateQueries({ queryKey: ["children-users-meta"] });
+                        clearChildDrawerQueryParams();
+                      },
+                    });
+                  }
+                : undefined
+            }
+            deleteLabel={t("delete")}
           />
+          {canEdit && (addChildForUser || editingChildFromDrawer) ? (
+            <ChildFormDialog
+              open={Boolean(addChildForUser || editingChildFromDrawer)}
+              mode={editingChildFromDrawer ? "edit" : "create"}
+              initialValues={
+                editingChildFromDrawer
+                  ? {
+                      firstName: editingChildFromDrawer.firstName || "",
+                      lastName: editingChildFromDrawer.lastName || "",
+                      ssn: editingChildFromDrawer.ssn || "",
+                      birthDate: editingChildFromDrawer.birthDate
+                        ? new Date(editingChildFromDrawer.birthDate).toISOString().slice(0, 10)
+                        : "",
+                      nivo: editingChildFromDrawer.nivo || LESSON_NIVO.First,
+                      communityId: editingChildFromDrawer.communityId || "",
+                      parentIds: (editingChildFromDrawer.parents || []).map((p) => p.parentId),
+                      streetLine1: editingChildFromDrawer.address?.streetLine1 || "",
+                      streetLine2: editingChildFromDrawer.address?.streetLine2 || "",
+                      postalCode: editingChildFromDrawer.address?.postalCode || "",
+                      city: editingChildFromDrawer.address?.city || "",
+                      stateValue: editingChildFromDrawer.address?.state || "",
+                      country: editingChildFromDrawer.address?.country || "",
+                    }
+                  : { parentIds: [addChildForUser!.id] }
+              }
+              canAdminManage={canAdminManage}
+              canChooseCommunity={canChooseCommunity}
+              parentOptions={drawerChildParentOptions}
+              communityOptions={childCommunities.data || []}
+              apiError={childFormApiError}
+              submitting={createChildFromDrawer.isPending || updateChildFromDrawer.isPending}
+              onSubmit={handleChildFormSubmit}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setAddChildForUser(null);
+                  setEditingChildFromDrawer(null);
+                  setChildFormApiError(null);
+                }
+              }}
+            />
+          ) : null}
           {canEdit ? (
             <DeleteConfirmDialog
               open={!!deletingUser}

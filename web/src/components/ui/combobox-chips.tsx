@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -33,13 +33,43 @@ export function ComboboxChips<TOption extends ComboboxOption>({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  const updateDropdownPosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const maxH = Math.min(320, Math.max(spaceBelow, spaceAbove));
+    const openAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
+    setDropdownStyle({
+      position: "fixed",
+      left: rect.left,
+      width: rect.width,
+      maxHeight: maxH,
+      ...(openAbove ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updateDropdownPosition();
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    window.addEventListener("resize", updateDropdownPosition);
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.removeEventListener("resize", updateDropdownPosition);
+    };
+  }, [open, updateDropdownPosition]);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current) return;
-      if (!rootRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setOpen(false);
     };
     window.addEventListener("mousedown", onPointerDown);
     return () => window.removeEventListener("mousedown", onPointerDown);
@@ -72,6 +102,7 @@ export function ComboboxChips<TOption extends ComboboxOption>({
   return (
     <div ref={rootRef} className="relative space-y-2">
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
@@ -106,14 +137,18 @@ export function ComboboxChips<TOption extends ComboboxOption>({
       ) : null}
 
       {open ? (
-        <div className="absolute z-30 w-full rounded-md border border-border bg-white p-2 shadow-lg">
+        <div
+          ref={dropdownRef}
+          style={dropdownStyle}
+          className="z-[100] flex flex-col rounded-md border border-border bg-white p-2 shadow-lg"
+        >
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search..."
-            className="mb-2 w-full rounded-md border border-input px-2 py-1.5 text-sm outline-none focus:border-ring"
+            className="mb-2 w-full shrink-0 rounded-md border border-input px-2 py-1.5 text-sm outline-none focus:border-ring"
           />
-          <div className="max-h-44 space-y-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
             {filteredOptions.length ? (
               filteredOptions.map((option) => {
                 const selected = values.includes(option.value);

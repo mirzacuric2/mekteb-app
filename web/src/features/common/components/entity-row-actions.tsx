@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../../components/ui/button";
@@ -11,15 +11,40 @@ type EntityRowActionsProps = {
 export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [mobileMenuDirection, setMobileMenuDirection] = useState<"up" | "down">("down");
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+
+  const updateMenuPosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const menuWidth = 130;
+    const menuHeight = 80;
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const openAbove = spaceBelow < menuHeight && rect.top > spaceBelow;
+    setMenuStyle({
+      position: "fixed",
+      width: menuWidth,
+      right: 16,
+      ...(openAbove ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+    const onScroll = () => setOpen(false);
+    window.addEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, [open, updateMenuPosition]);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current) return;
-      if (!rootRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     window.addEventListener("mousedown", onPointerDown);
     return () => window.removeEventListener("mousedown", onPointerDown);
@@ -43,7 +68,7 @@ export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
         <Button
           type="button"
           variant="outline"
-          className="h-8 w-8 shrink-0 px-0 py-0"
+          className="h-8 w-8 shrink-0 border-red-200 px-0 py-0 text-red-500 hover:bg-red-50 hover:text-red-600"
           onClick={(event) => {
             event.stopPropagation();
             onDelete();
@@ -55,30 +80,23 @@ export function EntityRowActions({ onEdit, onDelete }: EntityRowActionsProps) {
       </div>
 
       <div className="md:hidden">
-        <Button
+        <button
+          ref={triggerRef}
           type="button"
-          variant="outline"
-          className="h-8 w-8 shrink-0 px-0 py-0"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-white text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
           aria-label={t("usersTableActions")}
           onClick={(event) => {
             event.stopPropagation();
-            if (!open && rootRef.current) {
-              const rect = rootRef.current.getBoundingClientRect();
-              const estimatedMenuHeight = 96;
-              const spaceAbove = rect.top;
-              const spaceBelow = window.innerHeight - rect.bottom;
-              setMobileMenuDirection(spaceBelow >= estimatedMenuHeight || spaceBelow >= spaceAbove ? "down" : "up");
-            }
             setOpen((prev) => !prev);
           }}
         >
           <MoreHorizontal className="h-4 w-4" aria-hidden />
-        </Button>
+        </button>
         {open ? (
           <div
-            className={`absolute right-0 z-30 min-w-[130px] rounded-md border border-border bg-white p-1 shadow-lg ${
-              mobileMenuDirection === "up" ? "bottom-full mb-1" : "top-full mt-1"
-            }`}
+            ref={menuRef}
+            style={menuStyle}
+            className="z-[100] rounded-md border border-border bg-white p-1 shadow-lg"
             onClick={(event) => event.stopPropagation()}
           >
             <button

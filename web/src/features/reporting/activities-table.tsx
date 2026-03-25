@@ -18,6 +18,7 @@ type ActivitiesTableProps = {
   isLoading: boolean;
   page: number;
   totalPages: number;
+  totalItems?: number;
   showCommunityColumn?: boolean;
   onPageChange: (page: number) => void;
   onEdit: (activity: ActivityLecture) => void;
@@ -33,6 +34,7 @@ export function ActivitiesTable({
   isLoading,
   page,
   totalPages,
+  totalItems,
   showCommunityColumn = false,
   onPageChange,
   onEdit,
@@ -214,8 +216,8 @@ export function ActivitiesTable({
         ) : null}
       </DataTable>
 
-      <div className="shrink-0 pt-5">
-        <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
+      <div className="pt-4">
+        <PaginationControls page={page} totalPages={totalPages} totalItems={totalItems} onPageChange={onPageChange} />
       </div>
     </>
   );

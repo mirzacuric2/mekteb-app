@@ -62,3 +62,13 @@ export function getIsoWeekYearAndNumber(input: Date): { isoYear: number; week: n
     );
   return { isoYear, week };
 }
+
+export function isAtLeastAge(dateStr: string, minAge: number): boolean {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return true;
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const m = today.getMonth() - date.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < date.getDate())) age--;
+  return age >= minAge;
+}

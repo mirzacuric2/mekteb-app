@@ -1,13 +1,23 @@
 import { z } from "zod";
 import { EDITABLE_ROLE_VALUES, ROLE } from "../../types";
+import { isAtLeastAge } from "../../lib/date-time";
 import { LESSON_NIVO } from "../lessons/constants";
 import { userUiLanguageFormSchema } from "./user-preferred-language";
 
+const MEKTEB_MIN_AGE = 6;
+
 const childSchema = z.object({
+  existingChildId: z.string().optional(),
   firstName: z.string().min(2, "Child first name must be at least 2 characters."),
   lastName: z.string().min(2, "Child last name must be at least 2 characters."),
   ssn: z.string().min(10, "Child SSN must be at least 10 characters."),
-  birthDate: z.string().min(1, "Child birth date is required."),
+  birthDate: z
+    .string()
+    .min(1, "Child birth date is required.")
+    .refine(
+      (v) => isAtLeastAge(v, MEKTEB_MIN_AGE),
+      `Child must be at least ${MEKTEB_MIN_AGE} years old.`,
+    ),
   nivo: z.nativeEnum(LESSON_NIVO),
 });
 
@@ -56,6 +66,7 @@ export const userFormSchema = z.object({
   preferredLanguage: userUiLanguageFormSchema,
   address: z.union([filledAddressSchema, emptyAddressSchema]),
   children: z.array(childSchema).default([]),
+  linkedChildIds: z.array(z.string()).default([]),
 });
 
 export type UserFormValues = z.infer<typeof userFormSchema>;
@@ -79,4 +90,5 @@ export const USER_FORM_DEFAULT_VALUES: UserFormValues = {
     country: "",
   },
   children: [],
+  linkedChildIds: [],
 };

@@ -44,6 +44,7 @@ type UsersTableProps = {
   isLoading: boolean;
   page: number;
   totalPages: number;
+  totalItems?: number;
   showCommunityColumn?: boolean;
   canEdit?: boolean;
   onPageChange: (page: number) => void;
@@ -57,6 +58,7 @@ export function UsersTable({
   isLoading,
   page,
   totalPages,
+  totalItems,
   showCommunityColumn = true,
   canEdit = true,
   onPageChange,
@@ -68,8 +70,8 @@ export function UsersTable({
   const tableColSpan = showCommunityColumn ? (canEdit ? 8 : 7) : canEdit ? 7 : 6;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+    <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div>
         <DataTable
           className="overflow-hidden"
           scrollClassName="overflow-x-auto !overflow-y-hidden"
@@ -145,8 +147,8 @@ export function UsersTable({
         </DataTable>
       </div>
 
-      <div className="shrink-0 pt-5">
-        <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
+      <div className="pt-4">
+        <PaginationControls page={page} totalPages={totalPages} totalItems={totalItems} onPageChange={onPageChange} />
       </div>
     </div>
   );

@@ -62,7 +62,8 @@ export function useUserForm({
         : forcedCommunityId || initialValues?.communityId || "",
       preferredLanguage:
         initialValues?.preferredLanguage ?? (mode === "create" ? defaultPreferredLanguage : USER_FORM_DEFAULT_VALUES.preferredLanguage),
-      children: [],
+      children: initialValues?.children || [],
+      linkedChildIds: [],
       address: {
         streetLine1: initialValues?.address?.streetLine1 || "",
         streetLine2: initialValues?.address?.streetLine2 || "",

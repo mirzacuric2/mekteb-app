@@ -202,6 +202,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   isLoading={activities.isLoading}
                   page={page}
                   totalPages={totalPages}
+                  totalItems={activities.data?.total}
                   showCommunityColumn={showCommunityColumn}
                   onPageChange={setPage}
                   onEdit={(activity) => {
@@ -288,6 +289,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                     isLoading={homework.isLoading}
                     page={homeworkPage}
                     totalPages={homeworkTotalPages}
+                    totalItems={homework.data?.total}
                     showCommunityColumn={showCommunityColumn}
                     savingKey={savingHomeworkKey}
                     isBulkSaving={isBulkUpdatingHomework}

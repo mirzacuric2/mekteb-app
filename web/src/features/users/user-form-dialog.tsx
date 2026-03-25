@@ -1,7 +1,10 @@
-import { MapPin, PencilLine, Plus, Save, Trash2, UserPlus, Users, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link2, MapPin, PencilLine, Plus, Save, Trash2, UserPlus, Users, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Loader } from "../common/components/loader";
 import { Button } from "../../components/ui/button";
+import { ComboboxChips } from "../../components/ui/combobox-chips";
+import { InlineConfirmOverlay } from "../../components/ui/inline-confirm-overlay";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { ROLE, type EditableRole } from "../../types";
@@ -20,6 +23,7 @@ import { UserFormValues, USER_STATUS } from "./user-form-schema";
 import { useUserForm } from "./use-user-form";
 
 export type CommunityOption = { id: string; name: string };
+export type LinkableChildOption = { value: string; label: string };
 
 type UserFormDialogProps = {
   open: boolean;
@@ -32,6 +36,8 @@ type UserFormDialogProps = {
   apiError?: { field?: string; message: string } | null;
   initialValues?: Partial<UserFormValues>;
   defaultPreferredLanguage?: UserUiLanguage;
+  readonlyCommunityName?: string | null;
+  linkableChildren?: LinkableChildOption[];
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: UserFormValues) => void;
 };
@@ -47,10 +53,13 @@ export function UserFormDialog({
   apiError,
   initialValues,
   defaultPreferredLanguage,
+  readonlyCommunityName,
+  linkableChildren,
   onOpenChange,
   onSubmit,
 }: UserFormDialogProps) {
   const { t } = useTranslation();
+  const [removingIndex, setRemovingIndex] = useState<number | null>(null);
   const {
     register,
     clearErrors,
@@ -75,6 +84,47 @@ export function UserFormDialog({
     apiError,
     onSubmit,
   });
+
+  const linkedChildIds = watch("linkedChildIds") || [];
+
+  useEffect(() => {
+    if (open) setRemovingIndex(null);
+  }, [open]);
+
+  const childrenValues = watch("children");
+
+  const availableLinkableChildren = useMemo(
+    () => (linkableChildren || []).filter((c) => !linkedChildIds.includes(c.value)),
+    [linkableChildren, linkedChildIds],
+  );
+
+  const newChildNumber = (index: number) => {
+    let count = 0;
+    for (let i = 0; i <= index; i++) {
+      if (!childrenValues[i]?.existingChildId) count++;
+    }
+    return count;
+  };
+
+  const canAddNewChild = () => {
+    if (!childrenValues?.length) return true;
+    const newChildren = childrenValues.filter((c) => !c.existingChildId);
+    if (newChildren.length === 0) return true;
+    const last = newChildren[newChildren.length - 1];
+    return last.firstName.trim().length >= 2 && last.lastName.trim().length >= 2;
+  };
+
+  const minBirthDate = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 30);
+    return d.toISOString().slice(0, 10);
+  }, []);
+  const maxBirthDate = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 6);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
   const roleOptionLabelKey: Record<EditableRole, "roleBoardMember" | "roleParent" | "roleAdmin"> = {
     [ROLE.BOARD_MEMBER]: "roleBoardMember",
     [ROLE.PARENT]: "roleParent",
@@ -147,7 +197,7 @@ export function UserFormDialog({
                 {canSelectCommunity ? (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">{t("community")}</label>
-                    <Select {...register("communityId", { onChange: () => clearErrors("communityId") })}>
+                    <Select {...register("communityId", { onChange: () => clearErrors("communityId") })} value={watch("communityId")}>
                       <option value="">{t("unassigned")}</option>
                       {communityOptions.map((community) => (
                         <option key={community.id} value={community.id}>
@@ -156,6 +206,13 @@ export function UserFormDialog({
                       ))}
                     </Select>
                     {errors.communityId ? <p className="mt-1 text-xs text-red-600">{errors.communityId.message}</p> : null}
+                  </div>
+                ) : readonlyCommunityName ? (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">{t("community")}</label>
+                    <p className="rounded-md border border-border bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      {readonlyCommunityName}
+                    </p>
                   </div>
                 ) : null}
                 <div className="md:col-span-2">
@@ -239,16 +296,112 @@ export function UserFormDialog({
             ) : null}
 
             <div className="rounded-md border border-border p-3">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-slate-500" />
-                  <label className="text-sm font-semibold text-slate-900">{t("childrenCount")}</label>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{fields.length}</span>
+              <div className="mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4 text-slate-500" />
+                <label className="text-sm font-semibold text-slate-900">{t("childrenCount")}</label>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                  {fields.length + linkedChildIds.length}
+                </span>
+              </div>
+
+              {fields.length > 0 ? (
+                <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+                  {fields.map((field, index) => {
+                    const isExisting = Boolean(childrenValues[index]?.existingChildId);
+                    const heading = isExisting
+                      ? `${childrenValues[index]?.firstName || ""} ${childrenValues[index]?.lastName || ""}`.trim()
+                      : t("userFormNewChildHeading", { number: newChildNumber(index) });
+
+                    return (
+                      <div key={field.id} className="relative rounded-md border border-border bg-slate-50/50 p-3">
+                        <InlineConfirmOverlay
+                          open={removingIndex === index}
+                          message={t("userFormChildRemoveConfirm")}
+                          confirmLabel={t("remove")}
+                          cancelLabel={t("cancel")}
+                          onConfirm={() => {
+                            remove(index);
+                            setRemovingIndex(null);
+                          }}
+                          onCancel={() => setRemovingIndex(null)}
+                        />
+                        <div className="mb-3 flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{heading}</p>
+                          <button
+                            type="button"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                            onClick={() => setRemovingIndex(index)}
+                            title={t("remove")}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">{t("firstName")}</label>
+                            <Input
+                              placeholder={t("userFormChildFirstNamePlaceholder")}
+                              {...register(`children.${index}.firstName` as const)}
+                            />
+                            {errorsAny?.children?.[index]?.firstName ? (
+                              <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].firstName.message}</p>
+                            ) : null}
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">{t("lastName")}</label>
+                            <Input
+                              placeholder={t("userFormChildLastNamePlaceholder")}
+                              {...register(`children.${index}.lastName` as const)}
+                            />
+                            {errorsAny?.children?.[index]?.lastName ? (
+                              <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].lastName.message}</p>
+                            ) : null}
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">{t("ssn")}</label>
+                            <Input
+                              placeholder={t("userFormChildSsnPlaceholder")}
+                              {...register(`children.${index}.ssn` as const)}
+                            />
+                            {errorsAny?.children?.[index]?.ssn ? (
+                              <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].ssn.message}</p>
+                            ) : null}
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">{t("birthDate")}</label>
+                            <Input type="date" min={minBirthDate} max={maxBirthDate} {...register(`children.${index}.birthDate` as const)} />
+                            {errorsAny?.children?.[index]?.birthDate ? (
+                              <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].birthDate.message}</p>
+                            ) : null}
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="mb-1 block text-xs font-medium text-slate-600">{t("childrenNivoLabel")}</label>
+                            <Select {...register(`children.${index}.nivo` as const, { valueAsNumber: true })}>
+                              {LESSON_NIVO_ORDER.map((value) => (
+                                <option key={value} value={value}>
+                                  {LESSON_NIVO_LABEL[value]}
+                                </option>
+                              ))}
+                            </Select>
+                            {errorsAny?.children?.[index]?.nivo ? (
+                              <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].nivo.message}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              ) : (
+                <p className="text-sm text-slate-500">{t("noChildrenAdded")}</p>
+              )}
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="inline-flex items-center gap-1"
+                  className="h-auto gap-1 border-transparent px-1 py-0.5 text-xs font-medium text-blue-600 shadow-none hover:bg-blue-50 hover:text-blue-700"
+                  disabled={!canAddNewChild()}
                   onClick={() =>
                     append({
                       firstName: "",
@@ -259,82 +412,27 @@ export function UserFormDialog({
                     })
                   }
                 >
-                  <Plus size={14} />
+                  <Plus size={12} />
                   {t("addChildItem")}
                 </Button>
               </div>
 
-              {fields.length ? (
-                <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="rounded-md border border-border bg-slate-50/50 p-3">
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {t("userFormChildHeading", { number: index + 1 })}
-                        </p>
-                        <Button type="button" variant="outline" className="inline-flex items-center gap-1 px-2" onClick={() => remove(index)}>
-                          <Trash2 size={14} />
-                          {t("remove")}
-                        </Button>
-                      </div>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-slate-600">{t("firstName")}</label>
-                          <Input
-                            placeholder={t("userFormChildFirstNamePlaceholder")}
-                            {...register(`children.${index}.firstName` as const)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-slate-600">{t("lastName")}</label>
-                          <Input
-                            placeholder={t("userFormChildLastNamePlaceholder")}
-                            {...register(`children.${index}.lastName` as const)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-slate-600">{t("ssn")}</label>
-                          <Input
-                            placeholder={t("userFormChildSsnPlaceholder")}
-                            {...register(`children.${index}.ssn` as const)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-slate-600">{t("birthDate")}</label>
-                          <Input type="date" {...register(`children.${index}.birthDate` as const)} />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="mb-1 block text-xs font-medium text-slate-600">{t("childrenNivoLabel")}</label>
-                          <Select {...register(`children.${index}.nivo` as const, { valueAsNumber: true })}>
-                            {LESSON_NIVO_ORDER.map((value) => (
-                              <option key={value} value={value}>
-                                {LESSON_NIVO_LABEL[value]}
-                              </option>
-                            ))}
-                          </Select>
-                        </div>
-                      </div>
-                      {errorsAny?.children?.[index]?.firstName ? (
-                        <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].firstName.message}</p>
-                      ) : null}
-                      {errorsAny?.children?.[index]?.lastName ? (
-                        <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].lastName.message}</p>
-                      ) : null}
-                      {errorsAny?.children?.[index]?.ssn ? (
-                        <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].ssn.message}</p>
-                      ) : null}
-                      {errorsAny?.children?.[index]?.birthDate ? (
-                        <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].birthDate.message}</p>
-                      ) : null}
-                      {errorsAny?.children?.[index]?.nivo ? (
-                        <p className="mt-1 text-xs text-red-600">{errorsAny.children[index].nivo.message}</p>
-                      ) : null}
-                    </div>
-                  ))}
+              {mode === "edit" && linkableChildren && linkableChildren.length > 0 ? (
+                <div className="mt-3 rounded-md border border-dashed border-border p-2.5">
+                  <p className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-slate-600">
+                    <Link2 className="h-3.5 w-3.5" />
+                    {t("userFormLinkExistingChild")}
+                  </p>
+                  <ComboboxChips
+                    multiple
+                    options={linkableChildren}
+                    values={linkedChildIds}
+                    onChange={(nextValues) => setValue("linkedChildIds", nextValues)}
+                    placeholder={t("userFormLinkChildPlaceholder")}
+                    emptyText={t("userFormNoChildrenToLink")}
+                  />
                 </div>
-              ) : (
-                <p className="text-sm text-slate-500">{t("noChildrenAdded")}</p>
-              )}
+              ) : null}
             </div>
           </DialogBody>
           <DialogFooter>

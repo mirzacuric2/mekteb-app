@@ -1,10 +1,9 @@
-import { AlertCircle, ChevronDown, FileText, Pencil, Trash2 } from "lucide-react";
+import { AlertCircle, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
 import type { LessonNivo } from "./constants";
-import { openNivoBookPreview } from "./open-nivo-book-preview";
+import { NivoBookLink } from "./nivo-book-link";
 import type { Lesson, NivoBook } from "./types";
 
 type LessonNivoCollapsibleProps = {
@@ -46,29 +45,7 @@ export function LessonNivoCollapsible({
         <span id={`lessons-nivo-heading-${nivo}`} className="flex min-w-0 items-center gap-2">
           <span className="text-sm font-semibold tracking-tight text-slate-900">{title}</span>
           {nivoBook ? (
-            <span
-              className="inline-flex max-w-[240px] items-center gap-1 truncate rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100"
-              title={nivoBook.originalName}
-              role="link"
-              tabIndex={0}
-              onClick={(event) => {
-                event.stopPropagation();
-                void openNivoBookPreview(nivo).catch(() => {
-                  toast.error(t("lessonsBookPreviewFailed"));
-                });
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                event.stopPropagation();
-                void openNivoBookPreview(nivo).catch(() => {
-                  toast.error(t("lessonsBookPreviewFailed"));
-                });
-              }}
-            >
-              <FileText className="h-3 w-3 shrink-0" aria-hidden />
-              <span className="truncate">{nivoBook.originalName}</span>
-            </span>
+            <NivoBookLink nivo={nivo} label={nivoBook.originalName} stopPropagation />
           ) : (
             <span
               className="inline-flex max-w-[220px] items-center gap-1 truncate rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200"
@@ -123,7 +100,7 @@ export function LessonNivoCollapsible({
                     <Button
                       variant="outline"
                       type="button"
-                      className="h-8 w-8 shrink-0 px-0 py-0 text-xs sm:h-8 sm:w-auto sm:gap-1 sm:px-2 sm:py-0"
+                      className="h-8 w-8 shrink-0 border-red-200 px-0 py-0 text-xs text-red-500 hover:bg-red-50 hover:text-red-600 sm:h-8 sm:w-auto sm:gap-1 sm:px-2 sm:py-0"
                       aria-label={t("delete")}
                       onClick={() => onDeleteLesson(lesson)}
                     >

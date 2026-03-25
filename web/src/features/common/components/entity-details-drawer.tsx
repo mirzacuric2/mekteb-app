@@ -1,5 +1,8 @@
-import { X } from "lucide-react";
-import { ReactNode } from "react";
+import { Pencil, Trash2, X } from "lucide-react";
+import { ReactNode, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Button } from "../../../components/ui/button";
+import { InlineConfirmOverlay } from "../../../components/ui/inline-confirm-overlay";
 import {
   Drawer,
   DrawerClose,
@@ -16,6 +19,11 @@ type EntityDetailsDrawerProps = {
   headerSubline?: ReactNode;
   headerMeta?: ReactNode;
   description?: string;
+  editLabel?: string;
+  deleteLabel?: string;
+  deleteConfirmMessage?: string;
+  onEdit?: () => void;
+  onDelete?: () => void;
   children: React.ReactNode;
 };
 
@@ -26,25 +34,77 @@ export function EntityDetailsDrawer({
   headerSubline,
   headerMeta,
   description,
+  editLabel = "Edit",
+  deleteLabel = "Delete",
+  deleteConfirmMessage,
+  onEdit,
+  onDelete,
   children,
 }: EntityDetailsDrawerProps) {
+  const { t } = useTranslation();
+  const hasActions = Boolean(onEdit || onDelete);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  useEffect(() => {
+    if (!open) setConfirmingDelete(false);
+  }, [open]);
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent direction="right" className="max-w-2xl">
-        <DrawerHeader className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1 pr-2">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <DrawerTitle className="mb-0">{title}</DrawerTitle>
-              {headerMeta ? <span className="inline-flex shrink-0 items-center">{headerMeta}</span> : null}
+        <DrawerHeader className="space-y-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <DrawerTitle className="mb-0 truncate">{title}</DrawerTitle>
+                {hasActions ? (
+                  <div className="flex shrink-0 items-center gap-1">
+                    {onEdit ? (
+                      <Button
+                        variant="outline"
+                        className="h-7 w-7 px-0 sm:w-auto sm:gap-1 sm:px-2 text-xs"
+                        onClick={onEdit}
+                      >
+                        <Pencil size={12} />
+                        <span className="hidden sm:inline">{editLabel}</span>
+                      </Button>
+                    ) : null}
+                    {onDelete ? (
+                      <Button
+                        variant="outline"
+                        className="h-7 w-7 px-0 sm:w-auto sm:gap-1 sm:px-2 border-red-200 text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => setConfirmingDelete(true)}
+                      >
+                        <Trash2 size={12} />
+                        <span className="hidden sm:inline">{deleteLabel}</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              {headerMeta ? <div className="mt-1">{headerMeta}</div> : null}
             </div>
-            {headerSubline ? <div className="mt-1">{headerSubline}</div> : null}
-            {description ? <DrawerDescription className="mt-1.5">{description}</DrawerDescription> : null}
+            <DrawerClose className="shrink-0 rounded-md border border-border p-1.5">
+              <X size={14} />
+            </DrawerClose>
           </div>
-          <DrawerClose className="rounded-md border border-border p-2">
-            <X size={16} />
-          </DrawerClose>
+          {headerSubline ? <div>{headerSubline}</div> : null}
+          {description ? <DrawerDescription>{description}</DrawerDescription> : null}
         </DrawerHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">{children}</div>
+        <div className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          <InlineConfirmOverlay
+            open={confirmingDelete}
+            message={deleteConfirmMessage || t("confirmDeleteName", { name: title })}
+            confirmLabel={deleteLabel}
+            cancelLabel={t("cancel")}
+            onConfirm={() => {
+              setConfirmingDelete(false);
+              onDelete?.();
+            }}
+            onCancel={() => setConfirmingDelete(false)}
+          />
+          {children}
+        </div>
       </DrawerContent>
     </Drawer>
   );

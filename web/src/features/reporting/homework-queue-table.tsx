@@ -13,6 +13,7 @@ type HomeworkQueueTableProps = {
   isLoading: boolean;
   page: number;
   totalPages: number;
+  totalItems?: number;
   showCommunityColumn?: boolean;
   savingKey?: string;
   isBulkSaving?: boolean;
@@ -26,6 +27,7 @@ export function HomeworkQueueTable({
   isLoading,
   page,
   totalPages,
+  totalItems,
   showCommunityColumn = false,
   savingKey,
   isBulkSaving,
@@ -153,8 +155,8 @@ export function HomeworkQueueTable({
           </tr>
         ) : null}
       </DataTable>
-      <div className="shrink-0 pt-5">
-        <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
+      <div className="pt-4">
+        <PaginationControls page={page} totalPages={totalPages} totalItems={totalItems} onPageChange={onPageChange} />
       </div>
     </>
   );

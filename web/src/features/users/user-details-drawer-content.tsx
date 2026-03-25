@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Pencil, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../components/ui/button";
 import { Tabs } from "../../components/ui/tabs";
 import { NaValue } from "../common/components/na-value";
 import {
@@ -8,6 +9,7 @@ import {
   EntityDetailTable,
   EntityDetailTableRow,
 } from "../common/components/entity-detail-components";
+import { Role } from "../common/role";
 import { UserRecord } from "./users-table";
 import { formatAddressLine } from "../communities/community-utils";
 import { LESSON_NIVO_LABEL, LessonNivo } from "../lessons/constants";
@@ -25,9 +27,11 @@ type Props = {
   communityName?: string | null;
   children: ChildSummary[];
   onOpenChild?: (childId: string) => void;
+  onAddChild?: () => void;
+  onEditChild?: (childId: string) => void;
 };
 
-export function UserDetailsDrawerContent({ user, communityName, children, onOpenChild }: Props) {
+export function UserDetailsDrawerContent({ user, communityName, children, onOpenChild, onAddChild, onEditChild }: Props) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("basic");
 
@@ -50,6 +54,7 @@ export function UserDetailsDrawerContent({ user, communityName, children, onOpen
         <div className="space-y-3">
           <EntityDetailTable>
             <EntityDetailTableRow label={t("email")} value={user.email} />
+            <EntityDetailTableRow label={t("role")} value={<Role role={user.role} />} />
             <EntityDetailTableRow label={t("usersTablePhone")} value={<NaValue value={user.phoneNumber} />} />
             <EntityDetailTableRow label={t("community")} value={<NaValue value={communityName} />} />
             <EntityDetailTableRow label={t("ssn")} value={<NaValue value={user.ssn} />} />
@@ -69,6 +74,14 @@ export function UserDetailsDrawerContent({ user, communityName, children, onOpen
 
       {activeTab === "children" ? (
         <div className="space-y-3">
+          {onAddChild ? (
+            <div className="flex justify-end">
+              <Button variant="outline" className="h-8 gap-1 text-xs" onClick={onAddChild}>
+                <Plus size={14} />
+                {t("childrenCreate")}
+              </Button>
+            </div>
+          ) : null}
           {children.length ? (
             children.map((child, index) => {
               const childName = `${child.firstName || ""} ${child.lastName || ""}`.trim();
@@ -84,22 +97,35 @@ export function UserDetailsDrawerContent({ user, communityName, children, onOpen
               );
               if (onOpenChild) {
                 return (
-                  <button
-                    key={child.id}
-                    type="button"
-                    className="w-full rounded-lg border border-border bg-white p-4 text-left transition-colors hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    onClick={() => onOpenChild(child.id)}
-                    aria-label={`${t("parentDashboardViewDetails")}: ${childName || title}`}
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
-                      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-                        {t("parentDashboardViewDetails")}
-                        <ChevronRight className="h-4 w-4" aria-hidden />
-                      </span>
-                    </div>
-                    {table}
-                  </button>
+                  <div key={child.id} className="rounded-lg border border-border bg-white">
+                    <button
+                      type="button"
+                      className="w-full p-4 text-left transition-colors hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() => onOpenChild(child.id)}
+                      aria-label={`${t("parentDashboardViewDetails")}: ${childName || title}`}
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+                          {t("parentDashboardViewDetails")}
+                          <ChevronRight className="h-4 w-4" aria-hidden />
+                        </span>
+                      </div>
+                      {table}
+                    </button>
+                    {onEditChild ? (
+                      <div className="border-t border-border px-4 py-2">
+                        <Button
+                          variant="outline"
+                          className="h-7 gap-1 px-2 text-xs"
+                          onClick={() => onEditChild(child.id)}
+                        >
+                          <Pencil size={12} />
+                          {t("edit")}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
                 );
               }
               return (

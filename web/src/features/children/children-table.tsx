@@ -14,6 +14,7 @@ type ChildrenTableProps = {
   isLoading: boolean;
   page: number;
   totalPages: number;
+  totalItems?: number;
   onPageChange: (page: number) => void;
   onRowClick: (child: ChildRecord) => void;
   onEdit: (child: ChildRecord) => void;
@@ -27,6 +28,7 @@ export function ChildrenTable({
   isLoading,
   page,
   totalPages,
+  totalItems,
   onPageChange,
   onRowClick,
   onEdit,
@@ -120,8 +122,8 @@ export function ChildrenTable({
         ) : null}
       </DataTable>
 
-      <div className="shrink-0 pt-5">
-        <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
+      <div className="pt-4">
+        <PaginationControls page={page} totalPages={totalPages} totalItems={totalItems} onPageChange={onPageChange} />
       </div>
     </>
   );

@@ -68,7 +68,6 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     isUser,
   } = useRoleAccess();
   const searchTerm = search.trim();
-  /** Parents/users: linked children only. Board + admins: full community list (board is read-only in UI). */
   const mineOnly = isParent || isUser;
   const childrenListEnabled = sessionReady && Boolean(session);
   const children = useChildrenListQuery({
@@ -80,7 +79,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   });
   const childById = useChildByIdQuery(childIdFromQuery, mineOnly, childrenListEnabled);
   const users = useChildrenParentOptionsQuery(canAdminManage);
-  const communities = useChildrenCommunityOptionsQuery(canChooseCommunity);
+  const communities = useChildrenCommunityOptionsQuery(canAdminManage);
   const parentOptions: ChildParentOption[] = (users.data || [])
     .filter((user) => user.role !== ROLE.SUPER_ADMIN)
     .map((parent) => ({
@@ -136,6 +135,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
             resetForm();
             setFormOpen(false);
             await queryClient.invalidateQueries({ queryKey: ["children"] });
+            await queryClient.invalidateQueries({ queryKey: ["children-by-id"] });
             toast.success(t("childrenUpdated"));
           },
           onError: (error) => {
@@ -205,6 +205,14 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     if (!targetChild) return;
     setSelectedChild(targetChild);
   }, [childById.data, childIdFromQuery, children.data?.items, selectedChild?.id]);
+
+  useEffect(() => {
+    if (!selectedChild) return;
+    const fresh = (children.data?.items || []).find((c) => c.id === selectedChild.id);
+    if (fresh && fresh !== selectedChild) {
+      setSelectedChild(fresh);
+    }
+  }, [children.data?.items, selectedChild]);
 
   useEffect(() => {
     const selectedChildId = selectedChild?.id;
@@ -281,6 +289,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
             isLoading={children.isLoading}
             page={page}
             totalPages={totalPages}
+            totalItems={children.data?.total}
             onPageChange={setPage}
             onRowClick={(child) => setSelectedChild(child)}
             onEdit={(child) => {
@@ -362,6 +371,29 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
         summary={null}
         scheduledLessons={selectedChildScheduledLessons}
         childrenFetchMineOnly={mineOnly}
+        onEdit={
+          canEditChildren && selectedChild
+            ? () => {
+                setFormApiError(null);
+                setEditingId(selectedChild.id);
+                setEditingChild(selectedChild);
+                setFormOpen(true);
+              }
+            : undefined
+        }
+        onDelete={
+          canInactivate && selectedChild && selectedChild.status !== CHILD_STATUS.INACTIVE
+            ? () => {
+                inactivateChild.mutate(selectedChild.id, {
+                  onSuccess: async () => {
+                    await queryClient.invalidateQueries({ queryKey: ["children"] });
+                    setSelectedChild(null);
+                  },
+                });
+              }
+            : undefined
+        }
+        deleteLabel={t("delete")}
       />
       <DeleteConfirmDialog
         open={!!deletingChild}
@@ -382,6 +414,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
             onSuccess: async () => {
               await queryClient.invalidateQueries({ queryKey: ["children"] });
               setDeletingChild(null);
+              setSelectedChild(null);
             },
           });
         }}

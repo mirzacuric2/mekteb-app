@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useChildByIdQuery } from "../children/use-children-data";
-import { X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
+import { Button } from "../../components/ui/button";
+import { InlineConfirmOverlay } from "../../components/ui/inline-confirm-overlay";
 import {
   Drawer,
   DrawerClose,
@@ -12,12 +13,11 @@ import {
   DrawerTitle,
 } from "../../components/ui/drawer";
 import { Tabs } from "../../components/ui/tabs";
-import { Button } from "../../components/ui/button";
 import { NaValue } from "../common/components/na-value";
 import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { LESSONS_API_PATH, LESSONS_QUERY_KEY, NIVO_BOOKS_API_PATH, NIVO_BOOKS_QUERY_KEY } from "../lessons/constants";
-import { openNivoBookPreview } from "../lessons/open-nivo-book-preview";
+import { NivoBookLink } from "../lessons/nivo-book-link";
 import { Lesson, NivoBook } from "../lessons/types";
 import { ChildLessonOutcome, ChildRecord } from "../children/types";
 import { NivoProgress } from "../children/nivo-progress";
@@ -52,15 +52,11 @@ type ProgressChildDetailsDrawerProps = {
   summary: ChildProgressSummary | null;
   scheduledLessons: number;
   isLoading?: boolean;
-  /**
-   * When true, active tab is read/written as query `tab` (`basic-info` default; omit param when default).
-   */
   syncTabToSearchParams?: boolean;
-  /**
-   * `mine` flag for GET /children while the drawer is open so lesson outcomes / attendance stay in sync after save.
-   * Dashboard linked view: `true`. Children management (admin/board full list): `false`. Users drawer child: `false`.
-   */
   childrenFetchMineOnly: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  deleteLabel?: string;
 };
 
 function toEventDate(occurredAt: string | null, fallback: string) {
@@ -77,10 +73,15 @@ export function ProgressChildDetailsDrawer({
   isLoading = false,
   syncTabToSearchParams = true,
   childrenFetchMineOnly,
+  onEdit,
+  onDelete,
+  deleteLabel,
 }: ProgressChildDetailsDrawerProps) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [localTab, setLocalTab] = useState<ChildDrawerTab>(DEFAULT_CHILD_DRAWER_TAB);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const hasActions = Boolean(onEdit || onDelete);
   const prevChildIdRef = useRef<string | null>(null);
 
   const activeTab = syncTabToSearchParams
@@ -110,6 +111,7 @@ export function ProgressChildDetailsDrawer({
   useEffect(() => {
     if (!open) {
       prevChildIdRef.current = null;
+      setConfirmingDelete(false);
       return;
     }
     if (!child?.id) return;
@@ -277,25 +279,71 @@ export function ProgressChildDetailsDrawer({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent direction="right" className="max-w-2xl">
-        <DrawerHeader className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1 pr-2">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <DrawerTitle className="mb-0">
-                {resolvedChild ? `${resolvedChild.firstName} ${resolvedChild.lastName}` : t("childrenDetails")}
-              </DrawerTitle>
-              {resolvedChild ? (
-                <span className="inline-flex shrink-0 items-center">
+        <DrawerHeader className="space-y-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <DrawerTitle className="mb-0 truncate">
+                  {resolvedChild ? `${resolvedChild.firstName} ${resolvedChild.lastName}` : t("childrenDetails")}
+                </DrawerTitle>
+                {resolvedChild && !hasActions ? (
+                  <span className="inline-flex shrink-0 items-center">
+                    <StatusBadge status={resolvedChild.status} />
+                  </span>
+                ) : null}
+                {hasActions ? (
+                  <div className="flex shrink-0 items-center gap-1">
+                    {onEdit ? (
+                      <Button
+                        variant="outline"
+                        className="h-7 w-7 px-0 sm:w-auto sm:gap-1 sm:px-2 text-xs"
+                        onClick={onEdit}
+                      >
+                        <Pencil size={12} />
+                        <span className="hidden sm:inline">{t("edit")}</span>
+                      </Button>
+                    ) : null}
+                    {onDelete ? (
+                      <Button
+                        variant="outline"
+                        className="h-7 w-7 px-0 sm:w-auto sm:gap-1 sm:px-2 border-red-200 text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => setConfirmingDelete(true)}
+                      >
+                        <Trash2 size={12} />
+                        <span className="hidden sm:inline">{deleteLabel || t("delete")}</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              {resolvedChild && hasActions ? (
+                <div className="mt-1">
                   <StatusBadge status={resolvedChild.status} />
-                </span>
+                </div>
               ) : null}
             </div>
+            <DrawerClose className="shrink-0 rounded-md border border-border p-1.5">
+              <X size={14} />
+            </DrawerClose>
           </div>
-          <DrawerClose className="rounded-md border border-border p-2">
-            <X size={16} />
-          </DrawerClose>
         </DrawerHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-6 sm:p-4 sm:pb-8">
+        <div className="relative min-h-0 flex-1 overflow-y-auto p-3 pb-6 sm:p-4 sm:pb-8">
+          <InlineConfirmOverlay
+            open={confirmingDelete}
+            message={
+              resolvedChild
+                ? t("confirmDeleteName", { name: `${resolvedChild.firstName} ${resolvedChild.lastName}` })
+                : ""
+            }
+            confirmLabel={deleteLabel || t("delete")}
+            cancelLabel={t("cancel")}
+            onConfirm={() => {
+              setConfirmingDelete(false);
+              onDelete?.();
+            }}
+            onCancel={() => setConfirmingDelete(false)}
+          />
           {isLoading && !child ? (
             <LoadingBlock text={t("parentDashboardChildDrawerLoading")} />
           ) : !resolvedChild ? (
@@ -330,18 +378,7 @@ export function ProgressChildDetailsDrawer({
                       label={t("lessonsBookSectionTitle")}
                       value={
                         currentNivoBook ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-8 px-2 py-0 text-xs"
-                            onClick={() => {
-                              void openNivoBookPreview(resolvedChild.nivo).catch(() => {
-                                toast.error(t("lessonsBookPreviewFailed"));
-                              });
-                            }}
-                          >
-                            {t("lessonsBookPreview")}
-                          </Button>
+                          <NivoBookLink nivo={resolvedChild.nivo} label={currentNivoBook.originalName} />
                         ) : (
                           <NaValue value={null} />
                         )

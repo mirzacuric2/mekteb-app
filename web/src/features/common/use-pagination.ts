@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 export const DEFAULT_PAGE_SIZE = 10;
+export const PAGINATION_MAX_VISIBLE_PAGES = 5;
 
 export function usePagination<T>(items: T[], page: number, pageSize: number) {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
