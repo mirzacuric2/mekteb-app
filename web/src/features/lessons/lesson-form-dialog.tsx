@@ -14,7 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { DEFAULT_LESSON_NIVO, LESSON_NIVO, LESSON_NIVO_LABEL, LESSON_NIVO_ORDER } from "./constants";
+import {
+  DEFAULT_LESSON_NIVO,
+  LESSON_NIVO,
+  LESSON_NIVO_LABEL,
+  LESSON_NIVO_ORDER,
+} from "./constants";
 
 const lessonFormSchema = z.object({
   title: z.string().trim().min(2, "Lesson title must be at least 2 characters."),

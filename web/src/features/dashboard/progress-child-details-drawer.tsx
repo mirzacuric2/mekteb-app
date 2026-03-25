@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useChildByIdQuery } from "../children/use-children-data";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   Drawer,
   DrawerClose,
@@ -11,11 +12,13 @@ import {
   DrawerTitle,
 } from "../../components/ui/drawer";
 import { Tabs } from "../../components/ui/tabs";
+import { Button } from "../../components/ui/button";
 import { NaValue } from "../common/components/na-value";
 import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
-import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
-import { Lesson } from "../lessons/types";
+import { LESSONS_API_PATH, LESSONS_QUERY_KEY, NIVO_BOOKS_API_PATH, NIVO_BOOKS_QUERY_KEY } from "../lessons/constants";
+import { openNivoBookPreview } from "../lessons/open-nivo-book-preview";
+import { Lesson, NivoBook } from "../lessons/types";
 import { ChildLessonOutcome, ChildRecord } from "../children/types";
 import { NivoProgress } from "../children/nivo-progress";
 import { ChildProgressSummary } from "./use-progress-overview";
@@ -137,6 +140,7 @@ export function ProgressChildDetailsDrawer({
     return childRefreshQuery.data ?? child;
   }, [child, childRefreshQuery.data]);
   const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, open && Boolean(child));
+  const nivoBooksQuery = useAuthedQuery<NivoBook[]>(NIVO_BOOKS_QUERY_KEY, NIVO_BOOKS_API_PATH, open && Boolean(child));
   const effectiveSummary = useMemo(() => {
     if (summary) return summary;
     if (!resolvedChild) return null;
@@ -154,6 +158,11 @@ export function ProgressChildDetailsDrawer({
       trackedLessons: reportedLecturesCount,
     };
   }, [resolvedChild, summary]);
+
+  const currentNivoBook = useMemo(
+    () => (resolvedChild ? (nivoBooksQuery.data || []).find((book) => book.nivo === resolvedChild.nivo) : undefined),
+    [nivoBooksQuery.data, resolvedChild]
+  );
 
   const lectureProgressItems = useMemo(() => {
     if (!resolvedChild) return [];
@@ -317,6 +326,27 @@ export function ProgressChildDetailsDrawer({
                     />
                     <EntityDetailTableRow label={t("childrenParentsLabel")} value={<NaValue value={parentsText} />} />
                     <EntityDetailTableRow label={t("address")} value={<NaValue value={addressText} />} />
+                    <EntityDetailTableRow
+                      label={t("lessonsBookSectionTitle")}
+                      value={
+                        currentNivoBook ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-8 px-2 py-0 text-xs"
+                            onClick={() => {
+                              void openNivoBookPreview(resolvedChild.nivo).catch(() => {
+                                toast.error(t("lessonsBookPreviewFailed"));
+                              });
+                            }}
+                          >
+                            {t("lessonsBookPreview")}
+                          </Button>
+                        ) : (
+                          <NaValue value={null} />
+                        )
+                      }
+                    />
                   </EntityDetailTable>
                 </div>
               ) : activeTab === CHILD_DRAWER_TAB.LECTURE_PROGRESS ? (

@@ -8,12 +8,18 @@ import {
   Role,
 } from "@prisma/client";
 import { randomUUID } from "node:crypto";
+import { promises as fs } from "node:fs";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
 import { requireAnyRole, requireAuth, requireRole } from "../../auth.js";
 import { canAccessCommunity } from "../../common/access.js";
 import { AppRequest } from "../../types.js";
+import {
+  getNivoBookAbsolutePathByNivo,
+  getNivoBookFileNameByNivo,
+  NIVO_BOOK_NIVOS,
+} from "./nivo-book-storage.js";
 
 export function communicationRouter() {
   const router = Router();
@@ -49,6 +55,9 @@ export function communicationRouter() {
   const lessonUpdatePayloadSchema = z.object({
     title: z.string().min(2).optional(),
     nivo: z.number().int().min(1).max(5).optional(),
+  });
+  const nivoBookParamsSchema = z.object({
+    nivo: z.coerce.number().int().min(1).max(5),
   });
   const lectureListQuerySchema = z.object({
     q: z.string().trim().min(1).optional(),
@@ -1379,6 +1388,49 @@ export function communicationRouter() {
       return res.status(204).send();
     }
   );
+
+  router.get("/nivo-books", requireAuth, async (_req: AppRequest, res) => {
+    const books = await Promise.all(
+      NIVO_BOOK_NIVOS.map(async (nivo) => {
+        const absolutePath = getNivoBookAbsolutePathByNivo(nivo);
+        const originalName = getNivoBookFileNameByNivo(nivo);
+        if (!absolutePath || !originalName) return null;
+        try {
+          const stats = await fs.stat(absolutePath);
+          if (!stats.isFile()) return null;
+          return {
+            nivo,
+            originalName,
+            mimeType: "application/pdf",
+            sizeBytes: stats.size,
+            updatedAt: new Date(stats.mtimeMs).toISOString(),
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+    const items = books.filter((book): book is NonNullable<(typeof books)[number]> => Boolean(book));
+    return res.json(items);
+  });
+
+  router.get("/nivo-books/:nivo/preview", requireAuth, async (req: AppRequest, res) => {
+    const params = nivoBookParamsSchema.safeParse(req.params);
+    if (!params.success) return res.status(400).json({ message: "Invalid nivo" });
+
+    const absolutePath = getNivoBookAbsolutePathByNivo(params.data.nivo);
+    const originalName = getNivoBookFileNameByNivo(params.data.nivo);
+    if (!absolutePath || !originalName) return res.status(404).json({ message: "Nivo book not found" });
+
+    try {
+      const fileBuffer = await fs.readFile(absolutePath);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(originalName)}"`);
+      return res.status(200).send(fileBuffer);
+    } catch {
+      return res.status(404).json({ message: "Nivo book file not found" });
+    }
+  });
 
   router.get("/lessons", requireAuth, async (_req: AppRequest, res) => {
     const lessons = await prisma.lesson.findMany({

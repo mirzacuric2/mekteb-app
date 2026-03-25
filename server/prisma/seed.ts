@@ -18,6 +18,7 @@ type SeedCommunity = {
   contactPhone?: string;
 };
 
+
 const BIF_COMMUNITIES: SeedCommunity[] = [
   {
     name: "BIF Borås",

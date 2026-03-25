@@ -7,3 +7,11 @@ export type Lesson = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type NivoBook = {
+  nivo: LessonNivo;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  updatedAt: string;
+};

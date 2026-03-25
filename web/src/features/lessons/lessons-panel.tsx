@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { BookPlus } from "lucide-react";
+import { AlertTriangle, BookPlus } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../api";
 import { Card } from "../../components/ui/card";
@@ -14,9 +14,11 @@ import {
   LESSON_NIVO_ORDER,
   LESSONS_API_PATH,
   LESSONS_QUERY_KEY,
+  NIVO_BOOKS_API_PATH,
+  NIVO_BOOKS_QUERY_KEY,
   type LessonNivo,
 } from "./constants";
-import { Lesson } from "./types";
+import { Lesson, NivoBook } from "./types";
 import {
   ENTITY_LIST_TOOLBAR_ACTION_LABEL_CLASSNAME,
   ENTITY_LIST_TOOLBAR_CREATE_BUTTON_CLASSNAME,
@@ -36,6 +38,7 @@ type Props = { canManage: boolean };
 export function LessonsPanel({ canManage }: Props) {
   const { t } = useTranslation();
   const lessons = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, true);
+  const nivoBooks = useAuthedQuery<NivoBook[]>(NIVO_BOOKS_QUERY_KEY, NIVO_BOOKS_API_PATH, true);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
@@ -59,7 +62,10 @@ export function LessonsPanel({ canManage }: Props) {
   };
 
   const createLesson = useMutation({
-    mutationFn: async (values: LessonFormValues) => (await api.post(LESSONS_API_PATH, values)).data,
+    mutationFn: async (values: LessonFormValues) => {
+      const lessonPayload = { title: values.title, nivo: values.nivo };
+      return (await api.post(LESSONS_API_PATH, lessonPayload)).data;
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY] });
       toast.success(t("lessonsCreated"));
@@ -69,8 +75,10 @@ export function LessonsPanel({ canManage }: Props) {
   });
 
   const updateLesson = useMutation({
-    mutationFn: async (values: LessonFormValues) =>
-      (await api.patch(`${LESSONS_API_PATH}/${editingLesson?.id}`, values)).data,
+    mutationFn: async (values: LessonFormValues) => {
+      const lessonPayload = { title: values.title, nivo: values.nivo };
+      return (await api.patch(`${LESSONS_API_PATH}/${editingLesson?.id}`, lessonPayload)).data;
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY] });
       toast.success(t("lessonsUpdated"));
@@ -111,9 +119,18 @@ export function LessonsPanel({ canManage }: Props) {
     }
     return groups;
   }, [filteredLessons]);
+
+  const nivoBookMap = useMemo(() => {
+    const map = new Map<LessonNivo, NivoBook>();
+    for (const row of nivoBooks.data || []) {
+      map.set(row.nivo, row);
+    }
+    return map;
+  }, [nivoBooks.data]);
   const isLessonsListLoading =
     lessons.isLoading ||
     lessons.isFetching;
+  const lessonsListErrorMessage = lessons.isError ? getErrorMessage(lessons.error, t("loadingLessons")) : null;
 
   return (
     <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, MANAGEMENT_PAGE_CARD_STACK_CLASSNAME)}>
@@ -141,7 +158,12 @@ export function LessonsPanel({ canManage }: Props) {
         {!canManage ? <p className="text-sm text-slate-500">{t("lessonsSuperAdminOnly")}</p> : null}
 
         <div className="max-h-[calc(100dvh-220px)] space-y-3 overflow-y-auto pr-1 text-sm">
-        {isLessonsListLoading ? (
+        {lessonsListErrorMessage ? (
+          <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <span>{lessonsListErrorMessage}</span>
+          </div>
+        ) : isLessonsListLoading ? (
           <LoadingBlock text={t("loadingLessons")} containerClassName="min-h-[240px]" />
         ) : (
           LESSON_NIVO_ORDER.map((group) => (
@@ -152,6 +174,7 @@ export function LessonsPanel({ canManage }: Props) {
               open={nivoOpen[group]}
               onOpenChange={(next) => setNivoOpen((prev) => ({ ...prev, [group]: next }))}
               lessons={groupedLessons[group]}
+              nivoBook={nivoBookMap.get(group) || null}
               canManage={canManage}
               onEditLesson={(lesson) => {
                 setEditingLesson(lesson);

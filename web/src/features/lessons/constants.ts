@@ -1,5 +1,7 @@
 export const LESSONS_API_PATH = "/lessons";
 export const LESSONS_QUERY_KEY = "lessons";
+export const NIVO_BOOKS_API_PATH = "/nivo-books";
+export const NIVO_BOOKS_QUERY_KEY = "nivo-books";
 
 export const LESSON_NIVO = {
   First: 1,
