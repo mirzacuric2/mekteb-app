@@ -37,7 +37,7 @@ import { ChildFormValues } from "./child-form-schema";
 import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
 import { BulkLessonOutcomeDialog } from "./bulk-lesson-outcome-dialog";
 import { useAuthedQuery } from "../common/use-authed-query";
-import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
+import { LESSONS_API_PATH, LESSONS_QUERY_KEY, LESSON_PROGRAM } from "../lessons/constants";
 import { Lesson } from "../lessons/types";
 type Props = { canManage: boolean };
 
@@ -59,6 +59,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   const queryClient = useQueryClient();
   const { ready: sessionReady, session } = useSession();
   const {
+    isSuperAdmin,
     canAdminManage,
     canSetChildLessonOutcomes,
     canEditChildren,
@@ -88,6 +89,10 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     status: parent.status,
       communityId: parent.communityId,
     }));
+  const communityNameById = useMemo(
+    () => new Map((communities.data || []).map((community) => [community.id, community.name] as const)),
+    [communities.data]
+  );
   const getApiFieldError = (error: unknown, fallback: string) => {
     if (error instanceof AxiosError) {
       const data = error.response?.data as { message?: string; field?: string } | undefined;
@@ -116,6 +121,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
           ssn: values.ssn.trim(),
           birthDate: values.birthDate,
           nivo: canAdminManage ? values.nivo : undefined,
+          programs: canAdminManage ? values.programs : undefined,
           communityId: canAdminManage && canChooseCommunity ? values.communityId || undefined : undefined,
           parentIds: canAdminManage ? values.parentIds : undefined,
           address:
@@ -155,6 +161,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
           ssn: values.ssn.trim(),
           birthDate: values.birthDate,
           nivo: values.nivo,
+          programs: values.programs,
           communityId: canChooseCommunity ? values.communityId || undefined : undefined,
           parentIds: values.parentIds,
           address:
@@ -191,7 +198,9 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, Boolean(selectedChild));
   const selectedChildScheduledLessons = useMemo(() => {
     if (!selectedChild) return 0;
-    return (lessonsQuery.data || []).filter((lesson) => lesson.nivo === selectedChild.nivo).length;
+    return (lessonsQuery.data || []).filter(
+      (lesson) => lesson.program === LESSON_PROGRAM.ILMIHAL && lesson.nivo === selectedChild.nivo
+    ).length;
   }, [lessonsQuery.data, selectedChild]);
 
   useEffect(() => {
@@ -305,6 +314,8 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
             }}
             canEdit={canEditChildren}
             canDelete={canInactivate}
+            showCommunityColumn={isSuperAdmin}
+            resolveCommunityName={(communityId) => communityNameById.get(communityId) || null}
           />
         )}
       </div>
@@ -328,6 +339,7 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
                 city: editingChild.address?.city || "",
                 stateValue: editingChild.address?.state || "",
                 country: editingChild.address?.country || "",
+                programs: (editingChild.programEnrollments || []).map((entry) => entry.program),
               }
             : undefined
         }

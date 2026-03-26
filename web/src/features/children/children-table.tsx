@@ -21,6 +21,8 @@ type ChildrenTableProps = {
   onDelete: (child: ChildRecord) => void;
   canEdit: boolean;
   canDelete: boolean;
+  showCommunityColumn: boolean;
+  resolveCommunityName: (communityId: string) => string | null;
 };
 
 export function ChildrenTable({
@@ -35,21 +37,26 @@ export function ChildrenTable({
   onDelete,
   canEdit,
   canDelete,
+  showCommunityColumn,
+  resolveCommunityName,
 }: ChildrenTableProps) {
   const { t } = useTranslation();
+  const actionColumnWidth = "140px";
+  const emptyRowColSpan = showCommunityColumn ? 6 : 5;
   return (
     <>
       <DataTable
         className="overflow-hidden"
         scrollClassName="overflow-x-auto !overflow-y-hidden"
-        tableClassName="w-full min-w-[920px] table-fixed border-collapse text-sm"
+        tableClassName={`w-full ${showCommunityColumn ? "min-w-[1060px]" : "min-w-[920px]"} table-fixed border-collapse text-sm`}
         colgroup={
           <colgroup>
             <col style={{ width: "17%" }} />
             <col style={{ width: "200px" }} />
             <col style={{ width: "9rem" }} />
+            {showCommunityColumn ? <col style={{ width: "18%" }} /> : null}
             <col />
-            <col style={{ width: "140px" }} />
+            <col style={{ width: actionColumnWidth }} />
           </colgroup>
         }
         bodyDensity={DATA_TABLE_BODY_DENSITY.SPACIOUS}
@@ -58,6 +65,7 @@ export function ChildrenTable({
             <th className="min-w-0">{t("usersTableName")}</th>
             <th>{t("childrenNivoLabel")}</th>
             <th className="whitespace-nowrap">{t("status")}</th>
+            {showCommunityColumn ? <th className="min-w-0">{t("community")}</th> : null}
             <th className="min-w-0">{t("childrenParentsLabel")}</th>
             <th className="!text-right">
               <span className="sr-only">{t("usersTableActions")}</span>
@@ -82,6 +90,9 @@ export function ChildrenTable({
             <td className="whitespace-nowrap">
               <StatusBadge status={child.status} />
             </td>
+            {showCommunityColumn ? (
+              <td className="min-w-0 break-words text-slate-700">{resolveCommunityName(child.communityId) || t("na")}</td>
+            ) : null}
             <td className="min-w-0 break-words text-slate-700">
               {(child.parents || [])
                 .map((parent) => `${parent.parent?.firstName || ""} ${parent.parent?.lastName || ""}`.trim())
@@ -111,11 +122,11 @@ export function ChildrenTable({
           </tr>
         ))}
         {isLoading ? (
-          <TableLoadingRow colSpan={5} text={t("childrenLoading")} />
+          <TableLoadingRow colSpan={emptyRowColSpan} text={t("childrenLoading")} />
         ) : null}
         {!children.length && !isLoading ? (
           <tr>
-            <td className="!py-10 !text-center text-slate-500" colSpan={5}>
+            <td className="!py-10 !text-center text-slate-500" colSpan={emptyRowColSpan}>
               {t("childrenNoResults")}
             </td>
           </tr>

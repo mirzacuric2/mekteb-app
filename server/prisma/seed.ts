@@ -1,4 +1,4 @@
-import { CommunityStatus, PrismaClient, Role, UserStatus } from "@prisma/client";
+import { CommunityStatus, LessonProgram, PrismaClient, Role, UserStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { initialLessons } from "./initial-lessons.js";
 
@@ -317,8 +317,15 @@ async function main() {
     },
   });
 
+  await prisma.childProgramEnrollment.createMany({
+    data: [
+      { childId: child.id, program: LessonProgram.ILMIHAL },
+    ],
+    skipDuplicates: true,
+  });
+
   const seededPostTitle = "Welcome to the new mekteb app";
-  const seededPostContent = "We will track attendance, posts, and child progress from one place.";
+  const seededPostContent = "We will manage attendance, posts, and child progress from one place.";
   const seededLectureTopic = "Short surahs";
 
   const existingPost = await prisma.post.findFirst({

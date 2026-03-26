@@ -5,11 +5,12 @@ type ActivitiesQueryParams = {
   search: string;
   page: number;
   pageSize: number;
+  program?: string;
   nivo?: number;
   status?: string;
 };
 
-export function useActivitiesQuery({ search, page, pageSize, nivo, status }: ActivitiesQueryParams, enabled: boolean) {
+export function useActivitiesQuery({ search, page, pageSize, program, nivo, status }: ActivitiesQueryParams, enabled: boolean) {
   return useAuthedQueryWithParams<ActivitiesListResponse>(
     "activities",
     "/lectures",
@@ -17,6 +18,7 @@ export function useActivitiesQuery({ search, page, pageSize, nivo, status }: Act
       q: search.trim() || undefined,
       page,
       pageSize,
+      program,
       nivo,
       status,
     },

@@ -30,13 +30,14 @@
 ### Children (`/app/children`)
 
 - **Purpose:** Full **community** child roster (paginated table, search, row actions).
-- **What you can do:** Create/update children with required **SSN**, **nivo**, **community**, and **≥1 parent**; adjust **nivo** and **parent links**; mark **completed** / **discontinued** / **inactive** per lifecycle rules; open the **drawer** for progress and history.
+- **What you can do:** Create/update children with required **SSN**, **nivo**, **community**, and **≥1 parent**; adjust **nivo**, **track enrollment** (`Ilmihal`, `Sufara`, `Qur'an`), and **parent links**; mark **completed** / **discontinued** / **inactive** per lifecycle rules; open the **drawer** for progress and history.
 - **Parent vs admin fields:** Parents linked to a child may edit a subset of fields; you maintain authoritative placement and links.
 
 ### Activities (`/app/activities`)
 
 - **Purpose:** **Reports** table + **Homework queue** tab for lecture attendance and follow-up.
 - **What you can do:** Run **Report activities** (from header or here) to capture attendance and homework state per **nivo**; save drafts; **complete** lectures when every row is final and lessons are chosen; use **Homework queue** to clear pending homework by **nivo** + **lecture**.
+- **Track behavior:** Ilmihal report flow keeps nivo + lesson; Sufara uses letter lessons without nivo; Qur'an uses free-text lesson/topic in report forms.
 - **Scope:** Lists are **single-community**; you do **not** see a **Community** column (that is for `SUPER_ADMIN` multi-community views).
 
 ### Community (`/app/communities`)
@@ -44,7 +45,7 @@
 - **Purpose:** Single-community **hub** (your assignment): compact summary, **Edit** basic info (modal without board-member bulk fields in that entry), tabs such as **Overview**, **Board members**, **Events**, **Diplomas**.
 - **Overview:** Stats and donuts for users/children and nivo-level signals—community-scoped.
 - **Board members:** Adjust board roster where permitted; changes save per current UX (auto-save pattern).
-- **Events:** Weekly/month calendar; create/update/delete events you are allowed to manage (recurrence supported per product docs).
+- **Events:** Weekly/month calendar; create/update/delete events you are allowed to manage (recurrence supported per product docs), including track audiences (`Ilmihal`, `Sufara`, `Qur'an`).
 - **Diplomas:** Configure PDF template and text layout; generate merged PDFs in the browser for ceremonies (see README feature notes for limits).
 
 ### Notifications (`/app/notifications`)

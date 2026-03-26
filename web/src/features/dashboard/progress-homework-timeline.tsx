@@ -4,6 +4,7 @@ import { Card } from "../../components/ui/card";
 import { formatDateTime } from "../../lib/date-time";
 import { Button } from "../../components/ui/button";
 import { StatusBadge } from "../common/components/status-badge";
+import { EmptyStateNotice } from "../common/components/empty-state-notice";
 
 export const HOMEWORK_PROGRESS_STATUS = {
   DONE: "DONE",
@@ -34,7 +35,7 @@ export function ProgressHomeworkTimeline({ items, onMessageImam }: ProgressHomew
   const { t } = useTranslation();
 
   if (!items.length) {
-    return <p className="text-sm text-slate-500">{t("parentDashboardNoActivityFallback")}</p>;
+    return <EmptyStateNotice>{t("parentDashboardNoActivityFallback")}</EmptyStateNotice>;
   }
 
   return (

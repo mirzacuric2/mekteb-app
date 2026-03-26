@@ -6,6 +6,7 @@ type UseChildFormArgs = {
   canChooseCommunity: boolean;
   childrenCommunityRequiredMessage: string;
   childrenParentsRequiredMessage: string;
+  childrenProgramsRequiredMessage: string;
   onSubmit: (values: ChildFormValues) => void;
 };
 
@@ -14,6 +15,7 @@ export function useChildForm({
   canChooseCommunity,
   childrenCommunityRequiredMessage,
   childrenParentsRequiredMessage,
+  childrenProgramsRequiredMessage,
   onSubmit,
 }: UseChildFormArgs) {
   const {
@@ -49,6 +51,10 @@ export function useChildForm({
     }
     if (canAdminManage && values.parentIds.length === 0) {
       setError("parentIds", { type: "manual", message: childrenParentsRequiredMessage });
+      return;
+    }
+    if (canAdminManage && values.programs.length === 0) {
+      setError("programs", { type: "manual", message: childrenProgramsRequiredMessage });
       return;
     }
 

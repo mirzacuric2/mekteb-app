@@ -32,6 +32,7 @@
 
 - **Purpose:** **Directory-style** view of **every child in your community** (same roster `ADMIN` sees for listing), with search and pagination.
 - **What you can do:** Open rows and the **drawer** for read-only insight (progress, details, timeline) on any listed child.
+- **Track visibility:** Child drawer progress is split by tracks (`Ilmihal`, `Sufara`, `Qur'an`) so board members can review each stream separately.
 - **What you cannot do:** Create, edit, or inactivate children (`canEditChildren` / `canInactivate` are false for `BOARD_MEMBER`). Bulk lesson grading and other write actions stay `ADMIN` / `SUPER_ADMIN` only. To change records, coordinate with an **ADMIN**.
 
 ### Community / Community detail (`/app/communities` or `/app/communities/:id`)

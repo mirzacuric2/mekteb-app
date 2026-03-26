@@ -12,6 +12,7 @@ import {
   MANAGEMENT_PAGE_CARD_STACK_CLASSNAME,
 } from "../common/components/entity-list-toolbar";
 import { Loader } from "../common/components/loader";
+import { EmptyStateNotice } from "../common/components/empty-state-notice";
 
 export function NotificationsPanel() {
   const { t } = useTranslation();
@@ -33,12 +34,16 @@ export function NotificationsPanel() {
       </div>
       <ul className="space-y-1 text-sm">
         {notifications.isLoading ? (
-          <li className="rounded-md border border-dashed border-border p-3 text-slate-500">
+          <li>
+            <EmptyStateNotice className="p-3">
             <Loader size="sm" text={t("notificationsLoading")} />
+            </EmptyStateNotice>
           </li>
         ) : null}
         {!notifications.isLoading && items.length === 0 ? (
-          <li className="rounded-md border border-dashed border-border p-3 text-slate-500">{t("notificationsEmpty")}</li>
+          <li>
+            <EmptyStateNotice className="p-3">{t("notificationsEmpty")}</EmptyStateNotice>
+          </li>
         ) : null}
         {items.map((item) => (
           <li key={item.id} className="rounded-md border border-border p-3">

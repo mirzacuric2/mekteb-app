@@ -1,9 +1,10 @@
 export type SeedLesson = {
   title: string;
   nivo: number;
+  program: "ILMIHAL" | "SUFARA" | "QURAN";
 };
 
-export const initialLessons: SeedLesson[] = [
+const ILMIHAL_BASE_LESSONS: Array<Omit<SeedLesson, "program">> = [
   // Nivo 1
   { title: "Euzubillah i Bismillah", nivo: 1 },
   { title: "Rabbi jessir", nivo: 1 },
@@ -107,4 +108,44 @@ export const initialLessons: SeedLesson[] = [
   { title: "Islam u Švedskoj", nivo: 5 },
   { title: "Agresija na BiH", nivo: 5 },
   { title: "Osnovi šerijatskog bračnog prava", nivo: 5 },
+];
+
+export const SUFARA_ARABIC_LETTERS: string[] = [
+  "ا",
+  "ب",
+  "ت",
+  "ث",
+  "ج",
+  "ح",
+  "خ",
+  "د",
+  "ذ",
+  "ر",
+  "ز",
+  "س",
+  "ش",
+  "ص",
+  "ض",
+  "ط",
+  "ظ",
+  "ع",
+  "غ",
+  "ف",
+  "ق",
+  "ك",
+  "ل",
+  "م",
+  "ن",
+  "ه",
+  "و",
+  "ي",
+];
+
+export const initialLessons: SeedLesson[] = [
+  ...ILMIHAL_BASE_LESSONS.map((lesson) => ({ ...lesson, program: "ILMIHAL" as const })),
+  ...SUFARA_ARABIC_LETTERS.map((title) => ({
+    title,
+    nivo: 0,
+    program: "SUFARA" as const,
+  })),
 ];

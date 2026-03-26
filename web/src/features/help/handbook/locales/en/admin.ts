@@ -45,7 +45,7 @@ export const adminHandbookEn: HelpHandbookContent = {
       title: "Children",
       bullets: [
         "Full community roster: table, search, row actions.",
-        "Create/update with required SSN, nivo, community, and at least one parent; adjust nivo and parent links; completed / discontinued / inactive per rules.",
+        "Create/update with required SSN, nivo, community, and at least one parent; adjust nivo, program enrollment (Ilmihal/Sufara/Qur'an), and parent links; completed / discontinued / inactive per rules.",
         "Drawer for progress and history. Linked parents may edit a subset of fields; you keep authoritative placement and links.",
       ],
     },
@@ -54,7 +54,7 @@ export const adminHandbookEn: HelpHandbookContent = {
       title: "Activities",
       bullets: [
         "Reports table and Homework queue tab for attendance and follow-up.",
-        "Report activities (header or here): capture attendance and homework by nivo; save drafts; complete lectures when every row is final and lessons are chosen.",
+        "Report activities (header or here): capture attendance and homework by program; Ilmihal uses nivo + lesson, Sufara uses letter lessons, Qur'an uses free-text lesson/topic.",
         "Homework queue: pick nivo + lecture, then update homework per child.",
         "Your lists are single-community—no Community column (super admins see that for multiple communities).",
       ],

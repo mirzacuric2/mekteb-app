@@ -16,7 +16,13 @@ import { Tabs } from "../../components/ui/tabs";
 import { NaValue } from "../common/components/na-value";
 import { StatusBadge } from "../common/components/status-badge";
 import { useAuthedQuery } from "../common/use-authed-query";
-import { LESSONS_API_PATH, LESSONS_QUERY_KEY, NIVO_BOOKS_API_PATH, NIVO_BOOKS_QUERY_KEY } from "../lessons/constants";
+import {
+  LESSONS_API_PATH,
+  LESSONS_QUERY_KEY,
+  LESSON_PROGRAM,
+  NIVO_BOOKS_API_PATH,
+  NIVO_BOOKS_QUERY_KEY,
+} from "../lessons/constants";
 import { NivoBookLink } from "../lessons/nivo-book-link";
 import { Lesson, NivoBook } from "../lessons/types";
 import { ChildLessonOutcome, ChildRecord } from "../children/types";
@@ -34,6 +40,7 @@ import { useOpenImamChat } from "../messages/use-open-imam-chat";
 import { MESSAGE_CONTEXT_TYPE } from "../messages/types";
 import { useRoleAccess } from "../auth/use-role-access";
 import { LoadingBlock } from "../common/components/loading-block";
+import { EmptyStateNotice } from "../common/components/empty-state-notice";
 import { isPersistedLessonOutcomeKey } from "./progress-lesson-outcome.constants";
 import { hasReportedHomework } from "./attendance-homework";
 import { LectureProgressLessonCard, type LectureProgressLessonItem } from "./lecture-progress-lesson-card";
@@ -107,7 +114,6 @@ export function ProgressChildDetailsDrawer({
       setLocalTab(nextTab);
     }
   };
-
   useEffect(() => {
     if (!open) {
       prevChildIdRef.current = null;
@@ -141,6 +147,38 @@ export function ProgressChildDetailsDrawer({
     if (!child) return null;
     return childRefreshQuery.data ?? child;
   }, [child, childRefreshQuery.data]);
+  const enrollmentSet = useMemo(() => {
+    const programs = (resolvedChild?.programEnrollments || []).map((entry) => entry.program);
+    // Backward compatibility for older children that may not have explicit enrollments yet.
+    if (!programs.length) return new Set([LESSON_PROGRAM.ILMIHAL]);
+    return new Set(programs);
+  }, [resolvedChild?.programEnrollments]);
+  const availableProgramTabs = useMemo(() => {
+    const tabs: Array<{ key: ChildDrawerTab; label: string }> = [];
+    if (enrollmentSet.has(LESSON_PROGRAM.ILMIHAL)) {
+      tabs.push({ key: CHILD_DRAWER_TAB.LECTURE_PROGRESS, label: t("parentDashboardLectureProgressTab") });
+    }
+    if (enrollmentSet.has(LESSON_PROGRAM.SUFARA)) {
+      tabs.push({ key: CHILD_DRAWER_TAB.SUFARA_PROGRESS, label: t("childDrawerSufaraTab") });
+    }
+    if (enrollmentSet.has(LESSON_PROGRAM.QURAN)) {
+      tabs.push({ key: CHILD_DRAWER_TAB.QURAN_PROGRESS, label: t("childDrawerQuranTab") });
+    }
+    return tabs;
+  }, [enrollmentSet, t]);
+  const allowedTabs = useMemo(() => {
+    return new Set<ChildDrawerTab>([
+      CHILD_DRAWER_TAB.BASIC_INFO,
+      ...availableProgramTabs.map((tab) => tab.key),
+      CHILD_DRAWER_TAB.HOMEWORK_PROGRESS,
+    ]);
+  }, [availableProgramTabs]);
+  useEffect(() => {
+    if (!open) return;
+    if (allowedTabs.has(activeTab)) return;
+    const fallbackTab = availableProgramTabs[0]?.key || CHILD_DRAWER_TAB.BASIC_INFO;
+    setActiveTab(fallbackTab);
+  }, [activeTab, allowedTabs, availableProgramTabs, open]);
   const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, open && Boolean(child));
   const nivoBooksQuery = useAuthedQuery<NivoBook[]>(NIVO_BOOKS_QUERY_KEY, NIVO_BOOKS_API_PATH, open && Boolean(child));
   const effectiveSummary = useMemo(() => {
@@ -166,10 +204,11 @@ export function ProgressChildDetailsDrawer({
     [nivoBooksQuery.data, resolvedChild]
   );
 
-  const lectureProgressItems = useMemo(() => {
-    if (!resolvedChild) return [];
+  const buildLectureProgressItemsForProgram = (targetProgram: Lesson["program"]) => {
+    if (!resolvedChild) return [] as LectureProgressLessonItem[];
     const reportMap = new Map<string, LectureProgressLessonItem>();
     for (const record of resolvedChild.attendance || []) {
+      if ((record.lecture.program || LESSON_PROGRAM.ILMIHAL) !== targetProgram) continue;
       const reportKey = record.lesson?.id || `topic:${(record.lesson?.title || record.lecture.topic).trim().toLowerCase()}`;
       const reportTitle = record.lesson?.title || record.lecture.topic;
       const previous = reportMap.get(reportKey);
@@ -198,8 +237,12 @@ export function ProgressChildDetailsDrawer({
       });
     }
 
-    const nivoLessons = (lessonsQuery.data || []).filter((lesson) => lesson.nivo === resolvedChild.nivo);
-    const lessonRows = nivoLessons.map((lesson) => reportMap.get(lesson.id) || {
+    const scopedLessons = (lessonsQuery.data || []).filter((lesson) => {
+      if (lesson.program !== targetProgram) return false;
+      if (targetProgram === LESSON_PROGRAM.ILMIHAL) return lesson.nivo === resolvedChild.nivo;
+      return true;
+    });
+    const lessonRows = scopedLessons.map((lesson) => reportMap.get(lesson.id) || {
       key: lesson.id,
       title: lesson.title,
       reports: 0,
@@ -211,14 +254,30 @@ export function ProgressChildDetailsDrawer({
       lastReportedAt: null,
     });
 
-    const nivoLessonIds = new Set(nivoLessons.map((lesson) => lesson.id));
+    const nivoLessonIds = new Set(scopedLessons.map((lesson) => lesson.id));
     const extraRows = [...reportMap.entries()]
       .filter(([key]) => !nivoLessonIds.has(key))
       .map(([, value]) => value)
       .sort((a, b) => new Date(b.lastReportedAt || 0).getTime() - new Date(a.lastReportedAt || 0).getTime());
-
     return [...lessonRows, ...extraRows];
-  }, [resolvedChild, lessonsQuery.data]);
+  };
+  const lectureProgressItems = useMemo(
+    () => buildLectureProgressItemsForProgram(LESSON_PROGRAM.ILMIHAL),
+    [resolvedChild, lessonsQuery.data]
+  );
+  const sufaraProgressItems = useMemo(
+    () => buildLectureProgressItemsForProgram(LESSON_PROGRAM.SUFARA),
+    [resolvedChild, lessonsQuery.data]
+  );
+  const quranProgressItems = useMemo(
+    () => buildLectureProgressItemsForProgram(LESSON_PROGRAM.QURAN),
+    [resolvedChild, lessonsQuery.data]
+  );
+  const activeProgramProgressItems = useMemo(() => {
+    if (activeTab === CHILD_DRAWER_TAB.SUFARA_PROGRESS) return sufaraProgressItems;
+    if (activeTab === CHILD_DRAWER_TAB.QURAN_PROGRESS) return quranProgressItems;
+    return lectureProgressItems;
+  }, [activeTab, lectureProgressItems, quranProgressItems, sufaraProgressItems]);
 
   const outcomeByLessonId = useMemo(() => {
     const map = new Map<string, ChildLessonOutcome>();
@@ -354,7 +413,7 @@ export function ProgressChildDetailsDrawer({
               onChange={setActiveTab}
               tabs={[
                 { key: CHILD_DRAWER_TAB.BASIC_INFO, label: t("childrenDetails") },
-                { key: CHILD_DRAWER_TAB.LECTURE_PROGRESS, label: t("parentDashboardLectureProgressTab") },
+                ...availableProgramTabs,
                 { key: CHILD_DRAWER_TAB.HOMEWORK_PROGRESS, label: t("parentDashboardHomeworkProgressTab") },
               ]}
             >
@@ -386,24 +445,30 @@ export function ProgressChildDetailsDrawer({
                     />
                   </EntityDetailTable>
                 </div>
-              ) : activeTab === CHILD_DRAWER_TAB.LECTURE_PROGRESS ? (
+              ) : activeTab === CHILD_DRAWER_TAB.LECTURE_PROGRESS ||
+                activeTab === CHILD_DRAWER_TAB.SUFARA_PROGRESS ||
+                activeTab === CHILD_DRAWER_TAB.QURAN_PROGRESS ? (
                 <div className="space-y-2 max-md:space-y-1.5">
-                  {lectureProgressItems.map((item, idx) => {
-                    const outcome = isPersistedLessonOutcomeKey(item.key) ? outcomeByLessonId.get(item.key) : undefined;
-                    return (
-                      <LectureProgressLessonCard
-                        key={item.key}
-                        item={item}
-                        index={idx}
-                        totalItems={lectureProgressItems.length}
-                        child={resolvedChild}
-                        outcome={outcome}
-                        canMessageImam={canMessageImam}
-                        canSetChildLessonOutcomes={canSetChildLessonOutcomes}
-                        openImamChat={openImamChat}
-                      />
-                    );
-                  })}
+                  {activeProgramProgressItems.length ? (
+                    activeProgramProgressItems.map((item, idx) => {
+                      const outcome = isPersistedLessonOutcomeKey(item.key) ? outcomeByLessonId.get(item.key) : undefined;
+                      return (
+                        <LectureProgressLessonCard
+                          key={item.key}
+                          item={item}
+                          index={idx}
+                          totalItems={activeProgramProgressItems.length}
+                          child={resolvedChild}
+                          outcome={outcome}
+                          canMessageImam={canMessageImam}
+                          canSetChildLessonOutcomes={canSetChildLessonOutcomes}
+                          openImamChat={openImamChat}
+                        />
+                      );
+                    })
+                  ) : (
+                    <EmptyStateNotice>{t("parentDashboardNoChildActivity")}</EmptyStateNotice>
+                  )}
                 </div>
               ) : (
                 <ProgressHomeworkTimeline

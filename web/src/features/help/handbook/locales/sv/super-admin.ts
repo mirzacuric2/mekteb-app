@@ -58,6 +58,7 @@ export const superAdminHandbookSv: HelpHandbookContent = {
       title: "Lektioner",
       bullets: [
         "Delad lektionskatalog (grupperad per nivo, CRUD). Endast SUPER_ADMIN har denna rutt i menyn och spärren.",
+        "Spårmodell: Ilmihal (nivåbaserad), Sufara (arabiska bokstavslektioner) och Koran (fritextämnen från rapporter).",
       ],
     },
     {

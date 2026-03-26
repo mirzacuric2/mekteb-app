@@ -80,6 +80,12 @@ enum LectureStatus {
   COMPLETED
 }
 
+enum LessonProgram {
+  ILMIHAL
+  SUFARA
+  QURAN
+}
+
 enum EventRecurrence {
   NONE
   WEEKLY
@@ -90,6 +96,9 @@ enum EventAudience {
   GENERAL
   CHILDREN
   NIVO
+  ILMIHAL
+  SUFARA
+  QURAN
 }
 
 model Community {
@@ -223,8 +232,20 @@ model Child {
   homework     Homework[]
   events       EventChild[]
   lessonOutcomes ChildLessonOutcome[]
+  programEnrollments ChildProgramEnrollment[]
 
   @@index([communityId, status])
+}
+
+model ChildProgramEnrollment {
+  childId   String
+  program   LessonProgram
+  createdAt DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@id([childId, program])
+  @@index([program])
 }
 
 model ParentChild {
@@ -310,6 +331,7 @@ model Message {
 model Lecture {
   id        String   @id @default(uuid())
   topic     String
+  program   LessonProgram @default(ILMIHAL)
   nivo      Int?
   note      String?
   status    LectureStatus @default(DRAFT)
@@ -330,6 +352,7 @@ model Attendance {
   lectureId String
   childId   String
   lessonId  String?
+  lessonText String?
   present   Boolean
   homeworkDone Boolean?
   homeworkTitle String?
@@ -349,14 +372,16 @@ model Attendance {
 model Lesson {
   id        String   @id @default(uuid())
   title     String
-  nivo      Int
+  program   LessonProgram @default(ILMIHAL)
+  nivo      Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   attendance Attendance[]
   homework   Homework[]
   childOutcomes ChildLessonOutcome[]
 
-  @@unique([title, nivo])
+  @@unique([title, program, nivo])
+  @@index([program, nivo, title])
 }
 
 model ChildLessonOutcome {

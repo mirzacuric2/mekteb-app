@@ -16,6 +16,7 @@ export type UpsertChildPayload = {
   ssn: string;
   birthDate: string;
   nivo?: number;
+  programs?: string[];
   communityId?: string;
   parentIds?: string[];
   address?: ChildAddressPayload | null;

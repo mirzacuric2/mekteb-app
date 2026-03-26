@@ -1,6 +1,6 @@
-import { Activity, AlertTriangle, Baby, Layers, PieChart, Users, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Baby, Layers, PieChart, Users, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "../../api";
@@ -8,14 +8,26 @@ import { cn } from "../../lib/utils";
 import { ROLE } from "../../types";
 import { ROLE_ACCENT_HEX } from "../common/role";
 import { ChildRecord, ChildrenListResponse } from "../children/types";
-import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER, LessonNivo } from "../lessons/constants";
+import {
+  LESSON_NIVO_LABEL,
+  LESSON_NIVO_ORDER,
+  LESSON_PROGRAM,
+  LESSON_PROGRAM_I18N_KEY,
+  LessonNivo,
+} from "../lessons/constants";
 import { LECTURE_STATUS } from "../reporting/reporting.constants";
 import { CommunityDonutChart } from "./community-donut-chart";
 import { getNivoColor } from "../common/nivo-colors";
+import {
+  CommunityProgramFilter,
+  CommunityProgressByNivoSection,
+  ProgressByNivoRow,
+} from "./community-progress-by-nivo-section";
 
 type DirectoryUser = {
   id: string;
   role: string;
+  status: string;
 };
 
 const CHILDREN_PAGE_SIZE = 100;
@@ -66,6 +78,7 @@ function OverviewStatCard({
 
 export function CommunityOverviewTab() {
   const { t } = useTranslation();
+  const [progressProgramFilter, setProgressProgramFilter] = useState<CommunityProgramFilter>("ALL");
 
   const usersQuery = useQuery<DirectoryUser[]>({
     queryKey: ["community-overview-directory"],
@@ -103,6 +116,12 @@ export function CommunityOverviewTab() {
 
     return [
       {
+        key: ROLE.SUPER_ADMIN,
+        label: t("roleSuperAdmin"),
+        value: roleCounts.get(ROLE.SUPER_ADMIN) || 0,
+        color: ROLE_ACCENT_HEX[ROLE.SUPER_ADMIN],
+      },
+      {
         key: ROLE.ADMIN,
         label: t("roleAdmin"),
         value: roleCounts.get(ROLE.ADMIN) || 0,
@@ -129,9 +148,12 @@ export function CommunityOverviewTab() {
     ];
   }, [t, usersQuery.data]);
 
-  const childrenByNivoSegments = useMemo(() => {
+  const childrenByIlmihalNivoSegments = useMemo(() => {
     const counts = new Map<LessonNivo, number>();
     for (const child of childrenQuery.data || []) {
+      const programs = (child.programEnrollments || []).map((entry) => entry.program);
+      const isIlmihalProgram = !programs.length || programs.includes(LESSON_PROGRAM.ILMIHAL);
+      if (!isIlmihalProgram) continue;
       counts.set(child.nivo, (counts.get(child.nivo) || 0) + 1);
     }
 
@@ -142,8 +164,80 @@ export function CommunityOverviewTab() {
       color: getNivoColor(nivo) || "#64748b",
     }));
   }, [childrenQuery.data]);
+  const childrenByProgramSegments = useMemo(() => {
+    const programCounts = {
+      [LESSON_PROGRAM.ILMIHAL]: 0,
+      [LESSON_PROGRAM.SUFARA]: 0,
+      [LESSON_PROGRAM.QURAN]: 0,
+    };
+    for (const child of childrenQuery.data || []) {
+      const programs = new Set((child.programEnrollments || []).map((entry) => entry.program));
+      // Backward compatibility for older children without explicit enrollments.
+      if (!programs.size) programs.add(LESSON_PROGRAM.ILMIHAL);
+      if (programs.has(LESSON_PROGRAM.ILMIHAL)) programCounts[LESSON_PROGRAM.ILMIHAL] += 1;
+      if (programs.has(LESSON_PROGRAM.SUFARA)) programCounts[LESSON_PROGRAM.SUFARA] += 1;
+      if (programs.has(LESSON_PROGRAM.QURAN)) programCounts[LESSON_PROGRAM.QURAN] += 1;
+    }
+    return [
+      {
+        key: LESSON_PROGRAM.ILMIHAL,
+        label: t(LESSON_PROGRAM_I18N_KEY[LESSON_PROGRAM.ILMIHAL]),
+        value: programCounts[LESSON_PROGRAM.ILMIHAL],
+        color: "#0ea5e9",
+      },
+      {
+        key: LESSON_PROGRAM.SUFARA,
+        label: t(LESSON_PROGRAM_I18N_KEY[LESSON_PROGRAM.SUFARA]),
+        value: programCounts[LESSON_PROGRAM.SUFARA],
+        color: "#38bdf8",
+      },
+      {
+        key: LESSON_PROGRAM.QURAN,
+        label: t(LESSON_PROGRAM_I18N_KEY[LESSON_PROGRAM.QURAN]),
+        value: programCounts[LESSON_PROGRAM.QURAN],
+        color: "#22c55e",
+      },
+    ];
+  }, [childrenQuery.data, t]);
+  const usersByStatusSegments = useMemo(() => {
+    const statusCounts = {
+      PENDING: 0,
+      ACTIVE: 0,
+      INACTIVE: 0,
+    };
+    for (const user of usersQuery.data || []) {
+      if (user.status in statusCounts) {
+        statusCounts[user.status as keyof typeof statusCounts] += 1;
+      }
+    }
+    return [
+      {
+        key: "PENDING",
+        label: t("pending"),
+        value: statusCounts.PENDING,
+        color: "#f59e0b",
+      },
+      {
+        key: "ACTIVE",
+        label: t("active"),
+        value: statusCounts.ACTIVE,
+        color: "#22c55e",
+      },
+      {
+        key: "INACTIVE",
+        label: t("inactive"),
+        value: statusCounts.INACTIVE,
+        color: "#94a3b8",
+      },
+    ].map((status) => ({
+      key: status.key,
+      label: status.label,
+      value: status.value,
+      color: status.color,
+    }));
+  }, [t, usersQuery.data]);
 
-  const progressByNivo = useMemo(() => {
+  const progressByNivo = useMemo<ProgressByNivoRow[]>(() => {
     const grouped = new Map<
       LessonNivo,
       { children: number; withRecords: number; withoutRecords: number; attendanceRateSum: number; needsAttention: number }
@@ -154,12 +248,18 @@ export function CommunityOverviewTab() {
     }
 
     for (const child of childrenQuery.data || []) {
+      const childPrograms = new Set((child.programEnrollments || []).map((entry) => entry.program));
+      if (!childPrograms.size) childPrograms.add(LESSON_PROGRAM.ILMIHAL);
+      if (progressProgramFilter !== "ALL" && !childPrograms.has(progressProgramFilter)) continue;
+
       const bucket = grouped.get(child.nivo);
       if (!bucket) continue;
       bucket.children += 1;
-      const completedAttendance = (child.attendance || []).filter(
-        (record) => record.lecture.status === LECTURE_STATUS.COMPLETED
-      );
+      const completedAttendance = (child.attendance || []).filter((record) => {
+        if (record.lecture.status !== LECTURE_STATUS.COMPLETED) return false;
+        if (progressProgramFilter === "ALL") return true;
+        return record.lecture.program === progressProgramFilter;
+      });
       if (!completedAttendance.length) {
         bucket.withoutRecords += 1;
         continue;
@@ -186,7 +286,7 @@ export function CommunityOverviewTab() {
         needsAttention: item.needsAttention,
       };
     });
-  }, [childrenQuery.data]);
+  }, [childrenQuery.data, progressProgramFilter]);
 
   if (usersQuery.isLoading || childrenQuery.isLoading) {
     return <p className="text-sm text-slate-500">{t("communityOverviewLoading")}</p>;
@@ -226,57 +326,40 @@ export function CommunityOverviewTab() {
           noDataLabel={t("communityOverviewNoDataLabel")}
         />
         <CommunityDonutChart
-          title={t("communityOverviewChildrenByNivoTitle")}
-          subtitle={t("communityOverviewChildrenByNivoSubtitle")}
+          title={t("communityOverviewUsersByStatusTitle")}
+          subtitle={t("communityOverviewUsersByStatusSubtitle")}
+          titleIcon={PieChart}
+          titleIconClassName="bg-violet-50 text-violet-700"
+          segments={usersByStatusSegments}
+          emptyText={t("communityOverviewNoUsers")}
+          noDataLabel={t("communityOverviewNoDataLabel")}
+        />
+        <CommunityDonutChart
+          title={t("communityOverviewChildrenByIlmihalNivoTitle")}
+          subtitle={t("communityOverviewChildrenByIlmihalNivoSubtitle")}
           titleIcon={Layers}
           titleIconClassName="bg-emerald-50 text-emerald-700"
-          segments={childrenByNivoSegments}
+          segments={childrenByIlmihalNivoSegments}
           emptyText={t("communityOverviewNoChildren")}
           noDataLabel={t("communityOverviewNoDataLabel")}
         />
+        <CommunityDonutChart
+          title={t("communityOverviewChildrenByTrackTitle")}
+          subtitle={t("communityOverviewChildrenByTrackSubtitle")}
+          titleIcon={Layers}
+          titleIconClassName="bg-cyan-50 text-cyan-700"
+          segments={childrenByProgramSegments}
+          emptyText={t("communityOverviewNoChildren")}
+          noDataLabel={t("communityOverviewNoDataLabel")}
+          totalLabel={t("communityOverviewChartEnrollmentsLabel")}
+        />
       </div>
 
-      <div className="rounded-md border border-border p-4">
-        <div className="mb-3 flex gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
-            <Activity className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-800">{t("communityOverviewProgressByNivoTitle")}</p>
-            <p className="text-xs text-slate-500">{t("communityOverviewProgressByNivoSubtitle")}</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {progressByNivo.map((item) => (
-            <div
-              key={item.nivo}
-              className={`grid gap-2 rounded-md border border-border p-3 md:grid-cols-[1.2fr_1fr_1fr_1fr] ${
-                item.children === 0 ? "bg-slate-50/70" : ""
-              }`}
-            >
-              <p className="text-sm font-medium text-slate-800">{LESSON_NIVO_LABEL[item.nivo]}</p>
-              <p className="text-sm text-slate-600">
-                {t("communityOverviewChildrenLabel")}: <span className="font-medium text-slate-900">{item.children}</span>
-              </p>
-              <p className="text-sm text-slate-600">
-                {t("communityOverviewAttendanceLabel")}:{" "}
-                <span className="font-medium text-slate-900">
-                  {item.averageAttendance === null ? "-" : `${item.averageAttendance}%`}
-                </span>
-              </p>
-              <p className="text-sm text-slate-600">
-                {t("communityOverviewAttentionLabel")}:{" "}
-                <span className="font-medium text-slate-900">{item.withRecords === 0 ? "-" : item.needsAttention}</span>
-              </p>
-              {item.withoutRecords > 0 ? (
-                <p className="text-sm text-slate-500 md:col-span-4">
-                  {t("communityOverviewNoRecordsLabel")}: {item.withoutRecords}
-                </p>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
+      <CommunityProgressByNivoSection
+        rows={progressByNivo}
+        programFilter={progressProgramFilter}
+        onProgramFilterChange={setProgressProgramFilter}
+      />
     </div>
   );
 }

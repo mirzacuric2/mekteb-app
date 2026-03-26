@@ -49,7 +49,7 @@ export function createCommunityEventFormSchema(messages: CommunityEventFormMessa
         });
       }
 
-      if (value.audience === EVENT_AUDIENCE.NIVO && !value.nivo) {
+      if ((value.audience === EVENT_AUDIENCE.NIVO || value.audience === EVENT_AUDIENCE.ILMIHAL) && !value.nivo) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["nivo"],

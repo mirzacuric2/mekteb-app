@@ -1,6 +1,7 @@
 import {
   ChildStatus,
   LectureStatus,
+  LessonProgram,
   MessageContextType,
   MessageKind,
   MessageThreadStatus,
@@ -23,6 +24,15 @@ import {
 
 export function communicationRouter() {
   const router = Router();
+  const lessonProgramSchema = z.nativeEnum(LessonProgram);
+  const lessonNivoSchema = z.coerce.number().int().min(1).max(5);
+  const programRequiresNivo = (program: LessonProgram) => program === LessonProgram.ILMIHAL;
+  const normalizeLessonNivo = (program: LessonProgram, nivo?: number | null) => (programRequiresNivo(program) ? nivo ?? 1 : 0);
+  const toDefaultLectureTopic = (program: LessonProgram, nivo?: number | null) => {
+    if (program === LessonProgram.ILMIHAL) return `Nivo ${nivo || 1} activity report`;
+    if (program === LessonProgram.SUFARA) return "Sufara activity report";
+    return "Qur'an activity report";
+  };
   const postListQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(50).optional(),
   });
@@ -48,27 +58,43 @@ export function communicationRouter() {
     return req.user.communityId === communityId;
   };
 
-  const lessonPayloadSchema = z.object({
-    title: z.string().min(2),
-    nivo: z.number().int().min(1).max(5),
-  });
-  const lessonUpdatePayloadSchema = z.object({
-    title: z.string().min(2).optional(),
-    nivo: z.number().int().min(1).max(5).optional(),
-  });
+  const lessonPayloadSchema = z
+    .object({
+      title: z.string().trim().min(2),
+      program: lessonProgramSchema.default(LessonProgram.ILMIHAL),
+      nivo: lessonNivoSchema.optional(),
+    })
+    .superRefine((value, ctx) => {
+      if (programRequiresNivo(value.program) && typeof value.nivo !== "number") {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["nivo"], message: "Nivo is required for Ilmihal lessons" });
+      }
+    });
+  const lessonUpdatePayloadSchema = z
+    .object({
+      title: z.string().trim().min(2).optional(),
+      program: lessonProgramSchema.optional(),
+      nivo: lessonNivoSchema.optional(),
+    })
+    .superRefine((value, ctx) => {
+      if (value.program === LessonProgram.ILMIHAL && typeof value.nivo !== "number") {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["nivo"], message: "Nivo is required for Ilmihal lessons" });
+      }
+    });
   const nivoBookParamsSchema = z.object({
     nivo: z.coerce.number().int().min(1).max(5),
   });
   const lectureListQuerySchema = z.object({
     q: z.string().trim().min(1).optional(),
-    nivo: z.coerce.number().int().min(1).max(5).optional(),
+    nivo: lessonNivoSchema.optional(),
+    program: lessonProgramSchema.optional(),
     status: z.nativeEnum(LectureStatus).optional(),
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
   });
   const homeworkListQuerySchema = z.object({
     q: z.string().trim().min(1).optional(),
-    nivo: z.coerce.number().int().min(1).max(5).optional(),
+    nivo: lessonNivoSchema.optional(),
+    program: lessonProgramSchema.optional(),
     done: z.coerce.number().int().min(0).max(1).optional(),
     childId: z.string().optional(),
     lectureId: z.string().optional(),
@@ -708,6 +734,7 @@ export function communicationRouter() {
     const where = {
       ...(req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId || undefined }),
       ...(query.data.nivo !== undefined ? { nivo: query.data.nivo } : {}),
+      ...(query.data.program ? { program: query.data.program } : {}),
       ...(query.data.status ? { status: query.data.status } : {}),
       ...(searchTerm
         ? {
@@ -735,7 +762,7 @@ export function communicationRouter() {
             select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
           },
           lesson: {
-            select: { id: true, title: true, nivo: true },
+            select: { id: true, title: true, nivo: true, program: true },
           },
         },
       },
@@ -772,7 +799,9 @@ export function communicationRouter() {
     const payload = z
       .object({
         topic: z.string().min(3).optional(),
-        nivo: z.number().int().min(1).max(5),
+        program: lessonProgramSchema.default(LessonProgram.ILMIHAL),
+        nivo: lessonNivoSchema.optional(),
+        lessonText: z.string().trim().optional(),
         note: z.string().optional(),
         markCompleted: z.boolean().optional(),
         communityId: z.string().optional(),
@@ -795,6 +824,11 @@ export function communicationRouter() {
 
     const communityId = payload.data.communityId || req.user!.communityId || undefined;
     if (!canAccessCommunity(req, communityId)) return res.status(403).json({ message: "Forbidden community" });
+    const resolvedProgram = payload.data.program;
+    const resolvedNivo = programRequiresNivo(resolvedProgram) ? payload.data.nivo : undefined;
+    if (programRequiresNivo(resolvedProgram) && typeof resolvedNivo !== "number") {
+      return res.status(400).json({ message: "Nivo is required for Ilmihal reports" });
+    }
 
     const providedChildIds = payload.data.attendance.map((item) => item.childId);
     const childIds = [...new Set(providedChildIds)];
@@ -803,8 +837,15 @@ export function communicationRouter() {
     }
     const lessonIds = [...new Set(payload.data.attendance.map((item) => item.lessonId).filter((id): id is string => Boolean(id)))];
     const shouldMarkCompleted = payload.data.markCompleted === true;
-    if (shouldMarkCompleted && payload.data.attendance.some((item) => !item.lessonId)) {
+    if (
+      shouldMarkCompleted &&
+      resolvedProgram !== LessonProgram.QURAN &&
+      payload.data.attendance.some((item) => !item.lessonId)
+    ) {
       return res.status(400).json({ message: "All attendance rows must include a lesson before completion" });
+    }
+    if (resolvedProgram === LessonProgram.QURAN && !payload.data.lessonText?.trim()) {
+      return res.status(400).json({ message: "Qur'an reports require lesson text" });
     }
     const hasHomeworkWithoutTitle = payload.data.attendance.some((item) => {
       const hasHomeworkPayload =
@@ -819,31 +860,57 @@ export function communicationRouter() {
         id: { in: childIds },
         communityId: communityId!,
         status: ChildStatus.ACTIVE,
-        nivo: payload.data.nivo,
+        ...(typeof resolvedNivo === "number" ? { nivo: resolvedNivo } : {}),
+        programEnrollments: { some: { program: resolvedProgram } },
       },
       select: { id: true, firstName: true, lastName: true },
     });
     if (children.length !== childIds.length) {
       return res.status(400).json({
-        message: "Attendance children must be active and in selected nivo for this community",
+        message:
+          resolvedProgram === LessonProgram.ILMIHAL
+            ? "Attendance children must be active and in selected nivo for this community"
+            : "Attendance children must be active and enrolled in this program",
       });
+    }
+    let resolvedQuranLessonId: string | undefined;
+    if (resolvedProgram === LessonProgram.QURAN) {
+      const title = payload.data.lessonText!.trim();
+      const existingLesson = await prisma.lesson.findFirst({
+        where: { title, program: LessonProgram.QURAN, nivo: 0 },
+        select: { id: true },
+      });
+      if (existingLesson) {
+        resolvedQuranLessonId = existingLesson.id;
+      } else {
+        const createdLesson = await prisma.lesson.create({
+          data: { title, program: LessonProgram.QURAN, nivo: 0 },
+          select: { id: true },
+        });
+        resolvedQuranLessonId = createdLesson.id;
+      }
     }
     if (lessonIds.length > 0) {
       const lessons = await prisma.lesson.findMany({
-        where: { id: { in: lessonIds }, nivo: payload.data.nivo },
+        where: {
+          id: { in: lessonIds },
+          program: resolvedProgram,
+          ...(typeof resolvedNivo === "number" ? { nivo: resolvedNivo } : {}),
+        },
         select: { id: true, title: true },
       });
       if (lessons.length !== lessonIds.length) {
-        return res.status(400).json({ message: "Selected lessons must belong to the selected nivo" });
+        return res.status(400).json({ message: "Selected lessons must belong to the selected program scope" });
       }
     }
-    const resolvedTopic = payload.data.topic?.trim() || `Nivo ${payload.data.nivo} activity report`;
+    const resolvedTopic = payload.data.topic?.trim() || toDefaultLectureTopic(resolvedProgram, resolvedNivo);
 
     const lecture = await prisma.$transaction(async (tx) => {
       const createdLecture = await tx.lecture.create({
         data: {
           topic: resolvedTopic,
-          nivo: payload.data.nivo,
+          program: resolvedProgram,
+          nivo: resolvedNivo ?? null,
           note: payload.data.note,
           status: shouldMarkCompleted ? LectureStatus.COMPLETED : LectureStatus.DRAFT,
           completedAt: shouldMarkCompleted ? new Date() : null,
@@ -863,7 +930,8 @@ export function communicationRouter() {
                     homeworkDescription: null,
                   }),
               childId: item.childId,
-              lessonId: item.lessonId,
+              lessonId: item.lessonId || resolvedQuranLessonId,
+              lessonText: resolvedProgram === LessonProgram.QURAN ? payload.data.lessonText?.trim() || null : null,
               present: item.present,
               comment: item.comment,
             })),
@@ -876,7 +944,7 @@ export function communicationRouter() {
                 select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
               },
               lesson: {
-                select: { id: true, title: true, nivo: true },
+                select: { id: true, title: true, nivo: true, program: true },
               },
             },
           },
@@ -928,7 +996,9 @@ export function communicationRouter() {
     const payload = z
       .object({
         topic: z.string().min(3).optional(),
-        nivo: z.number().int().min(1).max(5).optional(),
+        program: lessonProgramSchema.optional(),
+        nivo: lessonNivoSchema.optional(),
+        lessonText: z.string().trim().optional(),
         note: z.string().optional(),
         markCompleted: z.boolean().optional(),
         attendance: z
@@ -954,9 +1024,12 @@ export function communicationRouter() {
     });
     if (!existing) return res.status(404).json({ message: "Lecture not found" });
     if (!canAccessCommunity(req, existing.communityId)) return res.status(403).json({ message: "Forbidden" });
-    const resolvedNivo = payload.data.nivo ?? existing.nivo;
+    const resolvedProgram = payload.data.program ?? existing.program;
+    const resolvedNivo = programRequiresNivo(resolvedProgram) ? (payload.data.nivo ?? existing.nivo) : null;
     if (payload.data.attendance && !resolvedNivo) {
-      return res.status(400).json({ message: "Nivo is required when updating attendance" });
+      if (resolvedProgram === LessonProgram.ILMIHAL) {
+        return res.status(400).json({ message: "Nivo is required when updating attendance" });
+      }
     }
     const shouldMarkCompleted = payload.data.markCompleted === true;
     if (payload.data.attendance) {
@@ -985,7 +1058,8 @@ export function communicationRouter() {
         where: {
           id: { in: childIds },
           communityId: existing.communityId,
-          nivo: resolvedNivo!,
+          ...(typeof resolvedNivo === "number" ? { nivo: resolvedNivo } : {}),
+          programEnrollments: { some: { program: resolvedProgram } },
         },
         select: { id: true, firstName: true, lastName: true },
       });
@@ -994,15 +1068,43 @@ export function communicationRouter() {
           message: "Attendance children must belong to selected nivo and same community",
         });
       }
+      let resolvedQuranLessonId: string | undefined;
+      if (resolvedProgram === LessonProgram.QURAN) {
+        if (!payload.data.lessonText?.trim()) {
+          return res.status(400).json({ message: "Qur'an reports require lesson text" });
+        }
+        const lessonTitle = payload.data.lessonText.trim();
+        const existingQuranLesson = await prisma.lesson.findFirst({
+          where: { title: lessonTitle, program: LessonProgram.QURAN, nivo: 0 },
+          select: { id: true },
+        });
+        if (existingQuranLesson) {
+          resolvedQuranLessonId = existingQuranLesson.id;
+        } else {
+          const createdQuranLesson = await prisma.lesson.create({
+            data: { title: lessonTitle, program: LessonProgram.QURAN, nivo: 0 },
+            select: { id: true },
+          });
+          resolvedQuranLessonId = createdQuranLesson.id;
+        }
+      }
       if (lessonIds.length > 0) {
         const lessons = await prisma.lesson.findMany({
-          where: { id: { in: lessonIds }, nivo: resolvedNivo! },
+          where: {
+            id: { in: lessonIds },
+            program: resolvedProgram,
+            ...(typeof resolvedNivo === "number" ? { nivo: resolvedNivo } : {}),
+          },
           select: { id: true, title: true },
         });
         if (lessons.length !== lessonIds.length) {
-          return res.status(400).json({ message: "Selected lessons must belong to the selected nivo" });
+          return res.status(400).json({ message: "Selected lessons must belong to the selected program scope" });
         }
       }
+      payload.data.attendance = payload.data.attendance.map((row) => ({
+        ...row,
+        lessonId: row.lessonId || resolvedQuranLessonId,
+      }));
     }
     if (shouldMarkCompleted) {
       const rowsToValidate = payload.data.attendance ?? existing.attendance;
@@ -1020,7 +1122,8 @@ export function communicationRouter() {
         where: { id: req.params.id },
         data: {
           topic: payload.data.topic,
-          nivo: payload.data.nivo,
+          program: payload.data.program,
+          nivo: payload.data.program && !programRequiresNivo(payload.data.program) ? null : payload.data.nivo,
           note: payload.data.note,
           status: shouldMarkCompleted ? LectureStatus.COMPLETED : LectureStatus.DRAFT,
           completedAt: shouldMarkCompleted ? new Date() : null,
@@ -1045,6 +1148,7 @@ export function communicationRouter() {
             lectureId: existing.id,
             childId: item.childId,
             lessonId: item.lessonId,
+            lessonText: resolvedProgram === LessonProgram.QURAN ? payload.data.lessonText?.trim() || null : null,
             present: item.present,
             comment: item.comment,
           })),
@@ -1094,7 +1198,7 @@ export function communicationRouter() {
                 select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
               },
               lesson: {
-                select: { id: true, title: true, nivo: true },
+                select: { id: true, title: true, nivo: true, program: true },
               },
             },
           },
@@ -1133,7 +1237,7 @@ export function communicationRouter() {
                 select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
               },
               lesson: {
-                select: { id: true, title: true, nivo: true },
+                select: { id: true, title: true, nivo: true, program: true },
               },
             },
           },
@@ -1157,7 +1261,7 @@ export function communicationRouter() {
                 select: { id: true, firstName: true, lastName: true, nivo: true, status: true },
               },
               lesson: {
-                select: { id: true, title: true, nivo: true },
+                select: { id: true, title: true, nivo: true, program: true },
               },
             },
           },
@@ -1213,6 +1317,7 @@ export function communicationRouter() {
       child: {
         ...(isSuperAdmin ? {} : { communityId: req.user!.communityId || undefined }),
         ...(query.data.nivo !== undefined ? { nivo: query.data.nivo } : {}),
+        ...(query.data.program ? { programEnrollments: { some: { program: query.data.program } } } : {}),
         ...(isLinkedScopeRole ? { id: { in: linkedChildIds } } : {}),
       },
       AND: [
@@ -1244,6 +1349,7 @@ export function communicationRouter() {
               id: true,
               topic: true,
               status: true,
+              program: true,
               completedAt: true,
               updatedAt: true,
               createdAt: true,
@@ -1251,7 +1357,7 @@ export function communicationRouter() {
             },
           },
           child: { select: { id: true, firstName: true, lastName: true, nivo: true } },
-          lesson: { select: { id: true, title: true, nivo: true } },
+          lesson: { select: { id: true, title: true, nivo: true, program: true } },
         },
         orderBy: [{ homeworkDone: "asc" }, { markedAt: "desc" }],
         skip: (page - 1) * pageSize,
@@ -1292,9 +1398,11 @@ export function communicationRouter() {
     const existingAttendance = await prisma.attendance.findUnique({
       where: { lectureId_childId: { lectureId: req.params.lectureId, childId: req.params.childId } },
       include: {
-        lecture: { select: { id: true, topic: true, status: true, completedAt: true, updatedAt: true, createdAt: true } },
+        lecture: {
+          select: { id: true, topic: true, program: true, status: true, completedAt: true, updatedAt: true, createdAt: true },
+        },
         child: { select: { id: true, communityId: true, firstName: true, lastName: true, nivo: true } },
-        lesson: { select: { id: true, title: true, nivo: true } },
+        lesson: { select: { id: true, title: true, nivo: true, program: true } },
       },
     });
     if (!existingAttendance) return res.status(404).json({ message: "Homework not found" });
@@ -1324,9 +1432,11 @@ export function communicationRouter() {
         ...(payload.data.description !== undefined ? { homeworkDescription: payload.data.description.trim() || null } : {}),
       },
       include: {
-        lecture: { select: { id: true, topic: true, status: true, completedAt: true, updatedAt: true, createdAt: true } },
+        lecture: {
+          select: { id: true, topic: true, program: true, status: true, completedAt: true, updatedAt: true, createdAt: true },
+        },
         child: { select: { id: true, firstName: true, lastName: true, nivo: true } },
-        lesson: { select: { id: true, title: true, nivo: true } },
+        lesson: { select: { id: true, title: true, nivo: true, program: true } },
       },
     });
     const wasHomeworkDone = existingAttendance.homeworkDone === true;
@@ -1434,7 +1544,7 @@ export function communicationRouter() {
 
   router.get("/lessons", requireAuth, async (_req: AppRequest, res) => {
     const lessons = await prisma.lesson.findMany({
-      orderBy: [{ nivo: "asc" }, { title: "asc" }],
+      orderBy: [{ program: "asc" }, { nivo: "asc" }, { title: "asc" }],
     });
     return res.json(lessons);
   });
@@ -1446,7 +1556,8 @@ export function communicationRouter() {
     const lesson = await prisma.lesson.create({
       data: {
         title: payload.data.title.trim(),
-        nivo: payload.data.nivo,
+        program: payload.data.program,
+        nivo: normalizeLessonNivo(payload.data.program, payload.data.nivo),
       },
     });
 
@@ -1464,7 +1575,10 @@ export function communicationRouter() {
       where: { id: req.params.id },
       data: {
         title: payload.data.title?.trim(),
-        nivo: payload.data.nivo,
+        program: payload.data.program,
+        ...(payload.data.program || payload.data.nivo !== undefined
+          ? { nivo: normalizeLessonNivo(payload.data.program ?? existing.program, payload.data.nivo ?? existing.nivo) }
+          : {}),
       },
     });
 

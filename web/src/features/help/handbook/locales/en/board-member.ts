@@ -44,7 +44,7 @@ export const boardMemberHandbookEn: HelpHandbookContent = {
       title: "Children",
       bullets: [
         "Same Children route as parents: the list shows children linked to your account as parent/guardian. It can be empty if you have no linked children.",
-        "Open rows and the drawer for read-only insight on those records.",
+        "Open rows and the drawer for read-only insight on those records, including per-program tabs (Ilmihal, Sufara, Qur'an).",
         "You cannot create, edit, or inactivate children. For community-wide child work, imams use their tools; Community → Overview shows community-level metrics.",
       ],
     },

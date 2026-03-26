@@ -20,6 +20,7 @@ export const parentHandbookSv: HelpHandbookContent = {
       bullets: [
         "Startsida efter inloggning: nyheter från föreningen och en överblick över er familj.",
         "Framsteg: när du har kopplade barn ser du kort med nyckeltal och summering per barn (närvaro, läxor, senaste aktivitet) endast för dina barn. Tryck på ett barn under totala framsteget öppnar lådan på fliken lecture-progress; under läxframsteg öppnas homework-progress. URL:en använder ?childId=…&tab=… så du kan uppdatera eller dela samma vy.",
+        "Framstegsvyn innehåller också separata kort för Sufara och Koran.",
         "Den här veckan för er familj: skrivskyddad veckokalender när ditt konto har en förening. Du kan inte skapa eller redigera händelser här.",
         "Senaste inlägg: de nyaste inläggen med länk till hela Inlägg.",
         "Du kan inte köra lektionsrapporter, hantera andras barn eller ändra föreningsinställningar härifrån.",
@@ -39,7 +40,7 @@ export const parentHandbookSv: HelpHandbookContent = {
       title: "Barn",
       bullets: [
         "Listan visar bara barn som är kopplade till ditt konto—inte hela skolans register.",
-        "Öppna en rad för detaljer i sidodrawern: framsteg, läxor och närvarorelaterad historik när den registrerats.",
+        "Öppna en rad för detaljer i sidodrawern: framsteg, läxor och närvarorelaterad historik när den registrerats (inklusive flikar för Ilmihal, Sufara och Koran).",
         "Du kan redigera tillåtna fält (t.ex. namn, personnummer, födelsedatum, adress) när redigeringsåtgärden visas.",
         "Du kan inte skapa eller inaktivera barn, byta förening eller nivo, eller ändra föräldralänkar—det är endast för administratörer.",
         "Delade länkar kan använda ?childId=<id> för att öppna samma drawer; lägg till &tab=basic-info, lecture-progress eller homework-progress för att landa på en flik (standard är basic-info om tab utelämnas).",

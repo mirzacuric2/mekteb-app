@@ -1,4 +1,4 @@
-import { LessonNivo } from "../lessons/constants";
+import { LessonNivo, LessonProgram } from "../lessons/constants";
 import { LectureStatus } from "../reporting/types";
 
 export const CHILD_STATUS = {
@@ -58,6 +58,7 @@ export type ChildAttendanceRecord = {
   lecture: {
     id: string;
     topic: string;
+    program: LessonProgram;
     nivo?: LessonNivo | null;
     status: LectureStatus;
     completedAt?: string | null;
@@ -67,8 +68,14 @@ export type ChildAttendanceRecord = {
   lesson?: {
     id: string;
     title: string;
-    nivo: LessonNivo;
+    nivo: LessonNivo | 0;
+    program: LessonProgram;
   } | null;
+  lessonText?: string | null;
+};
+
+export type ChildProgramEnrollment = {
+  program: LessonProgram;
 };
 
 export type ChildRecord = {
@@ -82,6 +89,7 @@ export type ChildRecord = {
   communityId: string;
   address?: ChildAddress | null;
   parents: ChildParent[];
+  programEnrollments?: ChildProgramEnrollment[];
   attendance?: ChildAttendanceRecord[];
   lessonOutcomes?: ChildLessonOutcome[];
 };

@@ -16,15 +16,25 @@ import {
 } from "../../components/ui/dialog";
 import {
   DEFAULT_LESSON_NIVO,
+  LESSON_PROGRAM,
+  LESSON_PROGRAM_I18N_KEY,
+  LESSON_PROGRAM_ORDER,
   LESSON_NIVO,
   LESSON_NIVO_LABEL,
   LESSON_NIVO_ORDER,
 } from "./constants";
 
-const lessonFormSchema = z.object({
-  title: z.string().trim().min(2, "Lesson title must be at least 2 characters."),
-  nivo: z.nativeEnum(LESSON_NIVO),
-});
+const lessonFormSchema = z
+  .object({
+    title: z.string().trim().min(2, "Lesson title must be at least 2 characters."),
+    program: z.nativeEnum(LESSON_PROGRAM),
+    nivo: z.union([z.nativeEnum(LESSON_NIVO), z.literal(0)]),
+  })
+  .superRefine((value, context) => {
+    if (value.program === LESSON_PROGRAM.ILMIHAL && value.nivo === 0) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["nivo"], message: "Nivo is required for Ilmihal lessons." });
+    }
+  });
 
 export type LessonFormValues = z.infer<typeof lessonFormSchema>;
 
@@ -49,6 +59,7 @@ export function LessonFormDialog({
   const [submitLocked, setSubmitLocked] = useState(false);
   const {
     register,
+    watch,
     handleSubmit,
     reset,
     setError,
@@ -57,6 +68,7 @@ export function LessonFormDialog({
   } = useForm<LessonFormValues>({
     defaultValues: {
       title: "",
+      program: LESSON_PROGRAM.ILMIHAL,
       nivo: DEFAULT_LESSON_NIVO,
     },
   });
@@ -66,6 +78,7 @@ export function LessonFormDialog({
     setSubmitLocked(false);
     reset({
       title: initialValues?.title || "",
+      program: initialValues?.program || LESSON_PROGRAM.ILMIHAL,
       nivo: initialValues?.nivo || DEFAULT_LESSON_NIVO,
     });
   }, [open, initialValues, reset]);
@@ -92,7 +105,7 @@ export function LessonFormDialog({
             if (!parsed.success) {
               for (const issue of parsed.error.issues) {
                 const [field] = issue.path;
-                if (field === "title" || field === "nivo") {
+                if (field === "title" || field === "nivo" || field === "program") {
                   setError(field, { type: "manual", message: issue.message });
                 }
               }
@@ -109,13 +122,31 @@ export function LessonFormDialog({
               {errors.title ? <p className="mt-1 text-xs text-red-600">{errors.title.message}</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">{t("lessonsNivoLabel")}</label>
-              <Select {...register("nivo", { valueAsNumber: true })}>
-                {LESSON_NIVO_ORDER.map((value) => (
-                  <option key={value} value={value}>
-                    {LESSON_NIVO_LABEL[value]}
+              <label className="mb-1 block text-sm font-medium text-slate-700">{t("lessonsProgramLabel")}</label>
+              <Select {...register("program")}>
+                {LESSON_PROGRAM_ORDER.map((program) => (
+                  <option key={program} value={program}>
+                    {t(LESSON_PROGRAM_I18N_KEY[program])}
                   </option>
                 ))}
+              </Select>
+              {errors.program ? <p className="mt-1 text-xs text-red-600">{errors.program.message}</p> : null}
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">{t("lessonsNivoLabel")}</label>
+              <Select
+                {...register("nivo", { valueAsNumber: true })}
+                disabled={watch("program") !== LESSON_PROGRAM.ILMIHAL}
+              >
+                {watch("program") === LESSON_PROGRAM.ILMIHAL ? (
+                  LESSON_NIVO_ORDER.map((value) => (
+                    <option key={value} value={value}>
+                      {LESSON_NIVO_LABEL[value]}
+                    </option>
+                  ))
+                ) : (
+                  <option value={0}>{t("lessonsNoNivoOption")}</option>
+                )}
               </Select>
               {errors.nivo ? <p className="mt-1 text-xs text-red-600">{errors.nivo.message}</p> : null}
             </div>

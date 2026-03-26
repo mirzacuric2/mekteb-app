@@ -58,6 +58,7 @@ export const superAdminHandbookEn: HelpHandbookContent = {
       title: "Lessons",
       bullets: [
         "Shared lesson catalog (nivo-grouped list, CRUD). Only SUPER_ADMIN has this route in the sidebar and route guard.",
+        "Track model: Ilmihal (nivo-based), Sufara (Arabic-letter lessons), and Qur'an (free-text lesson topics from reports).",
       ],
     },
     {

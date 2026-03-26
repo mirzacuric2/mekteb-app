@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LESSON_NIVO, LessonNivo } from "../lessons/constants";
+import { LESSON_NIVO, LESSON_PROGRAM, LessonNivo } from "../lessons/constants";
 import { isAtLeastAge, isValidIsoDateString } from "../../lib/date-time";
 import { CHILD_FORM_CONSTRAINTS } from "./child-form.constants";
 
@@ -42,6 +42,7 @@ export const childFormSchema = z
     city: z.string().trim(),
     stateValue: z.string().trim(),
     country: z.string().trim(),
+    programs: z.array(z.nativeEnum(LESSON_PROGRAM)).default([]),
   })
   .superRefine((values, ctx) => {
     const hasAnyAddressValue = Boolean(
@@ -97,4 +98,5 @@ export const CHILD_FORM_DEFAULT_VALUES: ChildFormValues = {
   stateValue: "",
   country: "",
   nivo: LESSON_NIVO.First,
+  programs: [],
 };

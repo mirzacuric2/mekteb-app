@@ -20,6 +20,7 @@ export const parentHandbookBs: HelpHandbookContent = {
       bullets: [
         "Početak nakon prijave: vijesti zajednice i pregled vaše porodice.",
         "Pregled napretka: kada imate povezanu djecu, vidite kartice sa pokazateljima i sažetke po djetetu (prisustvo, zadaće, nedavna aktivnost) samo za vašu djecu. Dodir na dijete pod ukupnim napretkom otvara ladicu na tabu lecture-progress; pod zadacom na homework-progress. URL koristi ?childId=…&tab=… da možete osvježiti ili podijeliti isti prikaz.",
+        "Pregled uključuje i zasebne kartice napretka za Sufaru i Kur'an.",
         "Ova sedmica za vašu porodicu: pregled sedmičnih događaja samo za čitanje kada nalog ima zajednicu. Ovdje ne možete kreirati ni uređivati događaje.",
         "Nedavne objave: najnovije objave sa linkom ka cijeloj sekciji Objave.",
         "Ne možete pokretati izvještaje o lekcijama, upravljati tuđom djecom ni mijenjati postavke zajednice odavde.",
@@ -39,7 +40,7 @@ export const parentHandbookBs: HelpHandbookContent = {
       title: "Djeca",
       bullets: [
         "Lista prikazuje samo djecu povezanu s vašim nalogom—ne cijeli školski spisak.",
-        "Otvorite red za detalje u bočnoj ladici: napredak, zadaće i historiju prisustva kada je evidentirana.",
+        "Otvorite red za detalje u bočnoj ladici: napredak, zadaće i historiju prisustva kada je evidentirana (uključujući tabove Ilmihal, Sufara i Kur'an).",
         "Možete uređivati dozvoljena polja (npr. ime, JMB, datum rođenja, adresa) kada je prikazana akcija uređivanja.",
         "Ne možete kreirati ni deaktivirati djecu, mijenjati zajednicu ili nivo, niti veze roditelja—to je samo za administratore.",
         "Dijeljeni linkovi mogu koristiti ?childId=<id> da otvore istu ladicu; dodajte &tab=basic-info, lecture-progress ili homework-progress za određeni tab (podrazumijevano je basic-info ako tab nedostaje).",

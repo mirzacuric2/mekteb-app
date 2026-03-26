@@ -58,6 +58,7 @@ export const superAdminHandbookBs: HelpHandbookContent = {
       title: "Lekcije",
       bullets: [
         "Zajednički katalog lekcija (grupisano po nivou, CRUD). Samo SUPER_ADMIN ima ovu rutu u meniju i zaštiti rute.",
+        "Model programa: Ilmihal (po nivou), Sufara (lekcije arapskih slova) i Kur'an (slobodan unos tema iz izvještaja).",
       ],
     },
     {

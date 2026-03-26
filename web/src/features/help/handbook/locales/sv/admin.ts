@@ -45,7 +45,7 @@ export const adminHandbookSv: HelpHandbookContent = {
       title: "Barn",
       bullets: [
         "Hela föreningens register: tabell, sökning, radåtgärder.",
-        "Skapa/uppdatera med krav på personnummer, nivo, förening och minst en förälder; justera nivo och föräldralänkar; status enligt regler.",
+        "Skapa/uppdatera med krav på personnummer, nivo, förening och minst en förälder; justera nivo, spårval (Ilmihal/Sufara/Koran) och föräldralänkar; status enligt regler.",
         "Drawer för framsteg och historik. Kopplade föräldrar kan redigera delmängd av fält; du ansvarar för placering och länkar.",
       ],
     },
@@ -54,7 +54,7 @@ export const adminHandbookSv: HelpHandbookContent = {
       title: "Aktiviteter",
       bullets: [
         "Rapporttabell och fliken Läxkö för närvaro och uppföljning.",
-        "Rapportera aktiviteter (header eller här): fånga närvaro och läxor per nivo; spara utkast; slutför lektioner när alla rader är klara och lektioner valda.",
+        "Rapportera aktiviteter (header eller här): fånga närvaro och läxor per spår; Ilmihal använder nivo + lektion, Sufara använder bokstavslektioner, Koran använder fritext för lektion/tema.",
         "Läxkö: välj nivo + lektion, uppdatera läxa per barn.",
         "Dina listor är en-förening—ingen kolumn Förening (superadmin ser den för flera föreningar).",
       ],

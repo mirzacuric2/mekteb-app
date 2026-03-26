@@ -1,4 +1,4 @@
-import { EventAudience, EventRecurrence, Prisma, Role } from "@prisma/client";
+import { EventAudience, EventRecurrence, LessonProgram, Prisma, Role } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { requireAnyRole, requireAuth } from "../../auth.js";
@@ -106,7 +106,7 @@ function validateEventState(state: EventInputState) {
       }
     }
   }
-  if (state.audience === EventAudience.NIVO && !state.nivo) {
+  if ((state.audience === EventAudience.NIVO || state.audience === EventAudience.ILMIHAL) && !state.nivo) {
     return "Nivo audience requires nivo";
   }
   if (state.audience === EventAudience.CHILDREN && state.childIds.length === 0) {
@@ -270,14 +270,19 @@ export function eventsRouter() {
 
       const links = await prisma.parentChild.findMany({
         where: { parentId: req.user!.id, child: { communityId: req.params.id } },
-        select: { childId: true, child: { select: { nivo: true } } },
+        select: { childId: true, child: { select: { nivo: true, programEnrollments: { select: { program: true } } } } },
       });
       const linkedChildIds = new Set(links.map((item) => item.childId));
       const linkedNivos = new Set(links.map((item) => item.child.nivo));
+      const linkedPrograms = new Set(links.flatMap((item) => item.child.programEnrollments.map((row) => row.program)));
 
       const visibleEvents = events.filter((event) => {
         if (event.audience === EventAudience.GENERAL) return true;
-        if (event.audience === EventAudience.NIVO) return event.nivo !== null && linkedNivos.has(event.nivo);
+        if (event.audience === EventAudience.NIVO || event.audience === EventAudience.ILMIHAL) {
+          return event.nivo !== null && linkedNivos.has(event.nivo);
+        }
+        if (event.audience === EventAudience.SUFARA) return linkedPrograms.has(LessonProgram.SUFARA);
+        if (event.audience === EventAudience.QURAN) return linkedPrograms.has(LessonProgram.QURAN);
         if (event.audience === EventAudience.CHILDREN) {
           return event.children.some((row) => linkedChildIds.has(row.childId));
         }
@@ -325,14 +330,21 @@ export function eventsRouter() {
         if (event.audience === EventAudience.GENERAL) return res.json(event);
         const links = await prisma.parentChild.findMany({
           where: { parentId: req.user!.id, child: { communityId: req.params.id } },
-          select: { childId: true, child: { select: { nivo: true } } },
+          select: { childId: true, child: { select: { nivo: true, programEnrollments: { select: { program: true } } } } },
         });
         const linkedChildIds = new Set(links.map((item) => item.childId));
         const linkedNivos = new Set(links.map((item) => item.child.nivo));
-        if (event.audience === EventAudience.NIVO) {
+        const linkedPrograms = new Set(links.flatMap((item) => item.child.programEnrollments.map((row) => row.program)));
+        if (event.audience === EventAudience.NIVO || event.audience === EventAudience.ILMIHAL) {
           if (event.nivo === null || !linkedNivos.has(event.nivo)) {
             return res.status(403).json({ message: "Forbidden" });
           }
+        }
+        if (event.audience === EventAudience.SUFARA && !linkedPrograms.has(LessonProgram.SUFARA)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+        if (event.audience === EventAudience.QURAN && !linkedPrograms.has(LessonProgram.QURAN)) {
+          return res.status(403).json({ message: "Forbidden" });
         }
         if (event.audience === EventAudience.CHILDREN) {
           const isLinked = event.children.some((row) => linkedChildIds.has(row.childId));
@@ -388,7 +400,7 @@ export function eventsRouter() {
           recurrenceInterval: state.recurrenceInterval,
           recurrenceEndsAt: state.recurrenceEndsAt,
           audience: state.audience,
-          nivo: state.audience === EventAudience.NIVO ? state.nivo : null,
+          nivo: state.audience === EventAudience.NIVO || state.audience === EventAudience.ILMIHAL ? state.nivo : null,
           color: null,
           children:
             state.audience === EventAudience.CHILDREN
@@ -479,7 +491,10 @@ export function eventsRouter() {
             recurrenceInterval: mergedState.recurrenceInterval,
             recurrenceEndsAt: mergedState.recurrenceEndsAt,
             audience: mergedState.audience,
-            nivo: mergedState.audience === EventAudience.NIVO ? mergedState.nivo : null,
+            nivo:
+              mergedState.audience === EventAudience.NIVO || mergedState.audience === EventAudience.ILMIHAL
+                ? mergedState.nivo
+                : null,
             color: null,
           },
         });

@@ -23,11 +23,16 @@ export const EVENT_RECURRENCE_LABEL: Record<EventRecurrence, string> = {
 
 export const EVENT_AUDIENCE_ORDER: EventAudience[] = [
   EVENT_AUDIENCE.GENERAL,
-  EVENT_AUDIENCE.NIVO,
+  EVENT_AUDIENCE.ILMIHAL,
+  EVENT_AUDIENCE.SUFARA,
+  EVENT_AUDIENCE.QURAN,
 ];
 
 export const EVENT_AUDIENCE_LABEL: Record<EventAudience, string> = {
   [EVENT_AUDIENCE.GENERAL]: "General community event",
   [EVENT_AUDIENCE.CHILDREN]: "Selected children",
   [EVENT_AUDIENCE.NIVO]: "Nivo group",
+  [EVENT_AUDIENCE.ILMIHAL]: "Ilmihal by nivo",
+  [EVENT_AUDIENCE.SUFARA]: "Sufara",
+  [EVENT_AUDIENCE.QURAN]: "Qur'an",
 };

@@ -60,6 +60,9 @@ function toSafeErrorResponse(error: unknown) {
 
 export function createApp() {
   const app = express();
+  // API clients expect JSON payloads on every successful GET.
+  // Disable ETag revalidation responses (304) to avoid empty/error states in Axios consumers.
+  app.set("etag", false);
   app.use(cors());
   app.use(express.json());
   app.use(morgan("dev"));

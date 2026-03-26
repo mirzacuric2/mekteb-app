@@ -17,6 +17,7 @@ type Props = {
   segments: Segment[];
   emptyText: string;
   noDataLabel: string;
+  totalLabel?: string;
 };
 
 const CHART_SIZE = 140;
@@ -32,6 +33,7 @@ export function CommunityDonutChart({
   segments,
   emptyText,
   noDataLabel,
+  totalLabel,
 }: Props) {
   const { t } = useTranslation();
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
@@ -39,28 +41,28 @@ export function CommunityDonutChart({
   const emptySegments = segments.filter((segment) => segment.value === 0);
 
   return (
-    <div className="rounded-md border border-border p-4">
-      <div className="mb-3 flex gap-3">
+    <div className="rounded-xl border border-border p-3 sm:p-4">
+      <div className="mb-3 flex gap-2.5 sm:gap-3">
         {TitleIcon ? (
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 sm:h-10 sm:w-10",
               titleIconClassName
             )}
           >
-            <TitleIcon className="h-5 w-5" aria-hidden />
+            <TitleIcon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
           </div>
         ) : null}
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-800">{title}</p>
-          <p className="text-xs text-slate-500">{subtitle}</p>
+          <p className="text-sm font-medium leading-tight text-slate-800">{title}</p>
+          <p className="text-xs leading-tight text-slate-500">{subtitle}</p>
         </div>
       </div>
 
       {total > 0 ? (
-        <div className="flex min-w-0 flex-col items-center gap-3 md:flex-row md:items-start md:gap-5">
-          <div className="relative h-[140px] w-[140px] shrink-0">
-            <svg width={CHART_SIZE} height={CHART_SIZE} className="-rotate-90">
+        <div className="flex min-w-0 flex-col items-center gap-2.5 sm:gap-3 md:flex-row md:items-start md:gap-5">
+          <div className="relative h-[112px] w-[112px] shrink-0 sm:h-[132px] sm:w-[132px] md:h-[140px] md:w-[140px]">
+            <svg viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="h-full w-full -rotate-90">
               <circle
                 cx={CHART_SIZE / 2}
                 cy={CHART_SIZE / 2}
@@ -99,23 +101,23 @@ export function CommunityDonutChart({
               ).nodes}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="text-2xl font-semibold text-slate-900">{total}</p>
-              <p className="text-xs text-slate-500">{t("communityOverviewChartTotalLabel")}</p>
+              <p className="text-xl font-semibold text-slate-900 sm:text-2xl">{total}</p>
+              <p className="text-xs text-slate-500">{totalLabel || t("communityOverviewChartTotalLabel")}</p>
             </div>
           </div>
-          <div className="min-w-0 w-full space-y-1 md:w-auto md:min-w-[240px] md:max-w-[320px]">
+          <div className="min-w-0 w-full space-y-1 sm:space-y-1.5 md:w-auto md:min-w-[240px] md:max-w-[320px]">
             {segmentsWithData.map((segment) => {
               const percentage = total ? Math.round((segment.value / total) * 100) : 0;
               return (
                 <div
                   key={segment.key}
-                  className="grid grid-cols-1 gap-y-0.5 text-sm md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-x-3 md:gap-y-0"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm"
                 >
                   <span className="inline-flex min-w-0 items-center gap-2 text-slate-700">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
+                    <span className="h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5" style={{ backgroundColor: segment.color }} />
                     <span className="truncate">{segment.label}</span>
                   </span>
-                  <span className="pl-5 text-slate-900 md:pl-0 md:text-right">
+                  <span className="text-right text-slate-900">
                     {segment.value} ({percentage}%)
                   </span>
                 </div>

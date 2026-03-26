@@ -33,10 +33,12 @@
 
 - **Purpose:** Same **Reports** + **Homework queue** tools as `ADMIN`, with **multi-community** context.
 - **Distinct UI:** **Reports** and **Homework queue** tables include a **Community** column so rows from different communities are distinguishable (admins do not see this column).
+- **Track-aware reporting:** Ilmihal reports require nivo + lesson, Sufara uses non-nivo lesson picks, and Qur'an reports use free-text lesson/topic.
 
 ### Lessons (`/app/lessons`)
 
 - **Purpose:** Shared **lesson catalog** (nivo-grouped list, CRUD). Only `SUPER_ADMIN` has this route in the sidebar and guard.
+- **Track model:** Maintain `Ilmihal`, `Sufara`, and `Qur'an` tracks. Ilmihal is nivo-based; Sufara uses seeded Arabic-letter lessons; Qur'an lessons are created from free-text report topics.
 
 ### Communities (`/app/communities` and `/app/communities/:id`)
 

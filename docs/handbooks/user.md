@@ -14,7 +14,7 @@ This handbook describes **your** app: what each area is for, what you should exp
 
 - **Purpose:** Home view after login: community news and your family’s snapshot in one place.
 - **What you see:**
-  - **Progress overview** (KPI-style cards and per-child summaries when you have linked children): linked children, attendance-style signals, homework follow-up, and recent activity—scoped to **your** children only.
+  - **Progress overview** (KPI-style cards and per-child summaries when you have linked children): linked children, attendance-style signals, homework follow-up, and recent activity—scoped to **your** children only. Separate Sufara and Qur'an cards appear only when at least one of your linked children is enrolled in those programs.
   - **This week for your family** (when your account has a community): a read-only weekly events preview filtered to what applies to your household (and general community events as the product rules allow). You cannot create or edit events here.
   - **Recent posts:** Latest community posts with a link to open the full **Posts** section.
 - **What you cannot do here:** Run lecture reports, manage other people’s children, or change community settings.
@@ -28,7 +28,7 @@ This handbook describes **your** app: what each area is for, what you should exp
 ### Children (`/app/children`)
 
 - **Purpose:** List and review **children linked to your account** (not the whole community roster).
-- **What you can do:** Open a child row to see details in the **side drawer** (progress, homework, attendance-related history where the school has recorded it). You can **edit** allowed fields for your children (for example name, SSN, birth date, address) through the edit flow when offered.
+- **What you can do:** Open a child row to see details in the **side drawer** (progress, homework, attendance-related history where the school has recorded it). Drawer tabs include `Ilmihal`, `Sufara`, and `Qur'an` progress where available. You can **edit** allowed fields for your children (for example name, SSN, birth date, address) through the edit flow when offered.
 - **What you cannot do:** Create children, inactivate them, change **community** or **nivo**, or change **parent links**—those are admin-only. You cannot open children you are not linked to.
 - **Tip:** URLs can include `?childId=<uuid>` so a shared link can open the same drawer.
 

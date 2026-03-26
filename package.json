@@ -14,5 +14,10 @@
     "db:bootstrap": "npm run db:bootstrap -w server",
     "compose:prod:up": "docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build",
     "compose:prod:down": "docker compose -f docker-compose.prod.yml --env-file .env.production down"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.19.2",
+    "i": "^0.3.7",
+    "prisma": "^6.19.2"
   }
 }

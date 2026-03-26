@@ -63,16 +63,23 @@ This guide explains how to use the Mekteb App interface and core features.
 
 - The **Lessons** sidebar section and `/app/lessons` route are available to **`SUPER_ADMIN` only** in the current app; other roles do not navigate there.
 - On that page, catalog entries can be searched and maintained (create/update/delete) by **`SUPER_ADMIN`**.
-- Lesson levels (nivo) are standardized across children and lectures—keep titles and level assignment consistent.
+- Lessons are organized by program: **Ilmihal**, **Sufara**, **Qur'an**. Ilmihal keeps nivo-based structure; Sufara/Qur'an are non-nivo programs.
+- Sufara starts with seeded Arabic letters (28 lessons) and Qur'an reporting uses free-text lesson/topic entry.
 
 ## 7) Activity Reporting Workflow (Admin/Super Admin)
 
 - **SUPER_ADMIN** sees a **Community** column on the **Reports** and **Homework queue** tables (multi-community visibility). **ADMIN** does not—lists are for their community only.
 - Save lecture attendance reports first (draft stage), then use `Complete lecture` from Activities table when the report is finalized.
+- Report input depends on selected program: `Ilmihal` = nivo + lesson, `Sufara` = letter lesson picker, `Qur'an` = free-text lesson/topic.
 - Attendance entry is optimized for speed: by default all children are marked present, then you toggle off only absences.
 - Homework assignment in report modal is optional and lecture-level (single homework for the selected nivo report).
 - Use the `Homework queue` tab under Activities as a separate follow-up window: select `Nivo` + `Lecture`, then mark homework done child-by-child.
 - Parents and linked guardians see lecture/homework outcomes in dashboard and child history once reports are saved.
+
+## 7.1) Events by program
+
+- Event audience supports **Ilmihal**, **Sufara**, and **Qur'an** options.
+- Ilmihal audience remains nivo-targeted; Sufara and Qur'an do not require nivo.
 
 ## 8) Data Quality Checklist
 

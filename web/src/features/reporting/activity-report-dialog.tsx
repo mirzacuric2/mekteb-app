@@ -12,7 +12,16 @@ import { Select } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
 import { CHILD_STATUS, ChildRecord } from "../children/types";
 import { Loader } from "../common/components/loader";
-import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER, LessonNivo } from "../lessons/constants";
+import { EmptyStateNotice } from "../common/components/empty-state-notice";
+import {
+  LESSON_NIVO_LABEL,
+  LESSON_NIVO_ORDER,
+  LESSON_PROGRAM,
+  LESSON_PROGRAM_I18N_KEY,
+  LESSON_PROGRAM_ORDER,
+  LessonNivo,
+  LessonProgram,
+} from "../lessons/constants";
 import { Lesson } from "../lessons/types";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { ActivitiesListResponse, ActivityLecture } from "./types";
@@ -31,8 +40,10 @@ type ChildRowState = {
 };
 
 const reportSchema = z.object({
-  nivo: z.number().int().min(1).max(5),
-  defaultLessonId: z.string().trim().min(1, "Lesson is required."),
+  program: z.nativeEnum(LESSON_PROGRAM),
+  nivo: z.number().int().min(1).max(5).optional(),
+  defaultLessonId: z.string().trim().optional(),
+  lessonText: z.string().trim().optional(),
   homeworkEnabled: z.boolean(),
   homeworkTitle: z.string().trim(),
   homeworkDescription: z.string().trim(),
@@ -46,6 +57,15 @@ const reportSchema = z.object({
     )
     .min(1, "At least one child is required."),
 }).superRefine((data, ctx) => {
+  if (data.program === LESSON_PROGRAM.ILMIHAL && typeof data.nivo !== "number") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["nivo"], message: "Nivo is required." });
+  }
+  if (data.program !== LESSON_PROGRAM.QURAN && !data.defaultLessonId?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["defaultLessonId"], message: "Lesson is required." });
+  }
+  if (data.program === LESSON_PROGRAM.QURAN && !data.lessonText?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["lessonText"], message: "Lesson text is required." });
+  }
   if (data.homeworkEnabled && !data.homeworkTitle.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -58,26 +78,29 @@ const reportSchema = z.object({
 export function ActivityReportDialog({ open, onOpenChange, editingActivity = null, onSaved }: ActivityReportDialogProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [program, setProgram] = useState<LessonProgram>(LESSON_PROGRAM.ILMIHAL);
   const [nivo, setNivo] = useState<LessonNivo | "">("");
+  const [lessonText, setLessonText] = useState("");
   const childrenQuery = useQuery<ChildRecord[]>({
-    queryKey: ["activity-report-children", nivo],
-    enabled: open && nivo !== "",
+    queryKey: ["activity-report-children", program, nivo],
+    enabled: open && (program !== LESSON_PROGRAM.ILMIHAL || nivo !== ""),
     queryFn: async () =>
       (
         await api.get("/children", {
-          params: { nivo, status: CHILD_STATUS.ACTIVE },
+          params: { nivo: program === LESSON_PROGRAM.ILMIHAL ? nivo : undefined, program, status: CHILD_STATUS.ACTIVE },
         })
       ).data,
   });
   const lessonsQuery = useAuthedQuery<Lesson[]>("lessons", "/lessons", open);
   const draftLecturesQuery = useQuery<ActivitiesListResponse>({
-    queryKey: ["activity-report-drafts", nivo],
-    enabled: open && !editingActivity && typeof nivo === "number",
+    queryKey: ["activity-report-drafts", program, nivo],
+    enabled: open && !editingActivity && (program !== LESSON_PROGRAM.ILMIHAL || typeof nivo === "number"),
     queryFn: async () =>
       (
         await api.get("/lectures", {
           params: {
-            nivo,
+            program,
+            nivo: program === LESSON_PROGRAM.ILMIHAL ? nivo : undefined,
             status: LECTURE_STATUS.DRAFT,
             page: 1,
             pageSize: 100,
@@ -91,20 +114,28 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
   const [homeworkDescription, setHomeworkDescription] = useState("");
   const [markCompleted, setMarkCompleted] = useState(false);
   const [rows, setRows] = useState<Record<string, ChildRowState>>({});
-  const [fieldErrors, setFieldErrors] = useState<{ nivo?: string; defaultLessonId?: string; rows?: string; homeworkTitle?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{
+    nivo?: string;
+    defaultLessonId?: string;
+    lessonText?: string;
+    rows?: string;
+    homeworkTitle?: string;
+  }>({});
   const [autoDraftActivity, setAutoDraftActivity] = useState<ActivityLecture | null>(null);
 
   const effectiveEditingActivity = editingActivity || autoDraftActivity;
   const draftItems = draftLecturesQuery.data?.items || [];
   const draftCountForNivo = draftItems.length;
   const matchedDraftForLesson = useMemo(() => {
-    if (editingActivity || typeof nivo !== "number" || !defaultLessonId) return null;
+    if (editingActivity || program === LESSON_PROGRAM.QURAN) return null;
+    if (program === LESSON_PROGRAM.ILMIHAL && typeof nivo !== "number") return null;
+    if (!defaultLessonId) return null;
     return (
       [...draftItems]
         .filter((lecture) => lecture.attendance.some((entry) => entry.lessonId === defaultLessonId))
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] || null
     );
-  }, [defaultLessonId, draftItems, editingActivity, nivo]);
+  }, [defaultLessonId, draftItems, editingActivity, nivo, program]);
 
   const activeChildrenForNivo = useMemo(() => childrenQuery.data || [], [childrenQuery.data]);
   const childrenForForm = useMemo(() => {
@@ -126,13 +157,20 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
   }, [activeChildrenForNivo, effectiveEditingActivity]);
 
   const nivoLessons = useMemo(
-    () => (nivo === "" ? [] : (lessonsQuery.data || []).filter((lesson) => lesson.nivo === nivo)),
-    [lessonsQuery.data, nivo]
+    () =>
+      (lessonsQuery.data || []).filter((lesson) => {
+        if (lesson.program !== program) return false;
+        if (program === LESSON_PROGRAM.ILMIHAL) return nivo !== "" && lesson.nivo === nivo;
+        return true;
+      }),
+    [lessonsQuery.data, nivo, program]
   );
 
   const resetForm = () => {
+    setProgram(LESSON_PROGRAM.ILMIHAL);
     setNivo("");
     setDefaultLessonId("");
+    setLessonText("");
     setHomeworkEnabled(false);
     setHomeworkTitle("");
     setHomeworkDescription("");
@@ -148,8 +186,10 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       return;
     }
     if (effectiveEditingActivity) {
+      setProgram(effectiveEditingActivity.program);
       setNivo(effectiveEditingActivity.nivo || "");
       setDefaultLessonId(effectiveEditingActivity.attendance[0]?.lessonId || "");
+      setLessonText(effectiveEditingActivity.attendance[0]?.lessonText || "");
       const sampleHomework = effectiveEditingActivity.attendance.find((entry) => Boolean(entry.homeworkTitle?.trim()));
       setHomeworkEnabled(Boolean(sampleHomework));
       setHomeworkTitle(sampleHomework?.homeworkTitle || "");
@@ -197,8 +237,10 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
         comment: rows[child.id]?.comment || "",
       }));
       const parsed = reportSchema.safeParse({
+        program,
         nivo: typeof nivo === "number" ? nivo : undefined,
         defaultLessonId,
+        lessonText,
         homeworkEnabled,
         homeworkTitle,
         homeworkDescription,
@@ -206,11 +248,18 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
       });
 
       if (!parsed.success) {
-        const nextFieldErrors: { nivo?: string; defaultLessonId?: string; rows?: string; homeworkTitle?: string } = {};
+        const nextFieldErrors: {
+          nivo?: string;
+          defaultLessonId?: string;
+          lessonText?: string;
+          rows?: string;
+          homeworkTitle?: string;
+        } = {};
         for (const issue of parsed.error.issues) {
           const [field, index] = issue.path;
           if (field === "nivo") nextFieldErrors.nivo = t("activityReportNivoRequired");
           if (field === "defaultLessonId") nextFieldErrors.defaultLessonId = t("activityReportLessonRequired");
+          if (field === "lessonText") nextFieldErrors.lessonText = t("activityReportLessonTextRequired");
           if (field === "homeworkTitle") nextFieldErrors.homeworkTitle = t("activityReportHomeworkTitleRequired");
           if (field === "rows" && index === undefined) {
             nextFieldErrors.rows = issue.message;
@@ -224,9 +273,11 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
         await (effectiveEditingActivity
           ? api.patch(`/lectures/${effectiveEditingActivity.id}`, {
               nivo: parsed.data.nivo,
+              program: parsed.data.program,
+              lessonText: parsed.data.program === LESSON_PROGRAM.QURAN ? parsed.data.lessonText?.trim() : undefined,
               attendance: parsed.data.rows.map((row) => ({
                 childId: row.childId,
-                lessonId: parsed.data.defaultLessonId,
+                lessonId: parsed.data.program === LESSON_PROGRAM.QURAN ? undefined : parsed.data.defaultLessonId,
                 present: row.present,
                 homeworkTitle: parsed.data.homeworkEnabled ? parsed.data.homeworkTitle.trim() : undefined,
                 homeworkDescription: parsed.data.homeworkEnabled ? parsed.data.homeworkDescription.trim() || undefined : undefined,
@@ -236,9 +287,11 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
             })
           : api.post("/lectures", {
               nivo: parsed.data.nivo,
+              program: parsed.data.program,
+              lessonText: parsed.data.program === LESSON_PROGRAM.QURAN ? parsed.data.lessonText?.trim() : undefined,
               attendance: parsed.data.rows.map((row) => ({
                 childId: row.childId,
-                lessonId: parsed.data.defaultLessonId,
+                lessonId: parsed.data.program === LESSON_PROGRAM.QURAN ? undefined : parsed.data.defaultLessonId,
                 present: row.present,
                 homeworkTitle: parsed.data.homeworkEnabled ? parsed.data.homeworkTitle.trim() : undefined,
                 homeworkDescription: parsed.data.homeworkEnabled ? parsed.data.homeworkDescription.trim() || undefined : undefined,
@@ -269,13 +322,15 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
     },
   });
   const isCreateMode = !effectiveEditingActivity;
+  const hasSelectedLesson = program === LESSON_PROGRAM.QURAN ? lessonText.trim().length > 0 : defaultLessonId.trim().length > 0;
   const saveDisabled =
     saveActivityMutation.isPending ||
-    nivo === "" ||
+    (program === LESSON_PROGRAM.ILMIHAL && nivo === "") ||
+    (program === LESSON_PROGRAM.QURAN && !lessonText.trim()) ||
     childrenQuery.isLoading ||
     childrenQuery.isError ||
     lessonsQuery.isLoading ||
-    nivoLessons.length === 0 ||
+    (program !== LESSON_PROGRAM.QURAN && nivoLessons.length === 0) ||
     childrenForForm.length === 0;
 
   return (
@@ -285,42 +340,102 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
           <DialogTitle>{isCreateMode ? t("activityReportCreateTitle") : t("activityReportEditTitle")}</DialogTitle>
         </DialogHeader>
         <DialogBody className="space-y-4">
-          <div className="grid md:grid-cols-2">
-            <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("childrenNivoLabel")}</p>
-              <Select
-                value={nivo === "" ? "" : String(nivo)}
-                onChange={(event) => {
-                  const selectedNivo = event.target.value ? (Number(event.target.value) as LessonNivo) : "";
-                  setNivo(selectedNivo);
-                  setRows({});
-                  setDefaultLessonId("");
-                  setHomeworkEnabled(false);
-                  setHomeworkTitle("");
-                  setHomeworkDescription("");
-                  setFieldErrors((prev) => ({ ...prev, nivo: undefined, defaultLessonId: undefined }));
-                }}
-              >
-                <option value="">{t("activityReportSelectNivo")}</option>
-                {LESSON_NIVO_ORDER.map((currentNivo) => (
-                  <option key={currentNivo} value={String(currentNivo)}>
-                    {LESSON_NIVO_LABEL[currentNivo]}
-                  </option>
-                ))}
-              </Select>
-              {fieldErrors.nivo ? <p className="mt-1 text-xs text-red-600">{fieldErrors.nivo}</p> : null}
-              {typeof nivo === "number" && draftCountForNivo > 0 ? (
-                <p className="mt-1 text-xs text-slate-500">{t("activityReportDraftCountForNivo", { count: draftCountForNivo })}</p>
-              ) : null}
+          <section className="space-y-3 rounded-md border border-border p-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("lessonsProgramLabel")}</p>
+                <Select
+                  value={program}
+                  onChange={(event) => {
+                    const nextProgram = event.target.value as LessonProgram;
+                    setProgram(nextProgram);
+                    setRows({});
+                    setDefaultLessonId("");
+                    setLessonText("");
+                    if (nextProgram !== LESSON_PROGRAM.ILMIHAL) {
+                      setNivo("");
+                    }
+                    setHomeworkEnabled(false);
+                    setHomeworkTitle("");
+                    setHomeworkDescription("");
+                    setFieldErrors((prev) => ({ ...prev, nivo: undefined, defaultLessonId: undefined, lessonText: undefined }));
+                  }}
+                >
+                  {LESSON_PROGRAM_ORDER.map((value) => (
+                    <option key={value} value={value}>
+                      {t(LESSON_PROGRAM_I18N_KEY[value])}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {program === LESSON_PROGRAM.ILMIHAL ? (
+                <div>
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("childrenNivoLabel")}</p>
+                  <Select
+                    value={nivo === "" ? "" : String(nivo)}
+                    onChange={(event) => {
+                      const selectedNivo = event.target.value ? (Number(event.target.value) as LessonNivo) : "";
+                      setNivo(selectedNivo);
+                      setRows({});
+                      setDefaultLessonId("");
+                      setHomeworkEnabled(false);
+                      setHomeworkTitle("");
+                      setHomeworkDescription("");
+                      setFieldErrors((prev) => ({ ...prev, nivo: undefined, defaultLessonId: undefined }));
+                    }}
+                  >
+                    <option value="">{t("activityReportSelectNivo")}</option>
+                    {LESSON_NIVO_ORDER.map((currentNivo) => (
+                      <option key={currentNivo} value={String(currentNivo)}>
+                        {LESSON_NIVO_LABEL[currentNivo]}
+                      </option>
+                    ))}
+                  </Select>
+                  {fieldErrors.nivo ? <p className="mt-1 text-xs text-red-600">{fieldErrors.nivo}</p> : null}
+                  {typeof nivo === "number" && draftCountForNivo > 0 ? (
+                    <p className="mt-1 text-xs text-slate-500">{t("activityReportDraftCountForNivo", { count: draftCountForNivo })}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <div>
+                  {program === LESSON_PROGRAM.QURAN ? (
+                    <>
+                      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("activityReportQuranLessonText")}</p>
+                      <Input
+                        value={lessonText}
+                        onChange={(event) => {
+                          setLessonText(event.target.value);
+                          setFieldErrors((prev) => ({ ...prev, lessonText: undefined }));
+                        }}
+                        placeholder={t("activityReportQuranLessonTextPlaceholder")}
+                      />
+                      {fieldErrors.lessonText ? <p className="mt-1 text-xs text-red-600">{fieldErrors.lessonText}</p> : null}
+                    </>
+                  ) : (
+                    <>
+                      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("activityReportDefaultLesson")}</p>
+                      <Select value={defaultLessonId} onChange={(event) => setDefaultLessonId(event.target.value)}>
+                        <option value="">{t("activityReportSelectLesson")}</option>
+                        {nivoLessons.map((lesson) => (
+                          <option key={lesson.id} value={lesson.id}>
+                            {lesson.title}
+                          </option>
+                        ))}
+                      </Select>
+                      {fieldErrors.defaultLessonId ? <p className="mt-1 text-xs text-red-600">{fieldErrors.defaultLessonId}</p> : null}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-            <div />
-          </div>
-
-          <section className="rounded-md border border-border p-3">
-            <div className="grid gap-3 md:grid-cols-2 md:items-center">
-              <div className="min-w-[240px]">
+            {program === LESSON_PROGRAM.ILMIHAL ? (
+              <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("activityReportDefaultLesson")}</p>
-                <Select value={defaultLessonId} onChange={(event) => setDefaultLessonId(event.target.value)} disabled={nivo === ""}>
+                <Select
+                  value={defaultLessonId}
+                  onChange={(event) => setDefaultLessonId(event.target.value)}
+                  disabled={nivo === ""}
+                >
                   <option value="">{t("activityReportSelectLesson")}</option>
                   {nivoLessons.map((lesson) => (
                     <option key={lesson.id} value={lesson.id}>
@@ -329,16 +444,23 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
                   ))}
                 </Select>
                 {fieldErrors.defaultLessonId ? <p className="mt-1 text-xs text-red-600">{fieldErrors.defaultLessonId}</p> : null}
-                {!editingActivity && matchedDraftForLesson ? (
-                  <p className="mt-1 text-xs text-amber-700">{t("activityReportUsingExistingDraftForLesson")}</p>
-                ) : null}
               </div>
-              <div className="flex items-center md:pt-6">
-                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                  <Switch checked={homeworkEnabled} onCheckedChange={(checked) => setHomeworkEnabled(checked === true)} />
-                  <span>{t("activityReportAssignHomeworkForLecture")}</span>
-                </label>
-              </div>
+            ) : null}
+            {!editingActivity && matchedDraftForLesson ? (
+              <p className="mt-1 text-xs text-amber-700">{t("activityReportUsingExistingDraftForLesson")}</p>
+            ) : null}
+          </section>
+
+          <section className="rounded-md border border-border p-3">
+            <div className="flex items-center">
+              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                <Switch
+                  checked={homeworkEnabled}
+                  onCheckedChange={(checked) => setHomeworkEnabled(checked === true)}
+                  disabled={!hasSelectedLesson}
+                />
+                <span>{t("activityReportAssignHomeworkForLecture")}</span>
+              </label>
             </div>
             {homeworkEnabled ? (
               <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -371,10 +493,8 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
               {t("activityReportChildrenCount", { count: childrenForForm.length })}
             </p>
             {fieldErrors.rows ? <p className="text-xs text-red-600">{fieldErrors.rows}</p> : null}
-            {nivo === "" ? (
-              <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">
-                {t("activityReportSelectNivoFirst")}
-              </div>
+            {program === LESSON_PROGRAM.ILMIHAL && nivo === "" ? (
+              <EmptyStateNotice className="p-4">{t("activityReportSelectNivoFirst")}</EmptyStateNotice>
             ) : childrenQuery.isError ? (
               <div className="rounded-md border border-dashed border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 <p>{t("activityReportChildrenLoadFailed")}</p>
@@ -383,17 +503,13 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
                 </Button>
               </div>
             ) : childrenQuery.isLoading || lessonsQuery.isLoading ? (
-              <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">
+              <EmptyStateNotice className="p-4">
                 <Loader size="sm" text={t("reportingLoading")} />
-              </div>
-            ) : nivoLessons.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">
-                {t("activityReportNoLessonsForNivo")}
-              </div>
+              </EmptyStateNotice>
+            ) : program !== LESSON_PROGRAM.QURAN && nivoLessons.length === 0 ? (
+              <EmptyStateNotice className="p-4">{t("activityReportNoLessonsForNivo")}</EmptyStateNotice>
             ) : childrenForForm.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">
-                {t("activityReportNoChildrenForNivo")}
-              </div>
+              <EmptyStateNotice className="p-4">{t("activityReportNoChildrenForNivo")}</EmptyStateNotice>
             ) : (
               <div className="max-h-[38dvh] space-y-2 overflow-y-auto pr-1">
                 {childrenForForm.map((child) => {

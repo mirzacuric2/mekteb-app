@@ -12,6 +12,7 @@ import {
 } from "../common/components/entity-list-toolbar";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { Loader } from "../common/components/loader";
+import { EmptyStateNotice } from "../common/components/empty-state-notice";
 import { PostCard } from "./post-card";
 import { POST_FORM_DEFAULT_VALUES, PostFormValues, postFormSchema } from "./post-form-schema";
 import { PostRecord } from "./types";
@@ -141,9 +142,9 @@ export function PostsPanel({ canPublish }: Props) {
         )}
 
         {posts.isLoading ? (
-          <div className="rounded-md border border-dashed border-border p-3 text-slate-500">
+          <EmptyStateNotice className="p-3">
             <Loader size="sm" text="Loading posts..." />
-          </div>
+          </EmptyStateNotice>
         ) : null}
         {!posts.isLoading && !posts.data?.length ? <p className="text-sm text-slate-500">No posts yet.</p> : null}
 

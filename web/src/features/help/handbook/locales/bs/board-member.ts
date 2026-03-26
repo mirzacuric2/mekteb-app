@@ -44,7 +44,7 @@ export const boardMemberHandbookBs: HelpHandbookContent = {
       title: "Djeca",
       bullets: [
         "Ista ruta Djeca kao za roditelje: lista prikazuje djecu povezanu s vašim nalogom kao staratelj. Može biti prazna ako nemate takvu djecu.",
-        "Otvorite redove i ladicu za uvid samo za čitanje u tim zapisima.",
+        "Otvorite redove i ladicu za uvid samo za čitanje u tim zapisima, uključujući tabove po programu (Ilmihal, Sufara, Kur'an).",
         "Ne možete kreirati, uređivati ni deaktivirati djecu. Za cijelu zajednicu imami koriste svoje alate; Zajednica → Pregled prikazuje agregate.",
       ],
     },

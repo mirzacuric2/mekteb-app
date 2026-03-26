@@ -1,4 +1,4 @@
-import { ChildStatus, CommunityStatus, Role, UserStatus } from "@prisma/client";
+import { ChildStatus, CommunityStatus, LessonProgram, Role, UserStatus } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
@@ -33,9 +33,11 @@ export function usersRouter() {
   });
   const childSsnSchema = z.string().trim().min(10).max(20);
   const childNivoSchema = z.number().int().min(1).max(5);
+  const lessonProgramSchema = z.nativeEnum(LessonProgram);
   const childListQuerySchema = z.object({
     childId: z.string().uuid().optional(),
     nivo: z.coerce.number().int().min(1).max(5).optional(),
+    program: lessonProgramSchema.optional(),
     status: z.nativeEnum(ChildStatus).optional(),
     q: z.string().trim().min(1).optional(),
     page: z.coerce.number().int().min(1).optional(),
@@ -148,7 +150,7 @@ export function usersRouter() {
     const users = await prisma.user.findMany({
       where: req.user!.role === Role.SUPER_ADMIN ? {} : { communityId: req.user!.communityId || undefined },
       orderBy: { createdAt: "desc" },
-      select: { id: true, firstName: true, lastName: true, role: true, communityId: true },
+      select: { id: true, firstName: true, lastName: true, role: true, status: true, communityId: true },
     });
     return res.json(users);
   });
@@ -415,12 +417,14 @@ export function usersRouter() {
     const isLinkedChildrenOnlyRole = req.user!.role === Role.USER || req.user!.role === Role.PARENT;
     const isSuperAdmin = req.user!.role === Role.SUPER_ADMIN;
     const requestorCommunityId = req.user!.communityId;
+    const selectedProgram = query.data.program;
     if (!isSuperAdmin && !isLinkedChildrenOnlyRole && !mineOnly && !requestorCommunityId) {
       return res.status(403).json({ message: "Community assignment required" });
     }
     const whereFilters = {
       ...(query.data.childId ? { id: query.data.childId } : {}),
       ...(query.data.nivo !== undefined ? { nivo: query.data.nivo } : {}),
+      ...(selectedProgram ? { programEnrollments: { some: { program: selectedProgram } } } : {}),
       ...(query.data.status !== undefined ? { status: query.data.status } : {}),
       ...(searchTerm
         ? {
@@ -454,11 +458,13 @@ export function usersRouter() {
         },
       },
       attendance: {
+        where: selectedProgram ? { lecture: { program: selectedProgram } } : undefined,
         include: {
           lecture: {
             select: {
               id: true,
               topic: true,
+              program: true,
               nivo: true,
               status: true,
               completedAt: true,
@@ -467,12 +473,13 @@ export function usersRouter() {
             },
           },
           lesson: {
-            select: { id: true, title: true, nivo: true },
+            select: { id: true, title: true, nivo: true, program: true },
           },
         },
         orderBy: { markedAt: "desc" as const },
       },
       lessonOutcomes: {
+        where: selectedProgram ? { lesson: { program: selectedProgram } } : undefined,
         select: {
           lessonId: true,
           passed: true,
@@ -481,6 +488,7 @@ export function usersRouter() {
           markedBy: { select: { id: true, firstName: true, lastName: true } },
         },
       },
+      programEnrollments: { select: { program: true } },
     };
     const childrenOrderBy = [{ status: "asc" as const }, { firstName: "asc" as const }, { lastName: "asc" as const }];
 
@@ -548,12 +556,14 @@ export function usersRouter() {
         ssn: childSsnSchema,
         birthDate: z.string(),
         nivo: childNivoSchema,
+        programs: z.array(lessonProgramSchema).min(1),
         communityId: z.string().optional(),
         parentIds: z.array(z.string()).min(1),
         address: childAddressSchema.optional(),
       })
       .safeParse(req.body);
     if (!payload.success) return res.status(400).json({ message: "Invalid payload" });
+    const selectedPrograms = payload.data.programs;
     const communityId = payload.data.communityId || req.user!.communityId || undefined;
     if (!communityId) {
       return res.status(400).json({ message: "Community is required for child creation", field: "communityId" });
@@ -623,6 +633,11 @@ export function usersRouter() {
         communityId,
         addressId: addressId || null,
         parents: { create: uniqueParentIds.map((parentId) => ({ parentId })) },
+        programEnrollments: {
+          createMany: {
+            data: [...new Set(selectedPrograms)].map((program) => ({ program })),
+          },
+        },
       },
       include: {
         address: true,
@@ -633,6 +648,7 @@ export function usersRouter() {
             },
           },
         },
+        programEnrollments: { select: { program: true } },
       },
     });
       return res.status(201).json(child);
@@ -651,6 +667,7 @@ export function usersRouter() {
         ssn: childSsnSchema.optional(),
         birthDate: z.string().optional(),
         nivo: childNivoSchema.optional(),
+        programs: z.array(lessonProgramSchema).min(1).optional(),
         communityId: z.string().optional(),
         parentIds: z.array(z.string()).min(1).optional(),
         status: z.nativeEnum(ChildStatus).optional(),
@@ -678,9 +695,13 @@ export function usersRouter() {
       if (payload.data.parentIds !== undefined) {
         return res.status(403).json({ message: "Only admin can reassign parents" });
       }
+      if (payload.data.programs !== undefined) {
+        return res.status(403).json({ message: "Only admin can reassign programs" });
+      }
     } else if (!canAccessCommunity(req, existing.communityId)) {
       return res.status(403).json({ message: "Forbidden" });
     }
+    const selectedPrograms = payload.data.programs;
 
     let targetCommunityId = existing.communityId;
     if (!isParentScoped && payload.data.communityId) {
@@ -768,6 +789,13 @@ export function usersRouter() {
         await tx.parentChild.createMany({
           data: uniqueParentIds.map((parentId) => ({ parentId, childId: existing.id })),
         });
+        if (selectedPrograms) {
+          const programs = [...new Set(selectedPrograms)];
+          await tx.childProgramEnrollment.deleteMany({ where: { childId: existing.id } });
+          await tx.childProgramEnrollment.createMany({
+            data: programs.map((program) => ({ childId: existing.id, program })),
+          });
+        }
         return tx.child.update({
           where: { id: req.params.id },
           data: {
@@ -795,40 +823,51 @@ export function usersRouter() {
                 },
               },
             },
+            programEnrollments: { select: { program: true } },
           },
         });
       });
       return res.json(updated);
     }
 
-    const updated = await prisma.child.update({
-      where: { id: req.params.id },
-      data: {
-        firstName: payload.data.firstName,
-        lastName: payload.data.lastName,
-        ssn: payload.data.ssn !== undefined ? nextSsn : undefined,
-        birthDate: payload.data.birthDate ? new Date(payload.data.birthDate) : undefined,
-        nivo: payload.data.nivo,
-        communityId: payload.data.communityId,
-        status: payload.data.status,
-        deactivatedAt:
-          payload.data.status === undefined
-            ? undefined
-            : payload.data.status === ChildStatus.INACTIVE
-              ? new Date()
-              : null,
-        addressId: addressIdUpdate,
-      },
-      include: {
-        address: true,
-        parents: {
-          include: {
-            parent: {
-              select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+    const updated = await prisma.$transaction(async (tx) => {
+      if (selectedPrograms) {
+        const programs = [...new Set(selectedPrograms)];
+        await tx.childProgramEnrollment.deleteMany({ where: { childId: existing.id } });
+        await tx.childProgramEnrollment.createMany({
+          data: programs.map((program) => ({ childId: existing.id, program })),
+        });
+      }
+      return tx.child.update({
+        where: { id: req.params.id },
+        data: {
+          firstName: payload.data.firstName,
+          lastName: payload.data.lastName,
+          ssn: payload.data.ssn !== undefined ? nextSsn : undefined,
+          birthDate: payload.data.birthDate ? new Date(payload.data.birthDate) : undefined,
+          nivo: payload.data.nivo,
+          communityId: payload.data.communityId,
+          status: payload.data.status,
+          deactivatedAt:
+            payload.data.status === undefined
+              ? undefined
+              : payload.data.status === ChildStatus.INACTIVE
+                ? new Date()
+                : null,
+          addressId: addressIdUpdate,
+        },
+        include: {
+          address: true,
+          parents: {
+            include: {
+              parent: {
+                select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+              },
             },
           },
+          programEnrollments: { select: { program: true } },
         },
-      },
+      });
     });
       return res.json(updated);
     }
@@ -876,7 +915,10 @@ export function usersRouter() {
       if (!lesson) return res.status(404).json({ message: "Lesson not found" });
 
       const childIds = [...new Set(parsed.data.items.map((item) => item.childId))];
-      const children = await prisma.child.findMany({ where: { id: { in: childIds } } });
+      const children = await prisma.child.findMany({
+        where: { id: { in: childIds } },
+        include: { programEnrollments: { select: { program: true } } },
+      });
       if (children.length !== childIds.length) {
         return res.status(404).json({ message: "One or more children not found" });
       }
@@ -885,7 +927,11 @@ export function usersRouter() {
         if (!canAccessCommunity(req, child.communityId)) {
           return res.status(403).json({ message: "Forbidden" });
         }
-        if (child.nivo !== lesson.nivo) {
+        const isEnrolledInProgram = child.programEnrollments.some((row) => row.program === lesson.program);
+        if (!isEnrolledInProgram) {
+          return res.status(400).json({ message: "Child is not enrolled in lesson program" });
+        }
+        if (lesson.program === LessonProgram.ILMIHAL && child.nivo !== lesson.nivo) {
           return res.status(400).json({ message: "Child nivo does not match lesson nivo" });
         }
       }
@@ -934,13 +980,20 @@ export function usersRouter() {
         return res.status(400).json({ message: "Invalid payload" });
       }
 
-      const child = await prisma.child.findUnique({ where: { id: req.params.childId } });
+      const child = await prisma.child.findUnique({
+        where: { id: req.params.childId },
+        include: { programEnrollments: { select: { program: true } } },
+      });
       if (!child) return res.status(404).json({ message: "Child not found" });
       if (!canAccessCommunity(req, child.communityId)) return res.status(403).json({ message: "Forbidden" });
 
       const lesson = await prisma.lesson.findUnique({ where: { id: req.params.lessonId } });
       if (!lesson) return res.status(404).json({ message: "Lesson not found" });
-      if (lesson.nivo !== child.nivo) {
+      const isEnrolledInProgram = child.programEnrollments.some((row) => row.program === lesson.program);
+      if (!isEnrolledInProgram) {
+        return res.status(400).json({ message: "Child is not enrolled in lesson program" });
+      }
+      if (lesson.program === LessonProgram.ILMIHAL && lesson.nivo !== child.nivo) {
         return res.status(400).json({ message: "Lesson nivo does not match child nivo" });
       }
 

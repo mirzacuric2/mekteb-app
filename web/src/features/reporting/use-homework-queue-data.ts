@@ -7,6 +7,7 @@ type HomeworkQueueQueryParams = {
   page: number;
   pageSize: number;
   status: HomeworkQueueStatusFilter;
+  program?: string;
   nivo?: number;
   lectureId?: string;
 };
@@ -18,7 +19,7 @@ function toDoneParam(status: HomeworkQueueStatusFilter) {
 }
 
 export function useHomeworkQueueQuery(
-  { search, page, pageSize, status, nivo, lectureId }: HomeworkQueueQueryParams,
+  { search, page, pageSize, status, program, nivo, lectureId }: HomeworkQueueQueryParams,
   enabled: boolean
 ) {
   return useAuthedQueryWithParams<HomeworkQueueListResponse>(
@@ -29,6 +30,7 @@ export function useHomeworkQueueQuery(
       page,
       pageSize,
       done: toDoneParam(status),
+      program,
       nivo,
       lectureId,
     },

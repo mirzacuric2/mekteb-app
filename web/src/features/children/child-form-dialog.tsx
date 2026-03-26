@@ -12,6 +12,7 @@ import { CHILD_FORM_DEFAULT_VALUES, ChildFormValues } from "./child-form-schema"
 import { CHILD_FORM_CONSTRAINTS } from "./child-form.constants";
 import { useChildForm } from "./use-child-form";
 import { ChildrenCommunityOption } from "./use-children-data";
+import { LESSON_PROGRAM_I18N_KEY, LESSON_PROGRAM_ORDER } from "../lessons/constants";
 
 export type ChildParentOption = {
   value: string;
@@ -53,6 +54,7 @@ export function ChildFormDialog({
     canChooseCommunity,
     childrenCommunityRequiredMessage: t("childrenCommunityRequired"),
     childrenParentsRequiredMessage: t("childrenParentsRequired"),
+    childrenProgramsRequiredMessage: t("childrenProgramsRequired"),
     onSubmit,
   });
 
@@ -69,6 +71,7 @@ export function ChildFormDialog({
   const nivo = watch("nivo");
   const parentIds = watch("parentIds");
   const communityId = watch("communityId");
+  const programs = watch("programs");
   const visibleParentOptions = useMemo(
     () =>
       canChooseCommunity && communityId
@@ -139,9 +142,11 @@ export function ChildFormDialog({
               {canChooseCommunity ? (
                 <div>
                   <Select
-                    {...register("communityId", {
-                      onChange: () => clearErrors("communityId"),
-                    })}
+                    value={communityId || ""}
+                    onChange={(event) => {
+                      setValue("communityId", event.target.value, { shouldDirty: true });
+                      clearErrors("communityId");
+                    }}
                   >
                     <option value="">{t("childrenSelectCommunity")}</option>
                     {communityOptions.map((community) => (
@@ -169,6 +174,23 @@ export function ChildFormDialog({
                     selectable
                     onSelect={(value) => setValue("nivo", value, { shouldDirty: true })}
                   />
+                </div>
+              ) : null}
+              {canAdminManage ? (
+                <div className="md:col-span-2 rounded-md border border-border p-2">
+                  <p className="mb-2 text-xs font-semibold text-slate-600">{t("childrenProgramsLabel")}</p>
+                  <ComboboxChips
+                    multiple
+                    options={LESSON_PROGRAM_ORDER.map((program) => ({ value: program, label: t(LESSON_PROGRAM_I18N_KEY[program]) }))}
+                    values={programs || []}
+                    onChange={(nextValues) => {
+                      setValue("programs", nextValues as ChildFormValues["programs"], { shouldDirty: true });
+                      clearErrors("programs");
+                    }}
+                    placeholder={t("childrenProgramsSelect")}
+                    emptyText={t("childrenProgramsEmpty")}
+                  />
+                  {errors.programs ? <p className="mt-1 text-xs text-red-600">{errors.programs.message as string}</p> : null}
                 </div>
               ) : null}
               {canAdminManage ? (

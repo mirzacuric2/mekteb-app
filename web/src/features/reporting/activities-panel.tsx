@@ -26,7 +26,15 @@ import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { useActivitiesQuery } from "./use-activities-data";
 import { useHomeworkQueueQuery } from "./use-homework-queue-data";
 import { useUpdateHomeworkMutation } from "./use-homework-queue-mutations";
-import { LESSON_NIVO_LABEL, LESSON_NIVO_ORDER } from "../lessons/constants";
+import { EmptyStateNotice } from "../common/components/empty-state-notice";
+import {
+  LESSON_NIVO_LABEL,
+  LESSON_NIVO_ORDER,
+  LESSON_PROGRAM,
+  LESSON_PROGRAM_I18N_KEY,
+  LESSON_PROGRAM_ORDER,
+  type LessonProgram,
+} from "../lessons/constants";
 import { formatDate } from "../../lib/date-time";
 
 type ActivitiesPanelProps = {
@@ -41,10 +49,12 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
   const [activeTab, setActiveTab] = useState("activities");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [reportProgram, setReportProgram] = useState<LessonProgram>(LESSON_PROGRAM.ILMIHAL);
   const [reportNivo, setReportNivo] = useState<number | undefined>(undefined);
   const [reportStatus, setReportStatus] = useState<string | undefined>(LECTURE_STATUS.DRAFT);
   const [homeworkSearch, setHomeworkSearch] = useState("");
   const [homeworkPage, setHomeworkPage] = useState(1);
+  const [homeworkProgram, setHomeworkProgram] = useState<LessonProgram>(LESSON_PROGRAM.ILMIHAL);
   const [homeworkNivo, setHomeworkNivo] = useState<number | undefined>(undefined);
   const [homeworkLectureId, setHomeworkLectureId] = useState<string>("");
   const [savingHomeworkKey, setSavingHomeworkKey] = useState<string | undefined>(undefined);
@@ -59,7 +69,8 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
       search,
       page,
       pageSize: DEFAULT_PAGE_SIZE,
-      nivo: reportNivo,
+      program: reportProgram,
+      nivo: reportProgram === LESSON_PROGRAM.ILMIHAL ? reportNivo : undefined,
       status: reportStatus,
     },
     enabled
@@ -72,7 +83,8 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
       page: homeworkPage,
       pageSize: DEFAULT_PAGE_SIZE,
       status: HOMEWORK_QUEUE_STATUS_FILTER.PENDING,
-      nivo: homeworkNivo,
+      program: homeworkProgram,
+      nivo: homeworkProgram === LESSON_PROGRAM.ILMIHAL ? homeworkNivo : undefined,
       lectureId: homeworkLectureId || undefined,
     },
     enabled && activeTab === "homework" && Boolean(homeworkLectureId)
@@ -82,10 +94,11 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
       search: "",
       page: 1,
       pageSize: 100,
-      nivo: homeworkNivo,
+      program: homeworkProgram,
+      nivo: homeworkProgram === LESSON_PROGRAM.ILMIHAL ? homeworkNivo : undefined,
       status: undefined,
     },
-    enabled && activeTab === "homework" && typeof homeworkNivo === "number"
+    enabled && activeTab === "homework" && (homeworkProgram !== LESSON_PROGRAM.ILMIHAL || typeof homeworkNivo === "number")
   );
   const homeworkItems = homework.data?.items || [];
   const homeworkTotalPages = Math.max(1, Math.ceil((homework.data?.total || 0) / DEFAULT_PAGE_SIZE));
@@ -155,7 +168,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
           >
             {activeTab === "activities" ? (
               <div className={ENTITY_LIST_TO_TABLE_STACK_CLASSNAME}>
-                <div className="grid gap-2 md:grid-cols-3">
+                <div className="grid gap-2 md:grid-cols-4">
                   <EntityListToolbar
                     search={search}
                     onSearchChange={(value) => {
@@ -168,12 +181,28 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   />
                   <Select
                     className={ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME}
+                    value={reportProgram}
+                    onChange={(event) => {
+                      setReportProgram(event.target.value as LessonProgram);
+                      setReportNivo(undefined);
+                      setPage(1);
+                    }}
+                  >
+                    {LESSON_PROGRAM_ORDER.map((program) => (
+                      <option key={program} value={program}>
+                        {t(LESSON_PROGRAM_I18N_KEY[program])}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    className={ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME}
                     value={reportNivo ? String(reportNivo) : ""}
                     onChange={(event) => {
                       const value = event.target.value;
                       setReportNivo(value ? Number(value) : undefined);
                       setPage(1);
                     }}
+                    disabled={reportProgram !== LESSON_PROGRAM.ILMIHAL}
                   >
                     <option value="">{t("reportsFilterAllNivos")}</option>
                     {LESSON_NIVO_ORDER.map((nivo) => (
@@ -234,7 +263,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
               </div>
             ) : (
               <div className={ENTITY_LIST_TO_TABLE_STACK_CLASSNAME}>
-                <div className="grid gap-2 md:grid-cols-3">
+                <div className="grid gap-2 md:grid-cols-4">
                   <EntityListToolbar
                     search={homeworkSearch}
                     onSearchChange={(value) => {
@@ -247,6 +276,22 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   />
                   <Select
                     className={ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME}
+                    value={homeworkProgram}
+                    onChange={(event) => {
+                      setHomeworkProgram(event.target.value as LessonProgram);
+                      setHomeworkNivo(undefined);
+                      setHomeworkLectureId("");
+                      setHomeworkPage(1);
+                    }}
+                  >
+                    {LESSON_PROGRAM_ORDER.map((program) => (
+                      <option key={program} value={program}>
+                        {t(LESSON_PROGRAM_I18N_KEY[program])}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    className={ENTITY_LIST_TOOLBAR_FILTER_SELECT_CLASSNAME}
                     value={homeworkNivo ? String(homeworkNivo) : ""}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -254,6 +299,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                       setHomeworkLectureId("");
                       setHomeworkPage(1);
                     }}
+                    disabled={homeworkProgram !== LESSON_PROGRAM.ILMIHAL}
                   >
                     <option value="">{t("homeworkQueueSelectNivo")}</option>
                     {LESSON_NIVO_ORDER.map((nivo) => (
@@ -269,7 +315,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                       setHomeworkLectureId(event.target.value);
                       setHomeworkPage(1);
                     }}
-                    disabled={typeof homeworkNivo !== "number"}
+                    disabled={homeworkProgram === LESSON_PROGRAM.ILMIHAL ? typeof homeworkNivo !== "number" : false}
                   >
                     <option value="">{t("homeworkQueueSelectLecture")}</option>
                     {(homeworkLectureOptions.data?.items || []).map((lecture) => (
@@ -280,9 +326,7 @@ export function ActivitiesPanel({ enabled }: ActivitiesPanelProps) {
                   </Select>
                 </div>
                 {!homeworkLectureId ? (
-                  <div className="rounded-md border border-dashed border-border p-4 text-sm text-slate-500">
-                    {t("homeworkQueueSelectLectureHint")}
-                  </div>
+                  <EmptyStateNotice className="p-4">{t("homeworkQueueSelectLectureHint")}</EmptyStateNotice>
                 ) : (
                   <HomeworkQueueTable
                     items={homeworkItems}

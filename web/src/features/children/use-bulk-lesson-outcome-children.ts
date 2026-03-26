@@ -1,20 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
 import { CHILD_STATUS, type ChildRecord, type ChildrenListResponse } from "./types";
+import { LESSON_PROGRAM, type LessonProgram } from "../lessons/constants";
 
 const MAX_PAGES = 50;
 
-export function useBulkLessonOutcomeChildrenQuery(nivo: number | undefined, open: boolean) {
+export function useBulkLessonOutcomeChildrenQuery(program: LessonProgram, nivo: number | undefined, open: boolean) {
   return useQuery({
-    queryKey: ["bulk-lesson-outcome-children", nivo],
-    enabled: open && nivo != null,
+    queryKey: ["bulk-lesson-outcome-children", program, nivo],
+    enabled: open && (program !== LESSON_PROGRAM.ILMIHAL || nivo != null),
     queryFn: async (): Promise<ChildRecord[]> => {
       const all: ChildRecord[] = [];
       let page = 1;
       const pageSize = 100;
       while (page <= MAX_PAGES) {
         const res = await api.get<ChildrenListResponse>("/children", {
-          params: { nivo, status: CHILD_STATUS.ACTIVE, page, pageSize },
+          params: {
+            program,
+            nivo: program === LESSON_PROGRAM.ILMIHAL ? nivo : undefined,
+            status: CHILD_STATUS.ACTIVE,
+            page,
+            pageSize,
+          },
         });
         const items = res.data.items || [];
         all.push(...items);

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api } from "../../api";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { Tabs } from "../../components/ui/tabs";
 import { cn } from "../../lib/utils";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +13,9 @@ import { useAuthedQuery } from "../common/use-authed-query";
 import {
   LESSON_NIVO_LABEL,
   LESSON_NIVO_ORDER,
+  LESSON_PROGRAM,
+  LESSON_PROGRAM_I18N_KEY,
+  LESSON_PROGRAM_ORDER,
   LESSONS_API_PATH,
   LESSONS_QUERY_KEY,
   NIVO_BOOKS_API_PATH,
@@ -32,6 +36,7 @@ import { LessonNivoCollapsible } from "./lesson-nivo-collapsible";
 import { LessonFormDialog, LessonFormValues } from "./lesson-form-dialog";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import { LoadingBlock } from "../common/components/loading-block";
+import { EmptyStateNotice } from "../common/components/empty-state-notice";
 
 type Props = { canManage: boolean };
 
@@ -41,6 +46,7 @@ export function LessonsPanel({ canManage }: Props) {
   const nivoBooks = useAuthedQuery<NivoBook[]>(NIVO_BOOKS_QUERY_KEY, NIVO_BOOKS_API_PATH, true);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [activeProgram, setActiveProgram] = useState<Lesson["program"]>(LESSON_PROGRAM.ILMIHAL);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [deletingLesson, setDeletingLesson] = useState<Lesson | null>(null);
   const [nivoOpen, setNivoOpen] = useState<Record<LessonNivo, boolean>>(() =>
@@ -63,7 +69,11 @@ export function LessonsPanel({ canManage }: Props) {
 
   const createLesson = useMutation({
     mutationFn: async (values: LessonFormValues) => {
-      const lessonPayload = { title: values.title, nivo: values.nivo };
+      const lessonPayload = {
+        title: values.title,
+        program: values.program,
+        nivo: values.program === LESSON_PROGRAM.ILMIHAL ? values.nivo : 0,
+      };
       return (await api.post(LESSONS_API_PATH, lessonPayload)).data;
     },
     onSuccess: async () => {
@@ -76,7 +86,11 @@ export function LessonsPanel({ canManage }: Props) {
 
   const updateLesson = useMutation({
     mutationFn: async (values: LessonFormValues) => {
-      const lessonPayload = { title: values.title, nivo: values.nivo };
+      const lessonPayload = {
+        title: values.title,
+        program: values.program,
+        nivo: values.program === LESSON_PROGRAM.ILMIHAL ? values.nivo : 0,
+      };
       return (await api.patch(`${LESSONS_API_PATH}/${editingLesson?.id}`, lessonPayload)).data;
     },
     onSuccess: async () => {
@@ -104,21 +118,28 @@ export function LessonsPanel({ canManage }: Props) {
     return (lessons.data || []).filter(
       (lesson) =>
         lesson.title.toLowerCase().includes(term) ||
-        LESSON_NIVO_LABEL[lesson.nivo].toLowerCase().includes(term) ||
+        t(LESSON_PROGRAM_I18N_KEY[lesson.program]).toLowerCase().includes(term) ||
+        (lesson.nivo > 0 && LESSON_NIVO_LABEL[lesson.nivo as LessonNivo].toLowerCase().includes(term)) ||
         String(lesson.nivo).includes(term)
     );
-  }, [lessons.data, search]);
+  }, [lessons.data, search, t]);
 
   const groupedLessons = useMemo(() => {
     const groups = LESSON_NIVO_ORDER.reduce(
       (acc, currentNivo) => ({ ...acc, [currentNivo]: [] as Lesson[] }),
-      {} as Record<Lesson["nivo"], Lesson[]>
+      {} as Record<LessonNivo, Lesson[]>
     );
     for (const lesson of filteredLessons) {
-      groups[lesson.nivo].push(lesson);
+      if (lesson.program === LESSON_PROGRAM.ILMIHAL && lesson.nivo > 0) {
+        groups[lesson.nivo as LessonNivo].push(lesson);
+      }
     }
     return groups;
   }, [filteredLessons]);
+  const activeTrackLessons = useMemo(
+    () => filteredLessons.filter((lesson) => lesson.program === activeProgram),
+    [activeProgram, filteredLessons]
+  );
 
   const nivoBookMap = useMemo(() => {
     const map = new Map<LessonNivo, NivoBook>();
@@ -157,6 +178,11 @@ export function LessonsPanel({ canManage }: Props) {
         />
         {!canManage ? <p className="text-sm text-slate-500">{t("lessonsSuperAdminOnly")}</p> : null}
 
+        <Tabs
+          value={activeProgram}
+          onChange={(key) => setActiveProgram(key as Lesson["program"])}
+          tabs={LESSON_PROGRAM_ORDER.map((program) => ({ key: program, label: t(LESSON_PROGRAM_I18N_KEY[program]) }))}
+        >
         <div className="max-h-[calc(100dvh-220px)] space-y-3 overflow-y-auto pr-1 text-sm">
         {lessonsListErrorMessage ? (
           <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -166,7 +192,7 @@ export function LessonsPanel({ canManage }: Props) {
         ) : isLessonsListLoading ? (
           <LoadingBlock text={t("loadingLessons")} containerClassName="min-h-[240px]" />
         ) : (
-          LESSON_NIVO_ORDER.map((group) => (
+          activeProgram === LESSON_PROGRAM.ILMIHAL ? LESSON_NIVO_ORDER.map((group) => (
             <LessonNivoCollapsible
               key={group}
               nivo={group}
@@ -182,9 +208,40 @@ export function LessonsPanel({ canManage }: Props) {
               }}
               onDeleteLesson={(lesson) => setDeletingLesson(lesson)}
             />
-          ))
+          )) : (
+            <div className="space-y-2">
+              {activeTrackLessons.map((lesson) => (
+                <div key={lesson.id} className="flex items-center justify-between rounded-md border border-border bg-white px-3 py-2">
+                  <span className="text-sm text-slate-800">{lesson.title}</span>
+                  {canManage ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        className="h-8 px-2.5 text-xs"
+                        onClick={() => {
+                          setEditingLesson(lesson);
+                          setFormOpen(true);
+                        }}
+                      >
+                        {t("edit")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 px-2.5 text-xs"
+                        onClick={() => setDeletingLesson(lesson)}
+                      >
+                        {t("delete")}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+              {!activeTrackLessons.length ? <EmptyStateNotice>{t("lessonsNoResults")}</EmptyStateNotice> : null}
+            </div>
+          )
         )}
         </div>
+        </Tabs>
       </div>
       <LessonFormDialog
         open={formOpen}
@@ -194,6 +251,7 @@ export function LessonsPanel({ canManage }: Props) {
           editingLesson
             ? {
                 title: editingLesson.title,
+                program: editingLesson.program,
                 nivo: editingLesson.nivo,
               }
             : undefined

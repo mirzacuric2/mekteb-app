@@ -1,4 +1,4 @@
-import { LessonNivo } from "../lessons/constants";
+import { LessonNivo, LessonProgram } from "../lessons/constants";
 import { LECTURE_STATUS } from "./reporting.constants";
 
 export type LectureStatus = (typeof LECTURE_STATUS)[keyof typeof LECTURE_STATUS];
@@ -6,6 +6,7 @@ export type LectureStatus = (typeof LECTURE_STATUS)[keyof typeof LECTURE_STATUS]
 export type ActivityLecture = {
   id: string;
   topic: string;
+  program: LessonProgram;
   nivo?: LessonNivo | null;
   note?: string | null;
   status: LectureStatus;
@@ -17,6 +18,7 @@ export type ActivityLecture = {
     lectureId: string;
     childId: string;
     lessonId?: string | null;
+    lessonText?: string | null;
     present: boolean;
     homeworkDone?: boolean | null;
     homeworkTitle?: string | null;
@@ -32,7 +34,8 @@ export type ActivityLecture = {
     lesson?: {
       id: string;
       title: string;
-      nivo: LessonNivo;
+      nivo: LessonNivo | 0;
+      program: LessonProgram;
     } | null;
   }>;
 };
@@ -71,7 +74,8 @@ export type HomeworkQueueItem = {
   lesson: {
     id: string;
     title: string;
-    nivo: LessonNivo;
+    nivo: LessonNivo | 0;
+    program: LessonProgram;
   };
 };
 

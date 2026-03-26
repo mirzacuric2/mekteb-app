@@ -11,6 +11,9 @@ import {
   LESSONS_QUERY_KEY,
   LESSON_NIVO_LABEL,
   LESSON_NIVO_ORDER,
+  LESSON_PROGRAM,
+  LESSON_PROGRAM_I18N_KEY,
+  LESSON_PROGRAM_ORDER,
   type LessonNivo,
 } from "../lessons/constants";
 import type { Lesson } from "../lessons/types";
@@ -53,18 +56,22 @@ type BulkLessonOutcomeDialogProps = {
 
 export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcomeDialogProps) {
   const { t } = useTranslation();
+  const [program, setProgram] = useState<(typeof LESSON_PROGRAM_ORDER)[number]>(LESSON_PROGRAM.ILMIHAL);
   const [nivo, setNivo] = useState<LessonNivo>(LESSON_NIVO_ORDER[0]);
   const [lessonId, setLessonId] = useState("");
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const [markErrors, setMarkErrors] = useState<Record<string, string>>({});
 
   const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, open);
-  const childrenQuery = useBulkLessonOutcomeChildrenQuery(nivo, open);
+  const childrenQuery = useBulkLessonOutcomeChildrenQuery(program, nivo, open);
   const bulkMutation = useBulkLessonOutcomesMutation();
 
   const lessonsForNivo = useMemo(
-    () => (lessonsQuery.data || []).filter((lesson) => lesson.nivo === nivo).sort((a, b) => a.title.localeCompare(b.title)),
-    [lessonsQuery.data, nivo]
+    () =>
+      (lessonsQuery.data || [])
+        .filter((lesson) => lesson.program === program && (program !== LESSON_PROGRAM.ILMIHAL || lesson.nivo === nivo))
+        .sort((a, b) => a.title.localeCompare(b.title)),
+    [lessonsQuery.data, nivo, program]
   );
 
   const selectedLesson = useMemo(
@@ -209,6 +216,7 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
       : lessonId && children.length > 0
         ? t("bulkLessonOutcomeSaveGradesForCount", { count: children.length })
         : t("bulkLessonOutcomeSaveGrades");
+  const isIlmihalTrack = program === LESSON_PROGRAM.ILMIHAL;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -219,29 +227,55 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
         </DialogHeader>
         <DialogBody className="space-y-5">
           <section className="rounded-lg border border-border bg-slate-50/80 p-4">
-            <h3 className="text-sm font-semibold text-slate-900">{t("bulkLessonOutcomeSectionPickTitle")}</h3>
-            <p className="mt-1 text-xs text-slate-600">{t("bulkLessonOutcomeSectionPickHelp")}</p>
+            <h3 className="text-sm font-semibold text-slate-900">
+              {isIlmihalTrack ? t("bulkLessonOutcomeSectionPickTitle") : t("bulkLessonOutcomeSectionPickTitleTrack")}
+            </h3>
+            <p className="mt-1 text-xs text-slate-600">
+              {isIlmihalTrack ? t("bulkLessonOutcomeSectionPickHelp") : t("bulkLessonOutcomeSectionPickHelpTrack")}
+            </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <label htmlFor="bulk-lesson-nivo" className="text-xs font-medium text-slate-700">
-                  {t("childrenNivoLabel")}
+                <label htmlFor="bulk-lesson-program" className="text-xs font-medium text-slate-700">
+                  {t("lessonsProgramLabel")}
                 </label>
                 <Select
-                  id="bulk-lesson-nivo"
-                  value={String(nivo)}
+                  id="bulk-lesson-program"
+                  value={program}
                   onChange={(e) => {
-                    setNivo(Number(e.target.value) as LessonNivo);
+                    setProgram(e.target.value as (typeof LESSON_PROGRAM_ORDER)[number]);
                     setLessonId("");
                   }}
                   disabled={bulkMutation.isPending}
                 >
-                  {LESSON_NIVO_ORDER.map((n) => (
-                    <option key={n} value={String(n)}>
-                      {LESSON_NIVO_LABEL[n]}
+                  {LESSON_PROGRAM_ORDER.map((value) => (
+                    <option key={value} value={value}>
+                      {t(LESSON_PROGRAM_I18N_KEY[value])}
                     </option>
                   ))}
                 </Select>
               </div>
+              {isIlmihalTrack ? (
+                <div className="space-y-1">
+                  <label htmlFor="bulk-lesson-nivo" className="text-xs font-medium text-slate-700">
+                    {t("childrenNivoLabel")}
+                  </label>
+                  <Select
+                    id="bulk-lesson-nivo"
+                    value={String(nivo)}
+                    onChange={(e) => {
+                      setNivo(Number(e.target.value) as LessonNivo);
+                      setLessonId("");
+                    }}
+                    disabled={bulkMutation.isPending}
+                  >
+                    {LESSON_NIVO_ORDER.map((n) => (
+                      <option key={n} value={String(n)}>
+                        {LESSON_NIVO_LABEL[n]}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              ) : null}
               <div className="space-y-1">
                 <label htmlFor="bulk-lesson-pick" className="text-xs font-medium text-slate-700">
                   {t("bulkLessonOutcomeLessonLabel")}
@@ -263,7 +297,7 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
             </div>
             {!lessonsQuery.isLoading && lessonsQuery.data && lessonsForNivo.length === 0 ? (
               <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                {t("bulkLessonOutcomeNoLessonsForNivo")}
+                {isIlmihalTrack ? t("bulkLessonOutcomeNoLessonsForNivo") : t("bulkLessonOutcomeNoLessonsForTrack")}
               </p>
             ) : null}
           </section>
@@ -285,8 +319,12 @@ export function BulkLessonOutcomeDialog({ open, onOpenChange }: BulkLessonOutcom
               {selectedLesson ? (
                 <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-slate-800">
                   <span className="font-medium text-slate-900">{selectedLesson.title}</span>
-                  <span className="text-slate-500"> · </span>
-                  <span>{LESSON_NIVO_LABEL[nivo]}</span>
+                  {program === LESSON_PROGRAM.ILMIHAL ? (
+                    <>
+                      <span className="text-slate-500"> · </span>
+                      <span>{LESSON_NIVO_LABEL[nivo]}</span>
+                    </>
+                  ) : null}
                   <span className="text-slate-500"> · </span>
                   <span>{t("bulkLessonOutcomeContextChildCount", { count: children.length })}</span>
                 </div>

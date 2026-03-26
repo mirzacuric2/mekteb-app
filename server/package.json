@@ -22,14 +22,14 @@
     "lint": "echo \"No linter configured yet\""
   },
   "dependencies": {
-    "@prisma/client": "^6.4.1",
+    "@prisma/client": "^6.19.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "nodemailer": "^6.10.0",
+    "nodemailer": "^8.0.4",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -40,7 +40,7 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.13.9",
     "@types/nodemailer": "^7.0.11",
-    "prisma": "^6.4.1",
+    "prisma": "^6.19.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
 import { ChildAttendanceRecord, ChildrenListResponse } from "../children/types";
-import { LessonNivo } from "../lessons/constants";
+import { LESSON_PROGRAM, LessonNivo, LessonProgram } from "../lessons/constants";
 import {
   HOMEWORK_STATUS,
   HomeworkStatus,
@@ -45,6 +45,13 @@ export type ChildProgressSummary = {
   overallProgressRate: number;
   hasPerformanceRecords: boolean;
   latestState: LatestProgressState | null;
+};
+
+export type ProgramProgressSummary = {
+  program: LessonProgram;
+  attendanceRate: number;
+  homeworkCompletionRate: number;
+  overallProgressRate: number;
 };
 
 const MAX_PROGRESS_OVERVIEW_PAGE_FETCHES = 50;
@@ -228,6 +235,38 @@ export function useProgressOverview(enabled: boolean) {
     const childSummariesWithRecords = childSummaries.filter((summary) => summary.hasPerformanceRecords);
     const overallProgressRate = toAverage(childSummariesWithRecords.map((summary) => summary.overallProgressRate));
     const childrenOnTrackRate = toPercent(childrenOnTrack, childSummariesWithRecords.length);
+    const enrolledProgramCounts = {
+      [LESSON_PROGRAM.SUFARA]: 0,
+      [LESSON_PROGRAM.QURAN]: 0,
+    };
+    for (const child of children) {
+      const programs = new Set((child.programEnrollments || []).map((entry) => entry.program));
+      if (programs.has(LESSON_PROGRAM.SUFARA)) enrolledProgramCounts[LESSON_PROGRAM.SUFARA] += 1;
+      if (programs.has(LESSON_PROGRAM.QURAN)) enrolledProgramCounts[LESSON_PROGRAM.QURAN] += 1;
+    }
+    const toProgramSummary = (program: LessonProgram): ProgramProgressSummary => {
+      const programAttendance = attendance.filter((entry) => entry.lecture.program === program);
+      const programCompleted = programAttendance.filter((entry) => entry.lecture.status === LECTURE_STATUS.COMPLETED);
+      const programPresent = programCompleted.filter((entry) => entry.present).length;
+      const programAttendanceRate = toPercent(programPresent, programCompleted.length);
+      const programHomeworkRows = programAttendance.filter((entry) => hasReportedHomework(entry));
+      const programHomeworkDone = programHomeworkRows.filter((entry) => entry.homeworkDone === true).length;
+      const programHomeworkCompletionRate = toPercent(programHomeworkDone, programHomeworkRows.length);
+      return {
+        program,
+        attendanceRate: programAttendanceRate,
+        homeworkCompletionRate: programHomeworkCompletionRate,
+        overallProgressRate: toAverage(
+          [programAttendanceRate, programHomeworkRows.length ? programHomeworkCompletionRate : null].filter(
+            (value): value is number => value !== null
+          )
+        ),
+      };
+    };
+    const programProgress = {
+      [LESSON_PROGRAM.SUFARA]: toProgramSummary(LESSON_PROGRAM.SUFARA),
+      [LESSON_PROGRAM.QURAN]: toProgramSummary(LESSON_PROGRAM.QURAN),
+    };
 
     return {
       childrenCount: children.length,
@@ -249,6 +288,8 @@ export function useProgressOverview(enabled: boolean) {
       childrenWithPendingHomework,
       totalPendingHomework,
       activeChildrenCount,
+      enrolledProgramCounts,
+      programProgress,
       childSummaries,
       latestState,
       isLoading: query.isLoading,

@@ -1,9 +1,10 @@
-import { LessonNivo } from "./constants";
+import { LessonNivo, LessonProgram } from "./constants";
 
 export type Lesson = {
   id: string;
   title: string;
-  nivo: LessonNivo;
+  program: LessonProgram;
+  nivo: LessonNivo | 0;
   createdAt: string;
   updatedAt: string;
 };

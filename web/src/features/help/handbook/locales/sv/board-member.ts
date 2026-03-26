@@ -44,7 +44,7 @@ export const boardMemberHandbookSv: HelpHandbookContent = {
       title: "Barn",
       bullets: [
         "Samma Barn-vy som för föräldrar: listan visar barn kopplade till ditt konto som vårdnadshavare. Kan vara tom utan sådana barn.",
-        "Öppna rader och drawer för skrivskyddad insyn i dessa poster.",
+        "Öppna rader och drawer för skrivskyddad insyn i dessa poster, inklusive spårflikar (Ilmihal, Sufara, Koran).",
         "Du kan inte skapa, redigera eller inaktivera barn. För hela föreningen använder imamer sina verktyg; Förening → Översikt visar aggregat.",
       ],
     },

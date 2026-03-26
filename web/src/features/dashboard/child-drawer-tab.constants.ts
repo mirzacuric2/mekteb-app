@@ -2,6 +2,8 @@
 export const CHILD_DRAWER_TAB = {
   BASIC_INFO: "basic-info",
   LECTURE_PROGRESS: "lecture-progress",
+  SUFARA_PROGRESS: "sufara-progress",
+  QURAN_PROGRESS: "quran-progress",
   HOMEWORK_PROGRESS: "homework-progress",
 } as const;
 

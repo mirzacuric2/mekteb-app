@@ -45,7 +45,7 @@ export const adminHandbookBs: HelpHandbookContent = {
       title: "Djeca",
       bullets: [
         "Cijeli spisak zajednice: tabela, pretraga, radnje po redu.",
-        "Kreiranje/ažuriranje sa obaveznim JMB, nivo, zajednica i najmanje jedan roditelj; prilagodite nivo i veze roditelja; statusi po pravilima.",
+        "Kreiranje/ažuriranje sa obaveznim JMB, nivo, zajednica i najmanje jedan roditelj; prilagodite nivo, upis u programe (Ilmihal/Sufara/Kur'an) i veze roditelja; statusi po pravilima.",
         "Ladica za napredak i historiju. Povezani roditelji mogu uređivati podskup polja; vi vodite autoritativno mjesto i veze.",
       ],
     },
@@ -54,7 +54,7 @@ export const adminHandbookBs: HelpHandbookContent = {
       title: "Aktivnosti",
       bullets: [
         "Tabela izvještaja i kartica Red zadaća za prisustvo i praćenje.",
-        "Prijavi aktivnosti (zaglavlje ili ovdje): bilježite prisustvo i zadaće po nivou; sačuvajte nacrte; završite lekcije kada su sve stavke finalne i lekcije odabrane.",
+        "Prijavi aktivnosti (zaglavlje ili ovdje): bilježite prisustvo i zadaće po programu; Ilmihal koristi nivo + lekciju, Sufara koristi lekcije slova, Kur'an koristi slobodan unos lekcije/teme.",
         "Red zadaća: odaberite nivo + lekciju, ažurirajte zadaću po djetetu.",
         "Vaše liste su jedna zajednica—nema kolone Zajednica (super admin je vidi za više zajednica).",
       ],

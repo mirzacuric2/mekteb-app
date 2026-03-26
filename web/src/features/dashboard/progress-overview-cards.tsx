@@ -3,6 +3,7 @@ import { BookCheck, BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { Card } from "../../components/ui/card";
+import { LESSON_PROGRAM, LESSON_PROGRAM_I18N_KEY } from "../lessons/constants";
 import { useProgressOverview } from "./use-progress-overview";
 import { ProgressChildDetailsDrawer } from "./progress-child-details-drawer";
 import { CHILD_DRAWER_TAB } from "./child-drawer-tab.constants";
@@ -148,6 +149,9 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
       {t("parentDashboardNoChildActivity")}
     </p>
   );
+  const showSufaraCard = metrics.enrolledProgramCounts[LESSON_PROGRAM.SUFARA] > 0;
+  const showQuranCard = metrics.enrolledProgramCounts[LESSON_PROGRAM.QURAN] > 0;
+  const visibleProgramCards = [showSufaraCard, showQuranCard].filter(Boolean).length;
 
   return (
     <section className="space-y-3">
@@ -243,6 +247,28 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
           )}
         </ProgressMetricCard>
       </div>
+      {visibleProgramCards > 0 ? (
+        <div className={`grid gap-3 ${visibleProgramCards > 1 ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
+          {showSufaraCard ? (
+            <ProgressMetricCard
+              title={`${t(LESSON_PROGRAM_I18N_KEY[LESSON_PROGRAM.SUFARA])} ${t("parentDashboardOverallProgressCardTitle").toLowerCase()}`}
+              value={`${metrics.programProgress[LESSON_PROGRAM.SUFARA].overallProgressRate}%`}
+              icon={<BookOpen className="h-4 w-4" />}
+              tone={toProgressTone(metrics.programProgress[LESSON_PROGRAM.SUFARA].overallProgressRate)}
+              progress={metrics.programProgress[LESSON_PROGRAM.SUFARA].overallProgressRate}
+            />
+          ) : null}
+          {showQuranCard ? (
+            <ProgressMetricCard
+              title={`${t(LESSON_PROGRAM_I18N_KEY[LESSON_PROGRAM.QURAN])} ${t("parentDashboardOverallProgressCardTitle").toLowerCase()}`}
+              value={`${metrics.programProgress[LESSON_PROGRAM.QURAN].overallProgressRate}%`}
+              icon={<BookCheck className="h-4 w-4" />}
+              tone={toProgressTone(metrics.programProgress[LESSON_PROGRAM.QURAN].overallProgressRate)}
+              progress={metrics.programProgress[LESSON_PROGRAM.QURAN].overallProgressRate}
+            />
+          ) : null}
+        </div>
+      ) : null}
       <ProgressChildDetailsDrawer
         open={Boolean(childIdFromUrl)}
         isLoading={Boolean(childIdFromUrl && !selectedChild && metrics.isLoading)}

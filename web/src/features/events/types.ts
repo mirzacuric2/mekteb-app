@@ -10,6 +10,9 @@ export const EVENT_AUDIENCE = {
   GENERAL: "GENERAL",
   CHILDREN: "CHILDREN",
   NIVO: "NIVO",
+  ILMIHAL: "ILMIHAL",
+  SUFARA: "SUFARA",
+  QURAN: "QURAN",
 } as const;
 
 export type EventAudience = (typeof EVENT_AUDIENCE)[keyof typeof EVENT_AUDIENCE];

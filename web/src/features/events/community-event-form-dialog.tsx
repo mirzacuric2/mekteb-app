@@ -122,7 +122,7 @@ export function CommunityEventFormDialog({
   }, [open, initialEvent, presetEventDate, reset]);
 
   useEffect(() => {
-    if (audience !== EVENT_AUDIENCE.NIVO) {
+    if (audience !== EVENT_AUDIENCE.ILMIHAL && audience !== EVENT_AUDIENCE.NIVO) {
       setValue("nivo", undefined, { shouldDirty: false });
     }
   }, [audience, setValue]);
@@ -226,7 +226,7 @@ export function CommunityEventFormDialog({
                 ))}
               </Select>
             </div>
-            {audience === EVENT_AUDIENCE.NIVO ? (
+            {audience === EVENT_AUDIENCE.ILMIHAL || audience === EVENT_AUDIENCE.NIVO ? (
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">{t("level")}</label>
                 <Select
@@ -241,7 +241,7 @@ export function CommunityEventFormDialog({
                   <option value="">{t("eventsSelectNivo")}</option>
                   {LESSON_NIVO_ORDER.map((value) => (
                     <option key={value} value={value}>
-                      {`${NIVO_OPTION_ICON[value]} Nivo ${value}`}
+                      {`${NIVO_OPTION_ICON[value]} ${t("childrenNivoLabel")} ${value}`}
                     </option>
                   ))}
                 </Select>
@@ -278,7 +278,7 @@ export function mapEventFormValuesToCreatePayload(values: CommunityEventFormValu
     recurrenceEndsAt: undefined,
     audience: values.audience,
     childIds: [],
-    nivo: values.audience === EVENT_AUDIENCE.NIVO ? values.nivo : undefined,
+    nivo: values.audience === EVENT_AUDIENCE.NIVO || values.audience === EVENT_AUDIENCE.ILMIHAL ? values.nivo : undefined,
   };
 }
 
