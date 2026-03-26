@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -14,11 +14,14 @@ import { useRoleAccess } from "../auth/use-role-access";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { ChildFormDialog, ChildParentOption } from "../children/child-form-dialog";
 import { ChildFormValues } from "../children/child-form-schema";
-import { useChildByIdQuery, useChildrenCommunityOptionsQuery, useChildrenParentOptionsQuery } from "../children/use-children-data";
-import { useCreateChildMutation, useInactivateChildMutation, useUpdateChildMutation } from "../children/use-children-mutations";
-import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
-import { LESSONS_API_PATH, LESSONS_QUERY_KEY } from "../lessons/constants";
-import { Lesson } from "../lessons/types";
+import { useChildrenCommunityOptionsQuery, useChildrenParentOptionsQuery } from "../children/use-children-data";
+import { useCreateChildMutation, useUpdateChildMutation } from "../children/use-children-mutations";
+import {
+  CHILD_DRAWER_TAB_QUERY_KEY,
+  DEFAULT_CHILD_DRAWER_TAB,
+  isChildDrawerTab,
+} from "../dashboard/child-drawer-tab.constants";
+import { childDetailPagePath } from "../children/child-paths";
 import { EntityDetailsDrawer } from "../common/components/entity-details-drawer";
 import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog";
 import {
@@ -81,7 +84,6 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
-  const childIdFromQuery = useMemo(() => new URLSearchParams(location.search).get("childId") || null, [location.search]);
   const [deletingUser, setDeletingUser] = useState<UserRecord | null>(null);
   const [addChildForUser, setAddChildForUser] = useState<UserRecord | null>(null);
   const [editingChildFromDrawer, setEditingChildFromDrawer] = useState<ChildMetaRecord | null>(null);
@@ -95,7 +97,6 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
   const childCommunities = useChildrenCommunityOptionsQuery(canAdminManage && Boolean(addChildForUser));
   const createChildFromDrawer = useCreateChildMutation();
   const updateChildFromDrawer = useUpdateChildMutation(editingChildFromDrawer?.id || null);
-  const inactivateChildFromDrawer = useInactivateChildMutation();
 
   const communityById = useMemo(() => {
     const lookup = new Map<string, string>();
@@ -150,53 +151,18 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
     }
   }, [users.data?.items, selectedUser]);
 
-  const childDrawerQuery = useChildByIdQuery(childIdFromQuery ?? undefined, false);
-  const childForDrawer = childDrawerQuery.data ?? null;
-  const lessonsForChildDrawer = useAuthedQuery<Lesson[]>(
-    LESSONS_QUERY_KEY,
-    LESSONS_API_PATH,
-    Boolean(childForDrawer)
-  );
-  const childDrawerScheduledLessons = useMemo(() => {
-    if (!childForDrawer) return 0;
-    return (lessonsForChildDrawer.data || []).filter((lesson) => lesson.nivo === childForDrawer.nivo).length;
-  }, [lessonsForChildDrawer.data, childForDrawer]);
-
-  const clearChildDrawerQueryParams = useCallback(() => {
-    const next = new URLSearchParams(location.search);
-    next.delete("childId");
-    next.delete("tab");
-    navigate(
-      {
-        pathname: location.pathname,
-        search: next.toString() ? `?${next.toString()}` : "",
-      },
-      { replace: true }
-    );
-  }, [location.pathname, location.search, navigate]);
-
   useEffect(() => {
-    if (!childIdFromQuery) return;
-    if (childDrawerQuery.isPending || childDrawerQuery.isFetching) return;
-    if (childDrawerQuery.isError) {
-      toast.error(t("usersChildDrawerLoadFailed"));
-      clearChildDrawerQueryParams();
-      return;
-    }
-    if (childDrawerQuery.isSuccess && !childDrawerQuery.data) {
-      toast.error(t("usersChildDrawerLoadFailed"));
-      clearChildDrawerQueryParams();
-    }
-  }, [
-    childIdFromQuery,
-    childDrawerQuery.data,
-    childDrawerQuery.isError,
-    childDrawerQuery.isFetching,
-    childDrawerQuery.isPending,
-    childDrawerQuery.isSuccess,
-    clearChildDrawerQueryParams,
-    t,
-  ]);
+    if (!location.pathname.endsWith("/users")) return;
+    const params = new URLSearchParams(location.search);
+    const legacyChildId = params.get("childId")?.trim();
+    if (!legacyChildId) return;
+    const rawTab = params.get(CHILD_DRAWER_TAB_QUERY_KEY);
+    const tabSuffix =
+      rawTab && isChildDrawerTab(rawTab) && rawTab !== DEFAULT_CHILD_DRAWER_TAB
+        ? `?${CHILD_DRAWER_TAB_QUERY_KEY}=${rawTab}`
+        : "";
+    navigate(`${childDetailPagePath(legacyChildId)}${tabSuffix}`, { replace: true });
+  }, [location.pathname, location.search, navigate]);
 
   const totalPages = Math.max(1, Math.ceil((users.data?.total || 0) / DEFAULT_PAGE_SIZE));
   const usersLoading = users.isLoading || children.isLoading || communities.isLoading;
@@ -738,57 +704,12 @@ export function UsersPanel({ enabled, canEdit, canCreateAdmin }: Props) {
                     : undefined
                 }
                 onOpenChild={(id) => {
-                  const next = new URLSearchParams(location.search);
-                  next.set("childId", id);
-                  next.delete("tab");
-                  navigate(
-                    {
-                      pathname: location.pathname,
-                      search: next.toString() ? `?${next.toString()}` : "",
-                    },
-                    { replace: true }
-                  );
+                  navigate(childDetailPagePath(id));
                 }}
               />
             ) : null}
           </EntityDetailsDrawer>
 
-          <ProgressChildDetailsDrawer
-            open={Boolean(childIdFromQuery)}
-            isLoading={
-              Boolean(childIdFromQuery) &&
-              !childForDrawer &&
-              (childDrawerQuery.isPending || childDrawerQuery.isFetching)
-            }
-            onOpenChange={(open) => {
-              if (!open) clearChildDrawerQueryParams();
-            }}
-            child={childForDrawer}
-            summary={null}
-            scheduledLessons={childDrawerScheduledLessons}
-            childrenFetchMineOnly={false}
-            onEdit={
-              canEdit && childForDrawer
-                ? () => {
-                    const fullChild = (children.data || []).find((c) => c.id === childForDrawer.id);
-                    if (fullChild) setEditingChildFromDrawer(fullChild);
-                  }
-                : undefined
-            }
-            onDelete={
-              canEdit && childForDrawer
-                ? () => {
-                    inactivateChildFromDrawer.mutate(childForDrawer.id, {
-                      onSuccess: async () => {
-                        await queryClient.invalidateQueries({ queryKey: ["children-users-meta"] });
-                        clearChildDrawerQueryParams();
-                      },
-                    });
-                  }
-                : undefined
-            }
-            deleteLabel={t("delete")}
-          />
           {canEdit && (addChildForUser || editingChildFromDrawer) ? (
             <ChildFormDialog
               open={Boolean(addChildForUser || editingChildFromDrawer)}

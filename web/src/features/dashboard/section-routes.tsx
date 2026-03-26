@@ -2,6 +2,7 @@ import { useOutletContext, useParams } from "react-router-dom";
 import { PostsPanel } from "../posts/posts-panel";
 import { UsersPanel } from "../users/users-panel";
 import { ChildrenPanel } from "../children/children-panel";
+import { ChildPage } from "../children/child-page";
 import { LessonsPanel } from "../lessons/lessons-panel";
 import { CommunitiesPanel } from "../communities/communities-panel";
 import { CommunityPage } from "../communities/community-page";
@@ -29,7 +30,11 @@ export function UsersRoute() {
 }
 
 export function ChildrenRoute() {
+  const { childId } = useParams<{ childId?: string }>();
   const { canManageChildren } = useOutletContext<PrivateLayoutContext>();
+  if (childId) {
+    return <ChildPage selectedChildId={childId} />;
+  }
   return <ChildrenPanel canManage={canManageChildren} />;
 }
 

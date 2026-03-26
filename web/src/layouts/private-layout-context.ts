@@ -10,4 +10,6 @@ export type PrivateLayoutContext = {
   canManageCommunities: boolean;
   canCreateCommunities: boolean;
   canAssignCommunityAdmins: boolean;
+  /** Detail routes (e.g. child name) override the raw id chip in the breadcrumb when set. */
+  setBreadcrumbDetailLabel: (label: string | null) => void;
 };

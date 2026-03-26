@@ -25,13 +25,21 @@ export function EntityDetailTable({ children }: EntityDetailTableProps) {
 type EntityDetailTableRowProps = {
   label: string;
   value: ReactNode;
+  /** Tighter label/value columns and padding (e.g. small cards). */
+  compact?: boolean;
 };
 
-export function EntityDetailTableRow({ label, value }: EntityDetailTableRowProps) {
+export function EntityDetailTableRow({ label, value, compact = false }: EntityDetailTableRowProps) {
   return (
-    <div className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-[40%_60%] sm:items-center sm:gap-4">
+    <div
+      className={
+        compact
+          ? "grid grid-cols-1 gap-1.5 px-3 py-2 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-x-2.5 sm:gap-y-1"
+          : "grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-[40%_60%] sm:items-center sm:gap-4"
+      }
+    >
       <p className="text-sm font-medium text-slate-500">{label}</p>
-      <div className="text-sm font-medium text-slate-900">{value}</div>
+      <div className="min-w-0 text-sm font-medium text-slate-900">{value}</div>
     </div>
   );
 }

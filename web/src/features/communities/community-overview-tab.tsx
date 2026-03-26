@@ -1,10 +1,8 @@
-import { AlertTriangle, Baby, Layers, PieChart, Users, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { AlertTriangle, Baby, Layers, PieChart, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "../../api";
-import { cn } from "../../lib/utils";
 import { ROLE } from "../../types";
 import { ROLE_ACCENT_HEX } from "../common/role";
 import { ChildRecord, ChildrenListResponse } from "../children/types";
@@ -16,6 +14,7 @@ import {
   LessonNivo,
 } from "../lessons/constants";
 import { LECTURE_STATUS } from "../reporting/reporting.constants";
+import { OverviewStatCard } from "../common/components/overview-stat-card";
 import { CommunityDonutChart } from "./community-donut-chart";
 import { getNivoColor } from "../common/nivo-colors";
 import {
@@ -36,44 +35,6 @@ const MAX_CHILDREN_PAGES = 20;
 function toPercent(value: number, total: number) {
   if (!total) return 0;
   return Math.round(((value / total) * 100 + Number.EPSILON) * 10) / 10;
-}
-
-function OverviewStatCard({
-  icon: Icon,
-  label,
-  value,
-  accentClassName,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: ReactNode;
-  accentClassName: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-white p-3.5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div
-          className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl",
-            accentClassName
-          )}
-        >
-          <Icon className="h-5 w-5" aria-hidden />
-        </div>
-        <div className="flex h-12 min-w-0 flex-1 flex-col justify-center gap-0.5 overflow-hidden">
-          <p
-            className="line-clamp-1 text-[11px] font-semibold uppercase leading-none tracking-wide text-slate-500"
-            title={label}
-          >
-            {label}
-          </p>
-          <p className="text-2xl font-semibold tabular-nums leading-none tracking-tight text-slate-900">
-            {value}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function CommunityOverviewTab() {

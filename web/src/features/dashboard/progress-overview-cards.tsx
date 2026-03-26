@@ -1,15 +1,22 @@
-import { ReactNode, useEffect, useMemo } from "react";
+import { ReactNode } from "react";
 import { BookCheck, BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/ui/card";
 import { LESSON_PROGRAM, LESSON_PROGRAM_I18N_KEY } from "../lessons/constants";
 import { useProgressOverview } from "./use-progress-overview";
-import { ProgressChildDetailsDrawer } from "./progress-child-details-drawer";
-import { CHILD_DRAWER_TAB } from "./child-drawer-tab.constants";
+import {
+  CHILD_DRAWER_TAB,
+  CHILD_DRAWER_TAB_QUERY_KEY,
+  DEFAULT_CHILD_DRAWER_TAB,
+  type ChildDrawerTab,
+} from "./child-drawer-tab.constants";
+import { childDetailPagePath } from "../children/child-paths";
 
 type ProgressOverviewCardsProps = {
   enabled: boolean;
+  /** Dashboard: open child quick-view drawer via URL instead of navigating away. */
+  onOpenChildInDrawer?: (childId: string, tab: ChildDrawerTab) => void;
 };
 
 type ProgressTone = "orange" | "yellow" | "green";
@@ -80,56 +87,25 @@ function ProgressMetricCard({
   );
 }
 
-export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
+export function ProgressOverviewCards({ enabled, onOpenChildInDrawer }: ProgressOverviewCardsProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const metrics = useProgressOverview(enabled);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const childIdFromUrl = searchParams.get("childId");
   const sortedChildSummaries = [...metrics.childSummaries].sort((a, b) => {
     if (a.hasPerformanceRecords !== b.hasPerformanceRecords) return a.hasPerformanceRecords ? -1 : 1;
     if (a.pendingHomeworkCount !== b.pendingHomeworkCount) return b.pendingHomeworkCount - a.pendingHomeworkCount;
-    if (a.overallProgressRate !== b.overallProgressRate) return a.overallProgressRate - b.overallProgressRate;
+    if (a.overallProgressRate !== b.overallProgressRate) return b.overallProgressRate - a.overallProgressRate;
     return a.childName.localeCompare(b.childName, undefined, { sensitivity: "base" });
   });
-  const selectedChild = useMemo(
-    () => (childIdFromUrl ? metrics.children.find((child) => child.id === childIdFromUrl) || null : null),
-    [metrics.children, childIdFromUrl]
-  );
-  const selectedSummary = useMemo(
-    () => (childIdFromUrl ? metrics.childSummaries.find((summary) => summary.childId === childIdFromUrl) || null : null),
-    [metrics.childSummaries, childIdFromUrl]
-  );
 
-  useEffect(() => {
-    if (!enabled || metrics.isLoading || metrics.isError || !childIdFromUrl) return;
-    if (metrics.children.some((c) => c.id === childIdFromUrl)) return;
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete("childId");
-        next.delete("tab");
-        return next;
-      },
-      { replace: true }
-    );
-  }, [childIdFromUrl, enabled, metrics.children, metrics.isError, metrics.isLoading, setSearchParams]);
-
-  const openChildDrawer = (childId: string, tab: (typeof CHILD_DRAWER_TAB)[keyof typeof CHILD_DRAWER_TAB]) => {
-    const next = new URLSearchParams(searchParams);
-    next.set("childId", childId);
-    if (tab === CHILD_DRAWER_TAB.BASIC_INFO) {
-      next.delete("tab");
-    } else {
-      next.set("tab", tab);
+  const openChildDetail = (childId: string, tab: ChildDrawerTab) => {
+    if (onOpenChildInDrawer) {
+      onOpenChildInDrawer(childId, tab);
+      return;
     }
-    setSearchParams(next, { replace: true });
-  };
-
-  const closeChildDrawer = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("childId");
-    next.delete("tab");
-    setSearchParams(next, { replace: true });
+    const query =
+      tab === DEFAULT_CHILD_DRAWER_TAB ? "" : `?${CHILD_DRAWER_TAB_QUERY_KEY}=${encodeURIComponent(tab)}`;
+    navigate(`${childDetailPagePath(childId)}${query}`);
   };
 
   if (!enabled) return null;
@@ -170,7 +146,7 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
                   key={`overall-${summary.childId}`}
                   type="button"
                   className="w-full rounded-md border border-slate-200 bg-white/70 p-1.5 text-left transition-colors hover:bg-white"
-                  onClick={() => openChildDrawer(summary.childId, CHILD_DRAWER_TAB.LECTURE_PROGRESS)}
+                  onClick={() => openChildDetail(summary.childId, CHILD_DRAWER_TAB.LECTURE_PROGRESS)}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-slate-900">{summary.childName}</p>
@@ -217,7 +193,7 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
                     key={`homework-${summary.childId}`}
                     type="button"
                     className="w-full rounded-md border border-slate-200 bg-white/70 p-1.5 text-left transition-colors hover:bg-white"
-                    onClick={() => openChildDrawer(summary.childId, CHILD_DRAWER_TAB.HOMEWORK_PROGRESS)}
+                    onClick={() => openChildDetail(summary.childId, CHILD_DRAWER_TAB.HOMEWORK_PROGRESS)}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-slate-900">{summary.childName}</p>
@@ -233,8 +209,8 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
                         {!hasTrackedHomework
                           ? t("parentDashboardNoRecordsLabel")
                           : hasPendingHomework
-                          ? t("parentDashboardPendingCompactLabel", { count: summary.pendingHomeworkCount })
-                          : t("homeworkQueueDoneLabel")}
+                            ? t("parentDashboardPendingCompactLabel", { count: summary.pendingHomeworkCount })
+                            : t("homeworkQueueDoneLabel")}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">{childHomeworkSubline}</p>
@@ -269,17 +245,6 @@ export function ProgressOverviewCards({ enabled }: ProgressOverviewCardsProps) {
           ) : null}
         </div>
       ) : null}
-      <ProgressChildDetailsDrawer
-        open={Boolean(childIdFromUrl)}
-        isLoading={Boolean(childIdFromUrl && !selectedChild && metrics.isLoading)}
-        onOpenChange={(open) => {
-          if (!open) closeChildDrawer();
-        }}
-        child={selectedChild}
-        summary={selectedSummary}
-        scheduledLessons={metrics.scheduledLessons}
-        childrenFetchMineOnly
-      />
     </section>
   );
 }

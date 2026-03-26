@@ -1,18 +1,27 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { ProgressOverviewCards } from "./progress-overview-cards";
+import { ProgressChildDetailsDrawer } from "./progress-child-details-drawer";
 import { useRoleAccess } from "../auth/use-role-access";
 import { useTranslation } from "react-i18next";
 import { DASHBOARD_RECENT_POSTS_LIMIT } from "../posts/constants";
 import { usePostsQuery } from "../posts/use-posts-data";
 import { useSession } from "../auth/session-context";
 import { CommunityEventsPanel } from "../events/community-events-panel";
+import { useChildByIdQuery } from "../children/use-children-data";
+import {
+  CHILD_DRAWER_TAB_QUERY_KEY,
+  DASHBOARD_CHILD_ID_QUERY_KEY,
+  DEFAULT_CHILD_DRAWER_TAB,
+  type ChildDrawerTab,
+} from "./child-drawer-tab.constants";
 
 export function DashboardHomePanel() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { session } = useSession();
   const posts = usePostsQuery({ limit: DASHBOARD_RECENT_POSTS_LIMIT }, true);
   const { isParent, isAdmin, isUser, isBoardMember } = useRoleAccess();
@@ -21,9 +30,39 @@ export function DashboardHomePanel() {
   const showDashboardCommunityEvents = Boolean(dashboardCommunityId && canSeeProgressDashboard);
   const recentPosts = posts.data || [];
 
+  const dashboardChildId = searchParams.get(DASHBOARD_CHILD_ID_QUERY_KEY)?.trim() || null;
+  const dashboardChildQuery = useChildByIdQuery(dashboardChildId ?? undefined, true, Boolean(dashboardChildId));
+
+  const closeDashboardChildDrawer = () => {
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete(DASHBOARD_CHILD_ID_QUERY_KEY);
+        p.delete(CHILD_DRAWER_TAB_QUERY_KEY);
+        return p;
+      },
+      { replace: true }
+    );
+  };
+
+  const openChildInDashboardDrawer = (childId: string, tab: ChildDrawerTab) => {
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.set(DASHBOARD_CHILD_ID_QUERY_KEY, childId);
+        if (tab === DEFAULT_CHILD_DRAWER_TAB) p.delete(CHILD_DRAWER_TAB_QUERY_KEY);
+        else p.set(CHILD_DRAWER_TAB_QUERY_KEY, tab);
+        return p;
+      },
+      { replace: true }
+    );
+  };
+
   return (
     <div className="space-y-3">
-      {canSeeProgressDashboard ? <ProgressOverviewCards enabled /> : null}
+      {canSeeProgressDashboard ? (
+        <ProgressOverviewCards enabled onOpenChildInDrawer={openChildInDashboardDrawer} />
+      ) : null}
       {showDashboardCommunityEvents && dashboardCommunityId ? (
         <Card className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
           <CommunityEventsPanel
@@ -63,6 +102,17 @@ export function DashboardHomePanel() {
           </Button>
         </div>
       </Card>
+
+      <ProgressChildDetailsDrawer
+        open={Boolean(dashboardChildId)}
+        onOpenChange={(open) => {
+          if (!open) closeDashboardChildDrawer();
+        }}
+        child={dashboardChildQuery.data ?? null}
+        isLoading={dashboardChildQuery.isLoading}
+        childrenFetchMineOnly
+        syncTabToSearchParams
+      />
     </div>
   );
 }

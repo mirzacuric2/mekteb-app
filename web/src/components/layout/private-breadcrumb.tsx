@@ -4,6 +4,8 @@ import { ChevronRight, House } from "lucide-react";
 type Props = {
   isDetailView: boolean;
   detailEntityId: string | null;
+  /** When set (e.g. loaded entity name), shown instead of the raw id in the crumb chip. */
+  detailEntityLabel?: string | null;
   dashboardLabel: string;
   sectionLabel: string;
   sectionIcon: ReactNode;
@@ -14,6 +16,7 @@ type Props = {
 export function PrivateBreadcrumb({
   isDetailView,
   detailEntityId,
+  detailEntityLabel,
   dashboardLabel,
   sectionLabel,
   sectionIcon,
@@ -53,9 +56,9 @@ export function PrivateBreadcrumb({
           <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
           <span
             className="inline-flex min-w-0 max-w-[min(62vw,28rem)] items-center rounded-full bg-slate-100 px-3 py-1 font-medium text-primary"
-            title={detailEntityId}
+            title={detailEntityLabel?.trim() ? detailEntityLabel : detailEntityId}
           >
-            <span className="truncate">{detailEntityId}</span>
+            <span className="truncate">{detailEntityLabel?.trim() || detailEntityId}</span>
           </span>
         </>
       ) : null}

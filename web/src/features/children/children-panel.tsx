@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
@@ -25,37 +25,34 @@ import { DeleteConfirmDialog } from "../common/components/delete-confirm-dialog"
 import { DEFAULT_PAGE_SIZE } from "../common/use-pagination";
 import { ChildrenTable } from "./children-table";
 import { CHILD_STATUS, type ChildRecord } from "./types";
-import {
-  useChildByIdQuery,
-  useChildrenCommunityOptionsQuery,
-  useChildrenListQuery,
-  useChildrenParentOptionsQuery,
-} from "./use-children-data";
+import { useChildrenCommunityOptionsQuery, useChildrenListQuery, useChildrenParentOptionsQuery } from "./use-children-data";
 import { useCreateChildMutation, useInactivateChildMutation, useUpdateChildMutation } from "./use-children-mutations";
 import { ChildFormDialog, ChildParentOption } from "./child-form-dialog";
 import { ChildFormValues } from "./child-form-schema";
-import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
 import { BulkLessonOutcomeDialog } from "./bulk-lesson-outcome-dialog";
-import { useAuthedQuery } from "../common/use-authed-query";
-import { LESSONS_API_PATH, LESSONS_QUERY_KEY, LESSON_PROGRAM } from "../lessons/constants";
-import { Lesson } from "../lessons/types";
+import { ProgressChildDetailsDrawer } from "../dashboard/progress-child-details-drawer";
+import { childDetailPagePath } from "./child-paths";
+import {
+  CHILD_DRAWER_TAB_QUERY_KEY,
+  DEFAULT_CHILD_DRAWER_TAB,
+  isChildDrawerTab,
+} from "../dashboard/child-drawer-tab.constants";
+
 type Props = { canManage: boolean };
 
 export function ChildrenPanel({ canManage: _canManage }: Props) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const childIdFromQuery = useMemo(() => new URLSearchParams(location.search).get("childId") || undefined, [location.search]);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingChild, setEditingChild] = useState<ChildRecord | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [deletingChild, setDeletingChild] = useState<ChildRecord | null>(null);
-  const [selectedChild, setSelectedChild] = useState<ChildRecord | null>(null);
   const [formApiError, setFormApiError] = useState<{ field?: string; message: string } | null>(null);
   const [page, setPage] = useState(1);
   const [bulkGradingOpen, setBulkGradingOpen] = useState(false);
-  const suppressQueryOpenRef = useRef(false);
+  const [selectedChild, setSelectedChild] = useState<ChildRecord | null>(null);
   const queryClient = useQueryClient();
   const { ready: sessionReady, session } = useSession();
   const {
@@ -78,15 +75,14 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
     mineOnly,
     enabled: childrenListEnabled,
   });
-  const childById = useChildByIdQuery(childIdFromQuery, mineOnly, childrenListEnabled);
   const users = useChildrenParentOptionsQuery(canAdminManage);
   const communities = useChildrenCommunityOptionsQuery(canAdminManage);
   const parentOptions: ChildParentOption[] = (users.data || [])
     .filter((user) => user.role !== ROLE.SUPER_ADMIN)
     .map((parent) => ({
-    value: parent.id,
-    label: `${parent.firstName} ${parent.lastName}`.trim(),
-    status: parent.status,
+      value: parent.id,
+      label: `${parent.firstName} ${parent.lastName}`.trim(),
+      status: parent.status,
       communityId: parent.communityId,
     }));
   const communityNameById = useMemo(
@@ -195,25 +191,6 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
 
   const totalPages = Math.max(1, Math.ceil((children.data?.total || 0) / DEFAULT_PAGE_SIZE));
   const pagedChildren = children.data?.items || [];
-  const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, Boolean(selectedChild));
-  const selectedChildScheduledLessons = useMemo(() => {
-    if (!selectedChild) return 0;
-    return (lessonsQuery.data || []).filter(
-      (lesson) => lesson.program === LESSON_PROGRAM.ILMIHAL && lesson.nivo === selectedChild.nivo
-    ).length;
-  }, [lessonsQuery.data, selectedChild]);
-
-  useEffect(() => {
-    if (!childIdFromQuery) {
-      suppressQueryOpenRef.current = false;
-      return;
-    }
-    if (suppressQueryOpenRef.current) return;
-    if (selectedChild?.id === childIdFromQuery) return;
-    const targetChild = (children.data?.items || []).find((child) => child.id === childIdFromQuery) || childById.data || null;
-    if (!targetChild) return;
-    setSelectedChild(targetChild);
-  }, [childById.data, childIdFromQuery, children.data?.items, selectedChild?.id]);
 
   useEffect(() => {
     if (!selectedChild) return;
@@ -224,28 +201,16 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
   }, [children.data?.items, selectedChild]);
 
   useEffect(() => {
-    const selectedChildId = selectedChild?.id;
-    if (selectedChildId === childIdFromQuery) return;
-    /** Keep `?childId=` until hydration fills `selectedChild` (deep links / slow fetch). */
-    if (!selectedChildId && childIdFromQuery) return;
-    const nextParams = new URLSearchParams(location.search);
-    if (selectedChildId) {
-      nextParams.set("childId", selectedChildId);
-      if (selectedChildId !== childIdFromQuery) {
-        nextParams.delete("tab");
-      }
-    } else {
-      nextParams.delete("childId");
-      nextParams.delete("tab");
-    }
-    navigate(
-      {
-        pathname: location.pathname,
-        search: nextParams.toString() ? `?${nextParams.toString()}` : "",
-      },
-      { replace: true }
-    );
-  }, [childIdFromQuery, location.pathname, location.search, navigate, selectedChild?.id]);
+    const params = new URLSearchParams(location.search);
+    const legacyChildId = params.get("childId")?.trim();
+    if (!legacyChildId) return;
+    const rawTab = params.get(CHILD_DRAWER_TAB_QUERY_KEY);
+    const tabSuffix =
+      rawTab && isChildDrawerTab(rawTab) && rawTab !== DEFAULT_CHILD_DRAWER_TAB
+        ? `?${CHILD_DRAWER_TAB_QUERY_KEY}=${rawTab}`
+        : "";
+    navigate(`${childDetailPagePath(legacyChildId)}${tabSuffix}`, { replace: true });
+  }, [location.search, navigate]);
 
   return (
     <Card className={cn(MANAGEMENT_PAGE_CARD_CLASSNAME, MANAGEMENT_PAGE_CARD_STACK_CLASSNAME, "overflow-x-hidden")}>
@@ -300,16 +265,17 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
             totalPages={totalPages}
             totalItems={children.data?.total}
             onPageChange={setPage}
-            onRowClick={(child) => setSelectedChild(child)}
-            onEdit={(child) => {
+            getChildDetailPath={(row) => childDetailPagePath(row.id)}
+            onRowClick={(row) => setSelectedChild(row)}
+            onEdit={(childRow) => {
               setFormApiError(null);
-              setEditingId(child.id);
-              setEditingChild(child);
+              setEditingId(childRow.id);
+              setEditingChild(childRow);
               setFormOpen(true);
             }}
-            onDelete={(child) => {
-              if (canInactivate && child.status !== CHILD_STATUS.INACTIVE) {
-                setDeletingChild(child);
+            onDelete={(childRow) => {
+              if (canInactivate && childRow.status !== CHILD_STATUS.INACTIVE) {
+                setDeletingChild(childRow);
               }
             }}
             canEdit={canEditChildren}
@@ -360,28 +326,11 @@ export function ChildrenPanel({ canManage: _canManage }: Props) {
       />
       <BulkLessonOutcomeDialog open={bulkGradingOpen} onOpenChange={setBulkGradingOpen} />
       <ProgressChildDetailsDrawer
-        open={!!selectedChild}
+        open={Boolean(selectedChild)}
         onOpenChange={(open) => {
-          if (!open) {
-            suppressQueryOpenRef.current = true;
-            setSelectedChild(null);
-            if (childIdFromQuery) {
-              const nextParams = new URLSearchParams(location.search);
-              nextParams.delete("childId");
-              nextParams.delete("tab");
-              navigate(
-                {
-                  pathname: location.pathname,
-                  search: nextParams.toString() ? `?${nextParams.toString()}` : "",
-                },
-                { replace: true }
-              );
-            }
-          }
+          if (!open) setSelectedChild(null);
         }}
         child={selectedChild}
-        summary={null}
-        scheduledLessons={selectedChildScheduledLessons}
         childrenFetchMineOnly={mineOnly}
         onEdit={
           canEditChildren && selectedChild

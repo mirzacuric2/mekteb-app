@@ -10,6 +10,17 @@ import { canAccessCommunity } from "../../common/access.js";
 import { AppRequest } from "../../types.js";
 import { assertChildLessonOutcomeNoDraftReports } from "./lesson-outcome-activity-guard.js";
 
+const CHILD_PARENT_USER_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  role: true,
+  communityId: true,
+  phoneNumber: true,
+  status: true,
+} as const;
+
 export function usersRouter() {
   const router = Router();
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -453,7 +464,7 @@ export function usersRouter() {
       parents: {
         include: {
           parent: {
-            select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+            select: CHILD_PARENT_USER_SELECT,
           },
         },
       },
@@ -644,7 +655,7 @@ export function usersRouter() {
         parents: {
           include: {
             parent: {
-              select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+              select: CHILD_PARENT_USER_SELECT,
             },
           },
         },
@@ -819,7 +830,7 @@ export function usersRouter() {
             parents: {
               include: {
                 parent: {
-                  select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+                  select: CHILD_PARENT_USER_SELECT,
                 },
               },
             },
@@ -861,7 +872,7 @@ export function usersRouter() {
           parents: {
             include: {
               parent: {
-                select: { id: true, firstName: true, lastName: true, email: true, role: true, communityId: true },
+                select: CHILD_PARENT_USER_SELECT,
               },
             },
           },

@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bell,
   Building2,
@@ -39,6 +39,7 @@ function PrivateLayoutShell() {
   const { openChat } = useChatController();
   const { open, setOpen, setOpenMobile } = useSidebar();
   const [isQuickReportOpen, setIsQuickReportOpen] = useState(false);
+  const [detailBreadcrumbLabel, setDetailBreadcrumbLabel] = useState<string | null>(null);
   const messageIndicator = useMessageNewIndicator(Boolean(session));
   const patchLanguage = usePatchMeLanguage();
   const pathSegments = location.pathname.split("/").filter(Boolean);
@@ -62,6 +63,10 @@ function PrivateLayoutShell() {
     session?.user.role === ROLE.BOARD_MEMBER;
   const canPublishPosts = session?.user.role === ROLE.ADMIN;
   const canManage = canManageUsers || canManageChildren || canManageCommunities;
+
+  useEffect(() => {
+    setDetailBreadcrumbLabel(null);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isSectionKey(currentSegment)) {
@@ -112,6 +117,10 @@ function PrivateLayoutShell() {
   }[activeKey];
   const initials = `${session.user.firstName[0] ?? ""}${session.user.lastName[0] ?? ""}`.toUpperCase();
 
+  const setBreadcrumbDetailLabel = useCallback((label: string | null) => {
+    setDetailBreadcrumbLabel(label);
+  }, []);
+
   const context = useMemo<PrivateLayoutContext>(
     () => ({
       canManage,
@@ -125,6 +134,7 @@ function PrivateLayoutShell() {
       canManageCommunities,
       canCreateCommunities: session.user.role === ROLE.SUPER_ADMIN,
       canAssignCommunityAdmins: session.user.role === ROLE.SUPER_ADMIN,
+      setBreadcrumbDetailLabel,
     }),
     [
       canEditUsers,
@@ -136,6 +146,7 @@ function PrivateLayoutShell() {
       canManageUsers,
       canPublishPosts,
       session.user.role,
+      setBreadcrumbDetailLabel,
     ]
   );
 
@@ -219,6 +230,7 @@ function PrivateLayoutShell() {
               <PrivateBreadcrumb
                 isDetailView={isDetailView}
                 detailEntityId={detailEntityId}
+                detailEntityLabel={detailBreadcrumbLabel}
                 dashboardLabel={t("dashboard")}
                 sectionLabel={breadcrumbSectionLabel}
                 sectionIcon={breadcrumbIcon}

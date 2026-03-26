@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { useChildByIdQuery } from "../children/use-children-data";
-import { Pencil, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ExternalLink, Pencil, Trash2, X } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../components/ui/button";
 import { InlineConfirmOverlay } from "../../components/ui/inline-confirm-overlay";
@@ -12,328 +11,60 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "../../components/ui/drawer";
-import { Tabs } from "../../components/ui/tabs";
-import { NaValue } from "../common/components/na-value";
 import { StatusBadge } from "../common/components/status-badge";
-import { useAuthedQuery } from "../common/use-authed-query";
+import { ChildRecord } from "../children/types";
+import { childDetailPagePath } from "../children/child-paths";
+import { ChildProgressDetailInner } from "./child-progress-detail-inner";
 import {
-  LESSONS_API_PATH,
-  LESSONS_QUERY_KEY,
-  LESSON_PROGRAM,
-  NIVO_BOOKS_API_PATH,
-  NIVO_BOOKS_QUERY_KEY,
-} from "../lessons/constants";
-import { NivoBookLink } from "../lessons/nivo-book-link";
-import { Lesson, NivoBook } from "../lessons/types";
-import { ChildLessonOutcome, ChildRecord } from "../children/types";
-import { NivoProgress } from "../children/nivo-progress";
-import { ChildProgressSummary } from "./use-progress-overview";
-import { LECTURE_STATUS } from "../reporting/reporting.constants";
-import { formatDate } from "../../lib/date-time";
-import { EntityDetailTable, EntityDetailTableRow } from "../common/components/entity-detail-components";
-import {
-  HOMEWORK_PROGRESS_STATUS,
-  HomeworkProgressItem,
-  ProgressHomeworkTimeline,
-} from "./progress-homework-timeline";
-import { useOpenImamChat } from "../messages/use-open-imam-chat";
-import { MESSAGE_CONTEXT_TYPE } from "../messages/types";
-import { useRoleAccess } from "../auth/use-role-access";
-import { LoadingBlock } from "../common/components/loading-block";
-import { EmptyStateNotice } from "../common/components/empty-state-notice";
-import { isPersistedLessonOutcomeKey } from "./progress-lesson-outcome.constants";
-import { hasReportedHomework } from "./attendance-homework";
-import { LectureProgressLessonCard, type LectureProgressLessonItem } from "./lecture-progress-lesson-card";
-import {
-  CHILD_DRAWER_TAB,
   CHILD_DRAWER_TAB_QUERY_KEY,
   DEFAULT_CHILD_DRAWER_TAB,
-  parseChildDrawerTab,
-  type ChildDrawerTab,
 } from "./child-drawer-tab.constants";
 
 type ProgressChildDetailsDrawerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   child: ChildRecord | null;
-  summary: ChildProgressSummary | null;
-  scheduledLessons: number;
   isLoading?: boolean;
-  syncTabToSearchParams?: boolean;
   childrenFetchMineOnly: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
   deleteLabel?: string;
+  /** When true, tab state is read/written from URL `tab` (e.g. dashboard `?childId=&tab=`). */
+  syncTabToSearchParams?: boolean;
+  /** Show link to full `/app/children/:id` page beside the close control. */
+  showFullPageLink?: boolean;
 };
-
-function toEventDate(occurredAt: string | null, fallback: string) {
-  if (!occurredAt) return fallback;
-  return occurredAt;
-}
 
 export function ProgressChildDetailsDrawer({
   open,
   onOpenChange,
   child,
-  summary,
-  scheduledLessons,
   isLoading = false,
-  syncTabToSearchParams = true,
   childrenFetchMineOnly,
   onEdit,
   onDelete,
   deleteLabel,
+  syncTabToSearchParams = false,
+  showFullPageLink = true,
 }: ProgressChildDetailsDrawerProps) {
   const { t } = useTranslation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [localTab, setLocalTab] = useState<ChildDrawerTab>(DEFAULT_CHILD_DRAWER_TAB);
+  const [searchParams] = useSearchParams();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const hasActions = Boolean(onEdit || onDelete);
-  const prevChildIdRef = useRef<string | null>(null);
 
-  const activeTab = syncTabToSearchParams
-    ? parseChildDrawerTab(searchParams.get(CHILD_DRAWER_TAB_QUERY_KEY))
-    : localTab;
+  const fullChildPageHref = useMemo(() => {
+    if (!child) return "";
+    const tabQ = searchParams.get(CHILD_DRAWER_TAB_QUERY_KEY);
+    const tabSuffix =
+      syncTabToSearchParams && tabQ && tabQ !== DEFAULT_CHILD_DRAWER_TAB
+        ? `?${CHILD_DRAWER_TAB_QUERY_KEY}=${encodeURIComponent(tabQ)}`
+        : "";
+    return `${childDetailPagePath(child.id)}${tabSuffix}`;
+  }, [child, searchParams, syncTabToSearchParams]);
 
-  const setActiveTab = (key: string) => {
-    const nextTab = parseChildDrawerTab(key);
-    if (syncTabToSearchParams) {
-      setSearchParams(
-        (prev) => {
-          const p = new URLSearchParams(prev);
-          if (nextTab === DEFAULT_CHILD_DRAWER_TAB) {
-            p.delete(CHILD_DRAWER_TAB_QUERY_KEY);
-          } else {
-            p.set(CHILD_DRAWER_TAB_QUERY_KEY, nextTab);
-          }
-          return p;
-        },
-        { replace: true }
-      );
-    } else {
-      setLocalTab(nextTab);
-    }
-  };
   useEffect(() => {
-    if (!open) {
-      prevChildIdRef.current = null;
-      setConfirmingDelete(false);
-      return;
-    }
-    if (!child?.id) return;
-    const prev = prevChildIdRef.current;
-    if (prev && prev !== child.id) {
-      if (syncTabToSearchParams) {
-        setSearchParams(
-          (prevParams) => {
-            const p = new URLSearchParams(prevParams);
-            p.delete(CHILD_DRAWER_TAB_QUERY_KEY);
-            return p;
-          },
-          { replace: true }
-        );
-      } else {
-        setLocalTab(DEFAULT_CHILD_DRAWER_TAB);
-      }
-    }
-    prevChildIdRef.current = child.id;
-  }, [child?.id, open, setSearchParams, syncTabToSearchParams]);
-
-  const { openImamChat } = useOpenImamChat();
-  const { isParent, isUser, isBoardMember, canSetChildLessonOutcomes } = useRoleAccess();
-  const canMessageImam = isParent || isUser || isBoardMember;
-  const childRefreshQuery = useChildByIdQuery(child?.id, childrenFetchMineOnly, open && Boolean(child?.id));
-  const resolvedChild = useMemo(() => {
-    if (!child) return null;
-    return childRefreshQuery.data ?? child;
-  }, [child, childRefreshQuery.data]);
-  const enrollmentSet = useMemo(() => {
-    const programs = (resolvedChild?.programEnrollments || []).map((entry) => entry.program);
-    // Backward compatibility for older children that may not have explicit enrollments yet.
-    if (!programs.length) return new Set([LESSON_PROGRAM.ILMIHAL]);
-    return new Set(programs);
-  }, [resolvedChild?.programEnrollments]);
-  const availableProgramTabs = useMemo(() => {
-    const tabs: Array<{ key: ChildDrawerTab; label: string }> = [];
-    if (enrollmentSet.has(LESSON_PROGRAM.ILMIHAL)) {
-      tabs.push({ key: CHILD_DRAWER_TAB.LECTURE_PROGRESS, label: t("parentDashboardLectureProgressTab") });
-    }
-    if (enrollmentSet.has(LESSON_PROGRAM.SUFARA)) {
-      tabs.push({ key: CHILD_DRAWER_TAB.SUFARA_PROGRESS, label: t("childDrawerSufaraTab") });
-    }
-    if (enrollmentSet.has(LESSON_PROGRAM.QURAN)) {
-      tabs.push({ key: CHILD_DRAWER_TAB.QURAN_PROGRESS, label: t("childDrawerQuranTab") });
-    }
-    return tabs;
-  }, [enrollmentSet, t]);
-  const allowedTabs = useMemo(() => {
-    return new Set<ChildDrawerTab>([
-      CHILD_DRAWER_TAB.BASIC_INFO,
-      ...availableProgramTabs.map((tab) => tab.key),
-      CHILD_DRAWER_TAB.HOMEWORK_PROGRESS,
-    ]);
-  }, [availableProgramTabs]);
-  useEffect(() => {
-    if (!open) return;
-    if (allowedTabs.has(activeTab)) return;
-    const fallbackTab = availableProgramTabs[0]?.key || CHILD_DRAWER_TAB.BASIC_INFO;
-    setActiveTab(fallbackTab);
-  }, [activeTab, allowedTabs, availableProgramTabs, open]);
-  const lessonsQuery = useAuthedQuery<Lesson[]>(LESSONS_QUERY_KEY, LESSONS_API_PATH, open && Boolean(child));
-  const nivoBooksQuery = useAuthedQuery<NivoBook[]>(NIVO_BOOKS_QUERY_KEY, NIVO_BOOKS_API_PATH, open && Boolean(child));
-  const effectiveSummary = useMemo(() => {
-    if (summary) return summary;
-    if (!resolvedChild) return null;
-    const childAttendance = resolvedChild.attendance || [];
-    const reportedLecturesCount = childAttendance.length;
-    const completedLecturesCount = childAttendance.filter((record) => record.lecture.status === LECTURE_STATUS.COMPLETED).length;
-    const presentInTrackedLessons = childAttendance.filter((record) => record.present).length;
-    const lectureCompletionRate =
-      reportedLecturesCount > 0 ? Math.round((completedLecturesCount / reportedLecturesCount) * 100) : 0;
-    return {
-      completedLecturesCount,
-      reportedLecturesCount,
-      lectureCompletionRate,
-      presentInTrackedLessons,
-      trackedLessons: reportedLecturesCount,
-    };
-  }, [resolvedChild, summary]);
-
-  const currentNivoBook = useMemo(
-    () => (resolvedChild ? (nivoBooksQuery.data || []).find((book) => book.nivo === resolvedChild.nivo) : undefined),
-    [nivoBooksQuery.data, resolvedChild]
-  );
-
-  const buildLectureProgressItemsForProgram = (targetProgram: Lesson["program"]) => {
-    if (!resolvedChild) return [] as LectureProgressLessonItem[];
-    const reportMap = new Map<string, LectureProgressLessonItem>();
-    for (const record of resolvedChild.attendance || []) {
-      if ((record.lecture.program || LESSON_PROGRAM.ILMIHAL) !== targetProgram) continue;
-      const reportKey = record.lesson?.id || `topic:${(record.lesson?.title || record.lecture.topic).trim().toLowerCase()}`;
-      const reportTitle = record.lesson?.title || record.lecture.topic;
-      const previous = reportMap.get(reportKey);
-      const nextLastReportedAt = toEventDate(
-        record.lecture.completedAt || record.lecture.updatedAt || null,
-        record.lecture.createdAt
-      );
-      const mergedComments = [...(previous?.comments || [])];
-      const trimmedComment = record.comment?.trim();
-      if (trimmedComment && !mergedComments.includes(trimmedComment)) mergedComments.push(trimmedComment);
-
-      const homeworkListRow = hasReportedHomework(record);
-      reportMap.set(reportKey, {
-        key: reportKey,
-        title: reportTitle,
-        reports: (previous?.reports || 0) + 1,
-        completedReports: (previous?.completedReports || 0) + (record.lecture.status === LECTURE_STATUS.COMPLETED ? 1 : 0),
-        presentReports: (previous?.presentReports || 0) + (record.present ? 1 : 0),
-        knownHomeworkReports: (previous?.knownHomeworkReports || 0) + (homeworkListRow ? 1 : 0),
-        homeworkDoneReports: (previous?.homeworkDoneReports || 0) + (homeworkListRow && record.homeworkDone === true ? 1 : 0),
-        comments: mergedComments,
-        lastReportedAt:
-          previous?.lastReportedAt && new Date(previous.lastReportedAt).getTime() > new Date(nextLastReportedAt).getTime()
-            ? previous.lastReportedAt
-            : nextLastReportedAt,
-      });
-    }
-
-    const scopedLessons = (lessonsQuery.data || []).filter((lesson) => {
-      if (lesson.program !== targetProgram) return false;
-      if (targetProgram === LESSON_PROGRAM.ILMIHAL) return lesson.nivo === resolvedChild.nivo;
-      return true;
-    });
-    const lessonRows = scopedLessons.map((lesson) => reportMap.get(lesson.id) || {
-      key: lesson.id,
-      title: lesson.title,
-      reports: 0,
-      completedReports: 0,
-      presentReports: 0,
-      knownHomeworkReports: 0,
-      homeworkDoneReports: 0,
-      comments: [],
-      lastReportedAt: null,
-    });
-
-    const nivoLessonIds = new Set(scopedLessons.map((lesson) => lesson.id));
-    const extraRows = [...reportMap.entries()]
-      .filter(([key]) => !nivoLessonIds.has(key))
-      .map(([, value]) => value)
-      .sort((a, b) => new Date(b.lastReportedAt || 0).getTime() - new Date(a.lastReportedAt || 0).getTime());
-    return [...lessonRows, ...extraRows];
-  };
-  const lectureProgressItems = useMemo(
-    () => buildLectureProgressItemsForProgram(LESSON_PROGRAM.ILMIHAL),
-    [resolvedChild, lessonsQuery.data]
-  );
-  const sufaraProgressItems = useMemo(
-    () => buildLectureProgressItemsForProgram(LESSON_PROGRAM.SUFARA),
-    [resolvedChild, lessonsQuery.data]
-  );
-  const quranProgressItems = useMemo(
-    () => buildLectureProgressItemsForProgram(LESSON_PROGRAM.QURAN),
-    [resolvedChild, lessonsQuery.data]
-  );
-  const activeProgramProgressItems = useMemo(() => {
-    if (activeTab === CHILD_DRAWER_TAB.SUFARA_PROGRESS) return sufaraProgressItems;
-    if (activeTab === CHILD_DRAWER_TAB.QURAN_PROGRESS) return quranProgressItems;
-    return lectureProgressItems;
-  }, [activeTab, lectureProgressItems, quranProgressItems, sufaraProgressItems]);
-
-  const outcomeByLessonId = useMemo(() => {
-    const map = new Map<string, ChildLessonOutcome>();
-    for (const row of resolvedChild?.lessonOutcomes || []) {
-      map.set(row.lessonId, row);
-    }
-    return map;
-  }, [resolvedChild?.lessonOutcomes]);
-
-  const homeworkProgressItems = useMemo(() => {
-    if (!resolvedChild) return [];
-    const rows: HomeworkProgressItem[] = [...(resolvedChild.attendance || [])]
-      .filter((record) => hasReportedHomework(record))
-      .map((record) => ({
-        key: `${record.lectureId}:${record.markedAt}`,
-        lectureId: record.lectureId,
-        title: record.homeworkTitle?.trim() || record.lesson?.title || record.lecture.topic,
-        lessonTitle: record.lesson?.title || record.lecture.topic,
-        homeworkDescription: record.homeworkDescription?.trim() || null,
-        status:
-          record.homeworkDone === true
-            ? HOMEWORK_PROGRESS_STATUS.DONE
-            : record.homeworkDone === false
-              ? HOMEWORK_PROGRESS_STATUS.PENDING
-              : HOMEWORK_PROGRESS_STATUS.NOT_RECORDED,
-        homeworkTitle: record.homeworkTitle?.trim() || null,
-        lastReportedAt: toEventDate(record.lecture.completedAt || record.lecture.updatedAt || null, record.markedAt),
-      }))
-      .sort((a, b) => new Date(b.lastReportedAt || 0).getTime() - new Date(a.lastReportedAt || 0).getTime());
-
-    return rows;
-  }, [resolvedChild]);
-
-  const parentsText = useMemo(() => {
-    if (!resolvedChild) return null;
-    return (
-      (resolvedChild.parents || [])
-        .map((parent) => `${parent.parent?.firstName || ""} ${parent.parent?.lastName || ""}`.trim())
-        .filter(Boolean)
-        .join(", ") || null
-    );
-  }, [resolvedChild]);
-
-  const addressText = useMemo(() => {
-    if (!resolvedChild) return null;
-    if (!resolvedChild.address) return null;
-    return [
-      resolvedChild.address.streetLine1,
-      resolvedChild.address.streetLine2 || "",
-      `${resolvedChild.address.postalCode} ${resolvedChild.address.city}`.trim(),
-      resolvedChild.address.state || "",
-      resolvedChild.address.country,
-    ]
-      .filter(Boolean)
-      .join(", ");
-  }, [resolvedChild]);
+    if (!open) setConfirmingDelete(false);
+  }, [open]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -343,11 +74,11 @@ export function ProgressChildDetailsDrawer({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <DrawerTitle className="mb-0 truncate">
-                  {resolvedChild ? `${resolvedChild.firstName} ${resolvedChild.lastName}` : t("childrenDetails")}
+                  {child ? `${child.firstName} ${child.lastName}` : t("childrenDetails")}
                 </DrawerTitle>
-                {resolvedChild && !hasActions ? (
+                {child && !hasActions ? (
                   <span className="inline-flex shrink-0 items-center">
-                    <StatusBadge status={resolvedChild.status} />
+                    <StatusBadge status={child.status} />
                   </span>
                 ) : null}
                 {hasActions ? (
@@ -355,35 +86,48 @@ export function ProgressChildDetailsDrawer({
                     {onEdit ? (
                       <Button
                         variant="outline"
-                        className="h-7 w-7 px-0 sm:w-auto sm:gap-1 sm:px-2 text-xs"
+                        className="h-7 w-7 gap-1 px-0 py-0 text-[11px] font-medium sm:h-7 sm:w-auto sm:px-2"
                         onClick={onEdit}
                       >
-                        <Pencil size={12} />
+                        <Pencil className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                         <span className="hidden sm:inline">{t("edit")}</span>
                       </Button>
                     ) : null}
                     {onDelete ? (
                       <Button
                         variant="outline"
-                        className="h-7 w-7 px-0 sm:w-auto sm:gap-1 sm:px-2 border-red-200 text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
+                        className="h-7 w-7 gap-1 border-red-200 px-0 py-0 text-[11px] font-medium text-red-500 hover:bg-red-50 hover:text-red-600 sm:h-7 sm:w-auto sm:px-2"
                         onClick={() => setConfirmingDelete(true)}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                         <span className="hidden sm:inline">{deleteLabel || t("delete")}</span>
                       </Button>
                     ) : null}
                   </div>
                 ) : null}
               </div>
-              {resolvedChild && hasActions ? (
+              {child && hasActions ? (
                 <div className="mt-1">
-                  <StatusBadge status={resolvedChild.status} />
+                  <StatusBadge status={child.status} />
                 </div>
               ) : null}
             </div>
-            <DrawerClose className="shrink-0 rounded-md border border-border p-1.5">
-              <X size={14} />
-            </DrawerClose>
+            <div className="flex shrink-0 items-center gap-1">
+              {child && showFullPageLink ? (
+                <Link
+                  to={fullChildPageHref}
+                  className="inline-flex rounded-md border border-border p-1.5 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                  title={t("progressChildDrawerOpenFullPage")}
+                  aria-label={t("progressChildDrawerOpenFullPage")}
+                  onClick={() => onOpenChange(false)}
+                >
+                  <ExternalLink size={14} />
+                </Link>
+              ) : null}
+              <DrawerClose className="shrink-0 rounded-md border border-border p-1.5">
+                <X size={14} />
+              </DrawerClose>
+            </div>
           </div>
         </DrawerHeader>
 
@@ -391,9 +135,7 @@ export function ProgressChildDetailsDrawer({
           <InlineConfirmOverlay
             open={confirmingDelete}
             message={
-              resolvedChild
-                ? t("confirmDeleteName", { name: `${resolvedChild.firstName} ${resolvedChild.lastName}` })
-                : ""
+              child ? t("confirmDeleteName", { name: `${child.firstName} ${child.lastName}` }) : ""
             }
             confirmLabel={deleteLabel || t("delete")}
             cancelLabel={t("cancel")}
@@ -403,92 +145,13 @@ export function ProgressChildDetailsDrawer({
             }}
             onCancel={() => setConfirmingDelete(false)}
           />
-          {isLoading && !child ? (
-            <LoadingBlock text={t("parentDashboardChildDrawerLoading")} />
-          ) : !resolvedChild ? (
-            <p className="text-sm text-slate-500">{t("parentDashboardNoChildActivity")}</p>
-          ) : (
-            <Tabs
-              value={activeTab}
-              onChange={setActiveTab}
-              tabs={[
-                { key: CHILD_DRAWER_TAB.BASIC_INFO, label: t("childrenDetails") },
-                ...availableProgramTabs,
-                { key: CHILD_DRAWER_TAB.HOMEWORK_PROGRESS, label: t("parentDashboardHomeworkProgressTab") },
-              ]}
-            >
-              {activeTab === CHILD_DRAWER_TAB.BASIC_INFO ? (
-                <div className="space-y-3">
-                  <EntityDetailTable>
-                    <EntityDetailTableRow label={t("usersTableName")} value={`${resolvedChild.firstName} ${resolvedChild.lastName}`} />
-                    <EntityDetailTableRow label={t("ssn")} value={<NaValue value={resolvedChild.ssn} />} />
-                    <EntityDetailTableRow label={t("birthDate")} value={formatDate(resolvedChild.birthDate)} />
-                    <EntityDetailTableRow
-                      label={t("childrenNivoLabel")}
-                      value={
-                        <div className="inline-flex flex-col items-start gap-1">
-                          <NivoProgress nivo={resolvedChild.nivo} showIndexLabel />
-                        </div>
-                      }
-                    />
-                    <EntityDetailTableRow label={t("childrenParentsLabel")} value={<NaValue value={parentsText} />} />
-                    <EntityDetailTableRow label={t("address")} value={<NaValue value={addressText} />} />
-                    <EntityDetailTableRow
-                      label={t("lessonsBookSectionTitle")}
-                      value={
-                        currentNivoBook ? (
-                          <NivoBookLink nivo={resolvedChild.nivo} label={currentNivoBook.originalName} />
-                        ) : (
-                          <NaValue value={null} />
-                        )
-                      }
-                    />
-                  </EntityDetailTable>
-                </div>
-              ) : activeTab === CHILD_DRAWER_TAB.LECTURE_PROGRESS ||
-                activeTab === CHILD_DRAWER_TAB.SUFARA_PROGRESS ||
-                activeTab === CHILD_DRAWER_TAB.QURAN_PROGRESS ? (
-                <div className="space-y-2 max-md:space-y-1.5">
-                  {activeProgramProgressItems.length ? (
-                    activeProgramProgressItems.map((item, idx) => {
-                      const outcome = isPersistedLessonOutcomeKey(item.key) ? outcomeByLessonId.get(item.key) : undefined;
-                      return (
-                        <LectureProgressLessonCard
-                          key={item.key}
-                          item={item}
-                          index={idx}
-                          totalItems={activeProgramProgressItems.length}
-                          child={resolvedChild}
-                          outcome={outcome}
-                          canMessageImam={canMessageImam}
-                          canSetChildLessonOutcomes={canSetChildLessonOutcomes}
-                          openImamChat={openImamChat}
-                        />
-                      );
-                    })
-                  ) : (
-                    <EmptyStateNotice>{t("parentDashboardNoChildActivity")}</EmptyStateNotice>
-                  )}
-                </div>
-              ) : (
-                <ProgressHomeworkTimeline
-                  items={homeworkProgressItems}
-                  onMessageImam={
-                    canMessageImam
-                      ? (item) =>
-                          openImamChat({
-                            type: MESSAGE_CONTEXT_TYPE.HOMEWORK,
-                            childId: resolvedChild.id,
-                            lectureId: item.lectureId,
-                            label: `${resolvedChild.firstName} ${resolvedChild.lastName} - ${item.title}`,
-                            preview: item.homeworkDescription || undefined,
-                          })
-                      : undefined
-                  }
-                />
-              )}
-            </Tabs>
-          )}
+          <ChildProgressDetailInner
+            child={child}
+            isLoading={isLoading}
+            syncTabToSearchParams={syncTabToSearchParams}
+            childrenFetchMineOnly={childrenFetchMineOnly}
+            queriesEnabled={open && Boolean(child)}
+          />
         </div>
       </DrawerContent>
     </Drawer>

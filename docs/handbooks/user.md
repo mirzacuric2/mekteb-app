@@ -28,9 +28,9 @@ This handbook describes **your** app: what each area is for, what you should exp
 ### Children (`/app/children`)
 
 - **Purpose:** List and review **children linked to your account** (not the whole community roster).
-- **What you can do:** Open a child row to see details in the **side drawer** (progress, homework, attendance-related history where the school has recorded it). Drawer tabs include `Ilmihal`, `Sufara`, and `Qur'an` progress where available. You can **edit** allowed fields for your children (for example name, SSN, birth date, address) through the edit flow when offered.
+- **What you can do:** Click a **row** to open the **side drawer** for quick progress tabs. Click the **child’s name** (link icon) to open the **full child page** at `/app/children/<id>` (summary card plus the same tabs). You can **edit** allowed fields for your children (for example name, SSN, birth date, address) through the edit flow when offered.
 - **What you cannot do:** Create children, inactivate them, change **community** or **nivo**, or change **parent links**—those are admin-only. You cannot open children you are not linked to.
-- **Tip:** URLs can include `?childId=<uuid>` so a shared link can open the same drawer.
+- **Tip:** Shareable URLs use `/app/children/<uuid>`; add `?tab=lecture-progress`, `homework-progress`, or other tab keys to land on a specific tab (`basic-info` is the default when `tab` is omitted).
 
 ### Notifications (`/app/notifications`)
 

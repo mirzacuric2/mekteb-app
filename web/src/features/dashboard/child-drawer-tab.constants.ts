@@ -1,7 +1,14 @@
-/** URL `tab` values for `ProgressChildDetailsDrawer` (and deep links). */
+/** Dashboard child quick-view: `?childId=<uuid>&tab=…` on `/app/dashboard`. */
+export const DASHBOARD_CHILD_ID_QUERY_KEY = "childId";
+
+/** URL `tab` query values for child progress UI (detail page, drawer, deep links). Query key: `tab`. */
 export const CHILD_DRAWER_TAB = {
   BASIC_INFO: "basic-info",
+  /** Full child detail page only — linked parents as cards */
+  PARENTS: "parents",
   LECTURE_PROGRESS: "lecture-progress",
+  /** Child detail page: Sufara + Qur'an timelines in one tab */
+  PROGRAMS: "programs",
   SUFARA_PROGRESS: "sufara-progress",
   QURAN_PROGRESS: "quran-progress",
   HOMEWORK_PROGRESS: "homework-progress",

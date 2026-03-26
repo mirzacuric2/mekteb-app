@@ -4,8 +4,9 @@ import { PaginationControls } from "../common/components/pagination-controls";
 import { StatusBadge } from "../common/components/status-badge";
 import { TableLoadingRow } from "../common/components/table-loading-row";
 import { Button } from "../../components/ui/button";
-import { Pencil } from "lucide-react";
+import { ExternalLink, Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { NivoProgress } from "./nivo-progress";
 import { type ChildRecord } from "./types";
 
@@ -17,6 +18,8 @@ type ChildrenTableProps = {
   totalItems?: number;
   onPageChange: (page: number) => void;
   onRowClick: (child: ChildRecord) => void;
+  /** When set, the name cell links to the child detail page (path should be `/app/children/<id>`). */
+  getChildDetailPath?: (child: ChildRecord) => string;
   onEdit: (child: ChildRecord) => void;
   onDelete: (child: ChildRecord) => void;
   canEdit: boolean;
@@ -33,6 +36,7 @@ export function ChildrenTable({
   totalItems,
   onPageChange,
   onRowClick,
+  getChildDetailPath,
   onEdit,
   onDelete,
   canEdit,
@@ -79,10 +83,23 @@ export function ChildrenTable({
             className="cursor-pointer border-b border-border transition-colors hover:bg-slate-50"
             onClick={() => onRowClick(child)}
           >
-            <td className="min-w-0 whitespace-nowrap font-medium text-slate-900">
-              <span className="block truncate" title={`${child.firstName} ${child.lastName}`}>
-                {child.firstName} {child.lastName}
-              </span>
+            <td className="min-w-0 font-medium text-slate-900">
+              {getChildDetailPath ? (
+                <Link
+                  to={getChildDetailPath(child)}
+                  className="inline-flex max-w-full items-center gap-1.5 text-primary underline-offset-2 hover:underline"
+                  title={t("childrenTableOpenDetailPage")}
+                  aria-label={t("childrenTableOpenDetailPage")}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <span className="truncate whitespace-nowrap">{child.firstName} {child.lastName}</span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                </Link>
+              ) : (
+                <span className="block truncate whitespace-nowrap" title={`${child.firstName} ${child.lastName}`}>
+                  {child.firstName} {child.lastName}
+                </span>
+              )}
             </td>
             <td className="whitespace-nowrap">
               <NivoProgress nivo={child.nivo} showIndexLabel />

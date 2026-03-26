@@ -62,20 +62,20 @@ export function EntityDetailsDrawer({
                     {onEdit ? (
                       <Button
                         variant="outline"
-                        className="h-7 w-7 px-0 sm:w-auto sm:gap-1 sm:px-2 text-xs"
+                        className="h-7 w-7 gap-1 px-0 py-0 text-[11px] font-medium sm:h-7 sm:w-auto sm:px-2"
                         onClick={onEdit}
                       >
-                        <Pencil size={12} />
+                        <Pencil className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                         <span className="hidden sm:inline">{editLabel}</span>
                       </Button>
                     ) : null}
                     {onDelete ? (
                       <Button
                         variant="outline"
-                        className="h-7 w-7 px-0 sm:w-auto sm:gap-1 sm:px-2 border-red-200 text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
+                        className="h-7 w-7 gap-1 border-red-200 px-0 py-0 text-[11px] font-medium text-red-500 hover:bg-red-50 hover:text-red-600 sm:h-7 sm:w-auto sm:px-2"
                         onClick={() => setConfirmingDelete(true)}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                         <span className="hidden sm:inline">{deleteLabel}</span>
                       </Button>
                     ) : null}

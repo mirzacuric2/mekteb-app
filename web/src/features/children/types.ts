@@ -32,8 +32,11 @@ export type ChildParent = {
     id: string;
     firstName: string;
     lastName: string;
+    email: string;
     role: string;
     communityId?: string | null;
+    phoneNumber?: string | null;
+    status?: string;
   };
 };
 

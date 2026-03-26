@@ -201,7 +201,7 @@ export function communicationRouter() {
           type: NotificationType.ABSENCE_COMMENT_ADDED,
           title: "Absence comment",
           body: `${row.childName}: ${row.comment}`,
-          targetPath: `/app/children?childId=${row.childId}`,
+          targetPath: `/app/children/${row.childId}`,
         });
       }
     }
@@ -968,7 +968,7 @@ export function communicationRouter() {
           type: NotificationType.ATTENDANCE_UPDATED,
           title: "Attendance updated",
           body: `${childNameById.get(link.childId) || "Child"}: ${resolvedTopic}`,
-          targetPath: `/app/children?childId=${link.childId}`,
+          targetPath: `/app/children/${link.childId}`,
         })),
       });
     }
@@ -1173,7 +1173,7 @@ export function communicationRouter() {
               type: NotificationType.ATTENDANCE_UPDATED,
               title: "Attendance updated",
               body: `${childNameById.get(link.childId) || "Child"}: ${lecture.topic}`,
-              targetPath: `/app/children?childId=${link.childId}`,
+              targetPath: `/app/children/${link.childId}`,
             })),
           });
         }
@@ -1465,7 +1465,7 @@ export function communicationRouter() {
             type: NotificationType.HOMEWORK_COMPLETED,
             title: "Homework done",
             body: `${childName}: ${homeworkTitle}`,
-            targetPath: `/app/children?childId=${existingAttendance.childId}`,
+            targetPath: `/app/children/${existingAttendance.childId}?tab=homework-progress`,
           })),
         });
       }
