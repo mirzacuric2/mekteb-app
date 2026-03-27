@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -17,11 +17,10 @@ import {
   LESSON_NIVO_LABEL,
   LESSON_NIVO_ORDER,
   LESSON_PROGRAM,
-  LESSON_PROGRAM_I18N_KEY,
-  LESSON_PROGRAM_ORDER,
   LessonNivo,
   LessonProgram,
 } from "../lessons/constants";
+import { ProgramScopeRadiogroup, type ProgramScopeFilterValue } from "../lessons/program-scope-radiogroup";
 import { Lesson } from "../lessons/types";
 import { useAuthedQuery } from "../common/use-authed-query";
 import { ActivitiesListResponse, ActivityLecture } from "./types";
@@ -179,6 +178,29 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
     setFieldErrors({});
     setAutoDraftActivity(null);
   };
+
+  const applyProgramChange = useCallback((nextProgram: LessonProgram) => {
+    setProgram(nextProgram);
+    setRows({});
+    setDefaultLessonId("");
+    setLessonText("");
+    if (nextProgram !== LESSON_PROGRAM.ILMIHAL) {
+      setNivo("");
+    }
+    setHomeworkEnabled(false);
+    setHomeworkTitle("");
+    setHomeworkDescription("");
+    setFieldErrors((prev) => ({ ...prev, nivo: undefined, defaultLessonId: undefined, lessonText: undefined }));
+  }, []);
+
+  const onProgramScopeChange = useCallback(
+    (next: ProgramScopeFilterValue) => {
+      if (next === "ALL") return;
+      if (next === program) return;
+      applyProgramChange(next);
+    },
+    [applyProgramChange, program]
+  );
 
   useEffect(() => {
     if (!open) {
@@ -344,29 +366,13 @@ export function ActivityReportDialog({ open, onOpenChange, editingActivity = nul
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{t("lessonsProgramLabel")}</p>
-                <Select
+                <ProgramScopeRadiogroup
                   value={program}
-                  onChange={(event) => {
-                    const nextProgram = event.target.value as LessonProgram;
-                    setProgram(nextProgram);
-                    setRows({});
-                    setDefaultLessonId("");
-                    setLessonText("");
-                    if (nextProgram !== LESSON_PROGRAM.ILMIHAL) {
-                      setNivo("");
-                    }
-                    setHomeworkEnabled(false);
-                    setHomeworkTitle("");
-                    setHomeworkDescription("");
-                    setFieldErrors((prev) => ({ ...prev, nivo: undefined, defaultLessonId: undefined, lessonText: undefined }));
-                  }}
-                >
-                  {LESSON_PROGRAM_ORDER.map((value) => (
-                    <option key={value} value={value}>
-                      {t(LESSON_PROGRAM_I18N_KEY[value])}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={onProgramScopeChange}
+                  includeAll={false}
+                  showLabel={false}
+                  ariaLabelKey="communityOverviewProgressProgramFilterLabel"
+                />
               </div>
               {program === LESSON_PROGRAM.ILMIHAL ? (
                 <div>

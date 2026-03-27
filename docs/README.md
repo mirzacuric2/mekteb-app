@@ -33,6 +33,8 @@ This folder contains user-facing documentation for daily platform usage.
 
 ## Feature Notes (Latest)
 
+- **Activity report program control:** Create/edit activity report uses the shared **`ProgramScopeRadiogroup`** chip row (**Ilmihal**, **Sufara**, **Qur'an**, no “All programs”) under the **Program** label—same pattern as community **Progress by nivo** program scope (validation and API payloads unchanged).
+- **Program scope chip group:** Community **Progress by nivo** uses shared `ProgramScopeRadiogroup` (`web/src/features/lessons/program-scope-radiogroup.tsx`) for **All programs** + per-program chips; reuse it elsewhere with `value` / `onChange`, optional `includeAll`, `programs`, and i18n key overrides (`labelKey`, `allProgramsLabelKey`).
 - **Multi-program lessons (`Ilmihal`, `Sufara`, `Qur'an`):** Lesson catalog, reporting, child progress, and community overview now support three programs. `Ilmihal` keeps nivo-based behavior, `Sufara` uses seeded Arabic-letter lessons (28 letters, stored in Unicode), and `Qur'an` uses free-text lesson/topic input in reports (no nivo requirement). Child program enrollment is **explicitly admin-managed** during create/edit (no automatic all-program enrollment), and enrollment is enforced in reporting and grading flows.
 - **Parent dashboard program cards are enrollment-aware:** Sufara/Qur'an overview cards are shown only when at least one linked child is enrolled in that program, so families do not see irrelevant empty program cards.
 - **Events audience by program:** Community events now support audience options for `Ilmihal`, `Sufara`, and `Qur'an` (plus general). `Ilmihal` keeps nivo targeting, while `Sufara`/`Qur'an` options do not require nivo.

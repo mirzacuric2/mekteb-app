@@ -1,15 +1,9 @@
 import { Activity } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  LESSON_PROGRAM,
-  LESSON_PROGRAM_I18N_KEY,
-  LESSON_PROGRAM_ORDER,
-  LESSON_NIVO_LABEL,
-  type LessonProgram,
-  type LessonNivo,
-} from "../lessons/constants";
+import { LESSON_NIVO_LABEL, type LessonNivo } from "../lessons/constants";
+import { ProgramScopeRadiogroup, type ProgramScopeFilterValue } from "../lessons/program-scope-radiogroup";
 
-export type CommunityProgramFilter = LessonProgram | "ALL";
+export type CommunityProgramFilter = ProgramScopeFilterValue;
 
 export type ProgressByNivoRow = {
   nivo: LessonNivo;
@@ -51,36 +45,7 @@ export function CommunityProgressByNivoSection({
         </div>
       </div>
       <div className="mb-3">
-        <div>
-          <p className="mb-1 block text-xs font-medium text-slate-600">{t("communityOverviewProgressProgramFilterLabel")}</p>
-          <div
-            role="radiogroup"
-            aria-label={t("communityOverviewProgressProgramFilterLabel")}
-            className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
-          >
-            {(["ALL", ...LESSON_PROGRAM_ORDER] as const).map((value) => {
-              const isSelected = programFilter === value;
-              const label =
-                value === "ALL" ? t("communityOverviewProgressProgramAll") : t(LESSON_PROGRAM_I18N_KEY[value]);
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  className={`w-full rounded-md border px-3 py-1.5 text-sm transition-colors sm:w-auto ${
-                    isSelected
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                  onClick={() => onProgramFilterChange(value)}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <ProgramScopeRadiogroup value={programFilter} onChange={onProgramFilterChange} />
       </div>
       <div className="space-y-2">
         {rows.map((row) => {
