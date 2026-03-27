@@ -45,12 +45,61 @@ BEGIN
   END IF;
 END $$;
 
-ALTER TABLE IF EXISTS "ChildProgramEnrollment"
-  RENAME CONSTRAINT "ChildTrackEnrollment_pkey" TO "ChildProgramEnrollment_pkey";
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON c.conrelid = t.oid
+    WHERE t.relname = 'ChildProgramEnrollment'
+      AND c.conname = 'ChildTrackEnrollment_pkey'
+  ) THEN
+    EXECUTE 'ALTER TABLE "ChildProgramEnrollment" RENAME CONSTRAINT "ChildTrackEnrollment_pkey" TO "ChildProgramEnrollment_pkey"';
+  END IF;
+END $$;
 
-ALTER TABLE IF EXISTS "ChildProgramEnrollment"
-  RENAME CONSTRAINT "ChildTrackEnrollment_childId_fkey" TO "ChildProgramEnrollment_childId_fkey";
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON c.conrelid = t.oid
+    WHERE t.relname = 'ChildProgramEnrollment'
+      AND c.conname = 'ChildTrackEnrollment_childId_fkey'
+  ) THEN
+    EXECUTE 'ALTER TABLE "ChildProgramEnrollment" RENAME CONSTRAINT "ChildTrackEnrollment_childId_fkey" TO "ChildProgramEnrollment_childId_fkey"';
+  END IF;
+END $$;
 
-ALTER INDEX IF EXISTS "ChildTrackEnrollment_track_idx" RENAME TO "ChildProgramEnrollment_program_idx";
-ALTER INDEX IF EXISTS "Lesson_track_nivo_title_idx" RENAME TO "Lesson_program_nivo_title_idx";
-ALTER INDEX IF EXISTS "Lesson_title_track_nivo_key" RENAME TO "Lesson_title_program_nivo_key";
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'i' AND c.relname = 'ChildTrackEnrollment_track_idx'
+  ) THEN
+    EXECUTE 'ALTER INDEX "ChildTrackEnrollment_track_idx" RENAME TO "ChildProgramEnrollment_program_idx"';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'i' AND c.relname = 'Lesson_track_nivo_title_idx'
+  ) THEN
+    EXECUTE 'ALTER INDEX "Lesson_track_nivo_title_idx" RENAME TO "Lesson_program_nivo_title_idx"';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'i' AND c.relname = 'Lesson_title_track_nivo_key'
+  ) THEN
+    EXECUTE 'ALTER INDEX "Lesson_title_track_nivo_key" RENAME TO "Lesson_title_program_nivo_key"';
+  END IF;
+END $$;
